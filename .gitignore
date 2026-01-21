@@ -1,0 +1,19 @@
+# venv
+.venv/
+
+# PyCharm
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Generated outputs (по желанию)
+lovelace_cards_generated.txt
+lights_group.yaml
+lights_general_groups.yaml
+lights_floor_groups.yaml
+
+# Excel source (обычно не коммитят реальные таблицы)
+data/Таблица_устройств_Химки (неактуальная).xlsx
+data/Таблица_устройств_Химки.xlsx

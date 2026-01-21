@@ -1,0 +1,2073 @@
+#Глоссарий карточек
+-----
+###
+1. Коридор = вестибюль
+1.1 На 6 групп
+{{
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: 🏰 Коридор 413
+    icon: ""
+  - type: vertical-stack
+    cards:
+      - features:
+          - type: toggle
+          - type: light-brightness
+        type: tile
+        entity: light.413_obshchii_koridor
+        features_position: bottom
+        vertical: true
+        grid_options:
+          columns: 12
+          rows: 1
+      - type: markdown
+        content: |+
+          {% set st = states('sensor.tekushchii_rezhi_raboty_kolledzha') %}
+          {% set v = states('input_select.mode_work_colhim') %} {% set map = {
+            'Рабочий режим': '✅ **Рабочий режим** — работа по расписанию буднего дня. Освещение переключается в соответствии с установленным расписанием.',
+            'Не рабочий режим': '🟦 **Не рабочий режим** — свет во всей школе работает только по датчикам движения. На первом этаже зона **102** работает на **30%**.',
+            'Ручной режим': '🟩 **Ручной режим** — переключение света возможно только вручную.'
+          } %}
+          ### 🏫 Текущий режим: - *{{ st }}* 
+          ----
+          #### **Описание** 
+          {{ map.get(v, '⚠️ Неизвестное значение режима: **' ~ v ~ '**') }}
+
+
+        grid_options:
+          columns: 12
+          rows: null
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_0
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_22_0_state
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_1
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_22_1_state
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_2
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_22_2_state
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_3
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_21_10_state
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_4
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_21_9_state
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_5
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_21_8_state
+    grid_options:
+      columns: 8
+      rows: auto
+column_span: 3
+}}
+
+1.2 На 8 групп
+{{
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: 🏰 Коридор 316
+    icon: ""
+  - type: vertical-stack
+    cards:
+      - type: tile
+        grid_options:
+          columns: 12
+          rows: 1
+        entity: light.316_obshchii_koridor
+        vertical: false
+        features:
+          - type: toggle
+          - type: light-brightness
+        features_position: bottom
+      - type: markdown
+        content: |+
+          {% set st = states('sensor.tekushchii_rezhi_raboty_kolledzha') %}
+          {% set v = states('input_select.mode_work_colhim') %} {% set map = {
+            'Рабочий режим': '✅ **Рабочий режим** — работа по расписанию буднего дня. Освещение переключается в соответствии с установленным расписанием.',
+            'Не рабочий режим': '🟦 **Не рабочий режим** — свет во всей школе работает только по датчикам движения. На первом этаже зона **102** работает на **30%**.',
+            'Ручной режим': '🟩 **Ручной режим** — переключение света возможно только вручную.'
+          } %}
+          ### 🏫 Текущий режим: - *{{ st }}* 
+          ----
+
+          {{ map.get(v, '⚠️ Неизвестное значение режима: **' ~ v ~ '**') }}
+
+
+        grid_options:
+          columns: 12
+          rows: null
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_0
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_19_0_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_19_0_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_1
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_19_1_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_19_1_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_2
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_18_9_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_18_9_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_3
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_19_2_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_19_2_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_4
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_18_8_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_18_8_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_5
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_18_7_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_18_7_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_6
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_18_6_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_18_6_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.316_7
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_18_5_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_18_5_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+    grid_options:
+      columns: 8
+      rows: auto
+column_span: 3
+}}
+
+1.3 На 12 групп
+{{
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: 🏰 Коридор 132 — главный вестибюль
+    icon: ""
+  - type: vertical-stack
+    cards:
+      - type: tile
+        grid_options:
+          columns: 12
+          rows: 1
+        entity: light.132_obshchii_glavnyi_vestibiul
+        vertical: false
+        features:
+          - type: toggle
+          - type: light-brightness
+        features_position: bottom
+      - type: markdown
+        content: |+
+          {% set st = states('sensor.tekushchii_rezhi_raboty_kolledzha') %}
+          {% set v = states('input_select.mode_work_colhim') %} {% set map = {
+            'Рабочий режим': '✅ **Рабочий режим** — работа по расписанию буднего дня. Освещение переключается в соответствии с установленным расписанием.',
+            'Не рабочий режим': '🟦 **Не рабочий режим** — свет во всей школе работает только по датчикам движения. На первом этаже зона **102** работает на **30%**.',
+            'Ручной режим': '🟩 **Ручной режим** — переключение света возможно только вручную.'
+          } %}
+          ### 🏫 Текущий режим: - *{{ st }}* 
+          ----
+
+          {{ map.get(v, '⚠️ Неизвестное значение режима: **' ~ v ~ '**') }}
+
+
+        grid_options:
+          columns: 12
+          rows: null
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_0
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_2_3_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_2_3_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_1
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_2_4_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_2_4_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_2
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_2_5_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_2_5_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_3
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_2_7_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_2_7_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_4
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_3_10_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_3_10_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_5
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_3_8_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_3_8_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_6
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_6_4_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_6_4_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_7
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_2_6_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_2_6_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_8
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_2_8_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_2_8_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_9
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_3_9_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_3_9_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_10
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_3_7_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_3_7_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+      - type: custom:bubble-card
+        card_type: button
+        button_type: slider
+        entity: light.132_11
+        use_accent_color: true
+        force_icon: false
+        show_name: true
+        show_state: true
+        show_attribute: true
+        attribute: brightness
+        tap_to_slide: false
+        allow_light_slider_to_0: true
+        icon: ""
+        show_icon: true
+        card_layout: large
+        modules:
+          - izequbes_custom_colors
+        icon_container_color:
+          color: amber
+        izequbes_custom_colors:
+          main_icon:
+            background_color: black
+            icon_color: white
+            icon_opacity: 0
+          card:
+            background_color: orange
+        grid_options:
+          columns: 12
+          rows: auto
+        sub_button:
+          - entity: sensor.ms_1_3_7_state
+            show_state: true
+            show_name: false
+            show_background: true
+            state_background: true
+            show_attribute: false
+          - hide_when_parent_unavailable: false
+            entity: sensor.il_1_3_7_state
+            show_state: true
+            name: Освещенность
+            show_name: true
+    grid_options:
+      columns: 8
+      rows: auto
+column_span: 3
+}}
+1.4 На 2 группы
+{{
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: 🏰 Коридор 115 — коридор
+    icon: ""
+  - type: vertical-stack
+    cards:
+      - features:
+          - type: toggle
+          - type: light-brightness
+        type: tile
+        entity: light.115_obshchii_koridor
+        features_position: bottom
+        vertical: true
+        grid_options:
+          columns: 12
+          rows: 1
+      - type: markdown
+        content: |+
+          {% set st = states('sensor.tekushchii_rezhi_raboty_kolledzha') %}
+          {% set v = states('input_select.mode_work_colhim') %} {% set map = {
+            'Рабочий режим': '✅ **Рабочий режим** — работа по расписанию буднего дня. Освещение переключается в соответствии с установленным расписанием.',
+            'Не рабочий режим': '🟦 **Не рабочий режим** — свет во всей школе работает только по датчикам движения. На первом этаже зона **102** работает на **30%**.',
+            'Ручной режим': '🟩 **Ручной режим** — переключение света возможно только вручную.'
+          } %}
+          ### 🏫 Текущий режим: - *{{ st }}* 
+          ----
+          #### **Описание** 
+          {{ map.get(v, '⚠️ Неизвестное значение режима: **' ~ v ~ '**') }}
+
+
+        grid_options:
+          columns: 12
+          rows: null
+    grid_options:
+      columns: 12
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        entity: light.115_0
+        vertical: true
+        features:
+          - type: light-brightness
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_1_3_sensor_enable
+      - type: tile
+        entity: sensor.il_1_1_3_state
+        features_position: bottom
+        vertical: false
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_1_3_state
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        entity: light.115_1
+        vertical: true
+        features:
+          - type: light-brightness
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_1_4_sensor_enable
+      - type: tile
+        entity: sensor.il_1_1_4_state
+        features_position: bottom
+        vertical: false
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_1_4_state
+    grid_options:
+      columns: 6
+      rows: auto
+column_span: 2
+}}
+
+###
+2. Лестница = лестничная клетка
+2.1 На 1 группу
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🌈 Левая лестница 501
+    heading_style: title
+  - type: tile
+    entity: light.501_obshchii_lestnitsa
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.501_0
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 6
+      rows: 3
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_7_9_sensor_enable
+      - type: tile
+        entity: sensor.il_1_7_9_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_7_9_state
+    grid_options:
+      columns: 6
+      rows: auto
+
+}}
+
+2.2 На 2 группы
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🌈 Левая лестница 210
+    heading_style: title
+  - type: tile
+    entity: light.210_obshchii_lestnitsa
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.210_0
+    features_position: bottom
+    vertical: false
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.210_1
+    features_position: bottom
+    vertical: false
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_7_3_sensor_enable
+      - type: tile
+        entity: sensor.il_1_7_3_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_7_3_state
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_7_4_sensor_enable
+      - type: tile
+        entity: sensor.il_1_7_4_state
+        features_position: bottom
+        vertical: false
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_7_4_state
+    grid_options:
+      columns: 6
+      rows: auto
+}}
+
+2.3 На 3 группы
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🌈 Левая лестница 210
+    heading_style: title
+  - type: tile
+    entity: light.210_obshchii_lestnitsa
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.411_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.411_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.411_2
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_21_3_sensor_enable
+      - type: tile
+        entity: sensor.il_1_21_3_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_3_state
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_21_4_sensor_enable
+      - type: tile
+        entity: sensor.il_1_21_4_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_4_state
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_21_5_sensor_enable
+      - type: tile
+        entity: sensor.il_1_21_5_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_5_state
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+}}
+
+3. Кабинет = лаб = лаборатория
+3.1 На 2 группы
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 Лекционный кабинет 218
+    heading_style: title
+  - type: tile
+    entity: light.218_obshchii_lekts_kabinet
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.218_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 6
+      rows: 3
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.218_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 6
+      rows: 3
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_15_0_sensor_enable
+      - type: tile
+        entity: sensor.il_1_15_0_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_15_0_state
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_15_1_sensor_enable
+      - type: tile
+        entity: sensor.il_1_15_1_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_15_1_state
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    grid_options:
+      columns: 6
+      rows: auto
+    color: red
+    features_position: bottom
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    grid_options:
+      columns: 6
+      rows: auto
+    color: red
+    features_position: bottom
+}}
+
+3.2 На 3 группы
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 Учебный кабинет 213
+    heading_style: title
+  - type: tile
+    entity: light.213_obshchii_uchebnyi_kabinet
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.213_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.213_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.213_2
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_14_0_sensor_enable
+      - type: tile
+        entity: sensor.il_1_14_0_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_14_0_state
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_14_1_sensor_enable
+      - type: tile
+        entity: sensor.il_1_14_1_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_14_1_state
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: switch.il_1_14_2_sensor_enable
+      - type: tile
+        entity: sensor.il_1_14_2_state
+        icon: mdi:brightness-7
+        color: accent
+        vertical: true
+        features_position: bottom
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_14_2_state
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+}}
+4. Тамбур 
+4.1 На 1 группу
+{{
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: Тамбур 136
+    icon: mdi:town-hall
+  - type: vertical-stack
+    cards:
+      - features:
+          - type: light-brightness
+          - type: toggle
+        type: tile
+        entity: light.136_obshchii_tambur
+        features_position: bottom
+        vertical: true
+        grid_options:
+          columns: 12
+          rows: 1
+        name: Тамбур 136
+    grid_options:
+      columns: 12
+      rows: auto
+  - type: tile
+    entity: switch.il_1_7_7_sensor_enable
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: full
+  - type: tile
+    entity: sensor.il_1_7_7_state
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: full
+  - type: tile
+    entity: sensor.ms_1_7_7_state
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: full
+}}
+
+4.2 Тамбур на 2 и более группы по примеру коридоров
+
+5. c/y = умывальная
+5.1 На 3 группы
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🚽 С/у мужской 212
+    heading_style: title
+  - type: tile
+    entity: light.212_obshchii_s_u_muzhskoi
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.212_0
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_5_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_5_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.212_1
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_6_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_6_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.212_2
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_7_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_7_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+    name: Умывальная
+}}
+
+5.2 На 5 групп
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🚽 С/у женский 211
+    heading_style: title
+  - type: tile
+    entity: light.211_obshchii_s_u_zhenskii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.211_0
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_0_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_0_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.211_1
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_1_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_1_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.211_2
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_2_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_2_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.211_3
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_3_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_3_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.211_4
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_13_4_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_13_4_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+    name: Умывальная
+}}
+5.3 На 1 группу
+{{
+type: grid
+cards:
+  - type: heading
+    heading: 🚽 С/у 117 — туалет
+    heading_style: title
+  - type: tile
+    entity: light.117_obshchii_tualet
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.117_0
+    use_accent_color: true
+    force_icon: false
+    show_name: true
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    tap_to_slide: false
+    allow_light_slider_to_0: true
+    icon: ""
+    show_icon: true
+    card_layout: large
+    modules:
+      - izequbes_custom_colors
+    icon_container_color:
+      color: amber
+    izequbes_custom_colors:
+      main_icon:
+        background_color: black
+        icon_color: white
+        icon_opacity: 0
+      card:
+        background_color: orange
+    grid_options:
+      columns: 12
+      rows: auto
+    sub_button:
+      - entity: sensor.ms_1_1_12_state
+        show_state: true
+        show_name: false
+        show_background: true
+        state_background: true
+        show_attribute: false
+      - hide_when_parent_unavailable: false
+        entity: sensor.il_1_1_12_state
+        show_state: true
+        name: Освещенность
+        show_name: true
+}}
