@@ -22,18 +22,13 @@ import re
 import yaml  # pip install pyyaml
 
 
-# Версия скрипта (для контроля изменений)
-VERSION = "1.1.0"
-
-
 # === НАСТРОЙКИ ===
 
-# Определяем корень проекта (на уровень выше папки scripts)
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Входной YAML-файл с общими группами по помещениям
+INPUT_PATH = Path("lights_general_groups.yaml")
 
-# Абсолютные пути к файлам
-INPUT_PATH = BASE_DIR / "lights_general_groups.yaml"
-OUTPUT_PATH = BASE_DIR / "lights_floor_groups.yaml"
+# Выходной YAML-файл с группами по этажам
+OUTPUT_PATH = Path("lights_floor_groups.yaml")
 
 # Если INCLUDE_FLOORS не пустой — создаём группы только для этих этажей
 INCLUDE_FLOORS: list[int] = []  # например [1, 2]
@@ -46,60 +41,38 @@ EXCLUDE_FLOORS: list[int] = []  # например [0, 4]
 
 def transliterate_ru_to_en(text: str) -> str:
     """
-    Транслитерация + slugify под Home Assistant.
+    Простейшая транслитерация кириллицы в латиницу для формирования slug.
+    Не претендует на полное совпадение с Home Assistant, но логика похожа.
 
-    Почему это нужно:
-        Home Assistant сам генерирует entity_id из "name" через slugify.
-        Если в генераторе этажей использовать "свой" транслит, то часть entity_id
-        не совпадёт (типичные кейсы: щ -> shch, ц -> ts, х -> kh).
-
-    Цель:
-        Дать максимально близкий к HA slug для кириллицы, чтобы:
-            name: "403 Общий кабинет медиц"
-            ->  "403_obshchii_kabinet_medits"
+    Пример:
+        "403 Общий кабинет медиц" -> "403_obshchii_kabinet_medits"
     """
-    if text is None:
-        return ""
-
-    # 1) Нормализуем к строке, чистим пробелы
-    raw = str(text).strip().lower()
-
-    # 2) Таблица транслитерации (ключевые отличия от "простого" транслита):
-    #    - "щ" -> "shch"
-    #    - "ц" -> "ts"
-    #    - "х" -> "kh"
     mapping = {
-        "а": "a",  "б": "b",   "в": "v",   "г": "g",   "д": "d",
-        "е": "e",  "ё": "e",   "ж": "zh",  "з": "z",   "и": "i",
-        "й": "i",  "к": "k",   "л": "l",   "м": "m",   "н": "n",
-        "о": "o",  "п": "p",   "р": "r",   "с": "s",   "т": "t",
-        "у": "u",  "ф": "f",   "х": "kh",  "ц": "ts",  "ч": "ch",
-        "ш": "sh", "щ": "shch","ъ": "",    "ы": "y",   "ь": "",
-        "э": "e",  "ю": "yu",  "я": "ya",
-
-        # Разделители / спецсимволы → underscore (как в HA)
-        " ": "_",  "-": "_",   "/": "_",   ".": "_",
+        "а": "a", "б": "b", "в": "v", "г": "g", "д": "d",
+        "е": "e", "ё": "e", "ж": "zh", "з": "z", "и": "i",
+        "й": "i", "к": "k", "л": "l", "м": "m", "н": "n",
+        "о": "o", "п": "p", "р": "r", "с": "s", "т": "t",
+        "у": "u", "ф": "f", "х": "h", "ц": "c", "ч": "ch",
+        "ш": "sh", "щ": "sch", "ъ": "", "ы": "y", "ь": "",
+        "э": "e", "ю": "yu", "я": "ya",
+        " ": "_", "-": "_", "/": "_", ".": "_",
     }
 
-    # 3) Строим "черновой" slug
-    out = []
-    for ch in raw:
+    result_chars = []
+    for ch in text.lower():
         if ch in mapping:
-            out.append(mapping[ch])
-        elif "a" <= ch <= "z" or "0" <= ch <= "9":
-            out.append(ch)
+            result_chars.append(mapping[ch])
+        elif ch.isalnum():
+            # Латиница и цифры оставляем как есть
+            result_chars.append(ch)
         else:
-            # всё прочее превращаем в underscore
-            out.append("_")
+            # Остальное превращаем в "_"
+            result_chars.append("_")
 
-    slug = "".join(out)
-
-    # 4) Финальная очистка: оставляем только [a-z0-9_], сжимаем "_" и обрезаем края
-    slug = re.sub(r"[^a-z0-9_]+", "_", slug)
+    slug = "".join(result_chars)
+    # Сжимаем повторяющиеся "_" и убираем ведущие/хвостовые
     slug = re.sub(r"_+", "_", slug).strip("_")
-
     return slug
-
 
 
 def general_group_entity_id_from_name(name: str) -> str:

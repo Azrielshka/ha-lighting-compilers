@@ -2,9 +2,11 @@ import pandas as pd
 from pathlib import Path
 
 # === НАСТРОЙКИ ===
+# Корень проекта (на уровень выше папки scripts)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Путь к исходному файлу Excel (относительно проекта)
-EXCEL_PATH = Path("data/Таблица_устройств_Химки.xlsx")
+# Таблица лежит в папке data в корне проекта
+EXCEL_PATH = BASE_DIR / "data" / "Таблица_устройств_Химки.xlsx"
 
 # Имя листа: 0 - первый лист, либо строкой, например "Лист1"
 SHEET_NAME = "DALI_Pusk"
@@ -16,7 +18,7 @@ COL_GROUP_N = "N" # Имя группы (предпочтительно)
 COL_GROUP_D = "D" # Имя группы (альтернатива, если N пустой)
 
 # Файл результата
-OUTPUT_PATH = Path("lights_group.yaml")
+OUTPUT_PATH = BASE_DIR / "lights_group.yaml"          # для generate_lights_groups.py
 
 # Можно ограничить генерацию только несколькими пространствами:
 # оставь пустой список, чтобы обрабатывать все

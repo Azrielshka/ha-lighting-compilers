@@ -12,8 +12,11 @@ warnings.filterwarnings(
 
 # === НАСТРОЙКИ ===
 
-# Путь к исходному Excel (как и в первом скрипте)
-EXCEL_PATH = Path("data/Таблица_устройств_Химки.xlsx")
+# Корень проекта (на уровень выше папки scripts)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Таблица лежит в папке data в корне проекта
+EXCEL_PATH = BASE_DIR / "data" / "Таблица_устройств_Химки.xlsx"
 
 # Имя листа: 0 - первый лист, либо строкой, например "Лист1"
 SHEET_NAME = 0
@@ -24,8 +27,8 @@ COL_LAMP = "E"    # Имя лампы (нам тут почти не нужен,
 COL_GROUP_N = "N" # Имя подгруппы (предпочтительно)
 COL_GROUP_D = "D" # Имя подгруппы (альтернатива, если N пустой)
 
-# Файл результата
-OUTPUT_PATH = Path("lights_general_groups.yaml")
+# Выходной YAML кладём в корень проекта (как у тебя на скриншоте)
+OUTPUT_PATH = BASE_DIR / "lights_general_groups.yaml"   # для generate_general_groups.py
 
 # Фильтры, как в предыдущем скрипте
 
