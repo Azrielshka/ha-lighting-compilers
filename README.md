@@ -160,6 +160,7 @@ python scripts/generate_lovelace_cards.py
 - реальные .xlsx с рабочими данными,
 - сгенерированные YAML/TXT файлы,
 - черновики и архивы (old group/)
+- scripts/old scripts/
 
 См. .gitignore.
 
