@@ -11,6 +11,9 @@ __pycache__/
 #мусор и черновики
 old group/
 
+# Ignore legacy scripts
+scripts/old scripts/
+
 # Generated outputs (по желанию)
 lovelace_cards_generated.txt
 lights_group.yaml
