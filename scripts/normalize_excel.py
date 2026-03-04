@@ -22,6 +22,7 @@ import datetime as dt
 import json
 import os
 from typing import Dict, List, Optional, Tuple
+from pathlib import Path
 
 import pandas as pd
 
@@ -29,6 +30,13 @@ from scripts._lib.canon import NORMALIZED_SCHEMA_VERSION, GENERAL_LIGHT_RULE, AL
 from scripts._lib.excel_schema import COLUMNS
 from scripts._lib.naming import slugify_room
 
+# Корень проекта (на уровень выше папки scripts)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ===== CONFIG (для запуска из PyCharm) =====
+DEFAULT_EXCEL_PATH = str(BASE_DIR / "data" / "Тестовая таблица.xlsx")
+DEFAULT_OUTPUT_DIR = str(BASE_DIR / "data" / "normalized")
+DEFAULT_SHEET_NAME = None
 
 def _ensure_dir(path: str) -> None:
     """Создаёт папку, если её нет (нужно для data/normalized/*)."""
@@ -349,14 +357,7 @@ def normalize(
 
     pq.write_table(device_rows_tbl, device_rows_path)
     pq.write_table(spaces_tbl, spaces_path)
-    import pyarrow.parquet as pq
-
-    device_rows_tbl = pa.Table.from_pandas(device_rows, preserve_index=False)
-    spaces_tbl = pa.Table.from_pandas(spaces, preserve_index=False)
-
-    pq.write_table(device_rows_tbl, device_rows_path)
-    pq.write_table(spaces_tbl, spaces_path)
-# Meta json
+    # Meta json
     meta = {
         "schema_version": NORMALIZED_SCHEMA_VERSION,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -396,10 +397,31 @@ def main() -> None:
     python scripts/normalize_excel.py --excel data/Тестовая таблица.xlsx
     """
     parser = argparse.ArgumentParser(description="Normalize Excel table into canonical parquet datasets.")
-    parser.add_argument("--excel", required=True, help="Path to source Excel file.")
-    parser.add_argument("--out", default="data/normalized", help="Output folder (default: data/normalized).")
-    parser.add_argument("--sheet", default=None, help="Excel sheet name (optional).")
+    parser.add_argument(
+        "--excel",
+        default=DEFAULT_EXCEL_PATH,
+        help="Path to source Excel file"
+    )
+
+    parser.add_argument(
+        "--out",
+        default=DEFAULT_OUTPUT_DIR,
+        help="Output folder"
+    )
+
+    parser.add_argument(
+        "--sheet",
+        default=DEFAULT_SHEET_NAME,
+        help="Excel sheet"
+    )
     args = parser.parse_args()
+
+    # --- Лог запуска (для удобства отладки) ---
+    print("\n=== Normalize Excel ===")
+    print("Excel file :", args.excel)
+    print("Output dir :", args.out)
+    print("Sheet      :", args.sheet)
+    print()
 
     normalize(excel_path=args.excel, output_dir=args.out, sheet_name=args.sheet)
 
