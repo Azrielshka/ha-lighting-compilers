@@ -12,46 +12,46 @@ card_types:
     variants:
       "1":
         file: "corridor/1.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "MS_SENSOR_1"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "MS_SENSOR_1"]
       "2":
         file: "corridor/2.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "MS_SENSOR_1", "MS_SENSOR_2"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "MS_SENSOR_1", "MS_SENSOR_2"]
       "3":
         file: "corridor/3.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3"]
       "4":
         file: "corridor/4.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4"]
       "5":
         file: "corridor/5.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5",
                        "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4", "MS_SENSOR_5"]
       "6":
         file: "corridor/6.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
                        "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4", "MS_SENSOR_5", "MS_SENSOR_6"]
       "8":
         file: "corridor/8.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
                        "ZONE_LIGHT_7", "ZONE_LIGHT_8", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4", "MS_SENSOR_5", "MS_SENSOR_6", "MS_SENSOR_7","MS_SENSOR_8"]
       "9":
         file: "corridor/9.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
                        "ZONE_LIGHT_7", "ZONE_LIGHT_8", "ZONE_LIGHT_9","MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4", "MS_SENSOR_5", "MS_SENSOR_6",
                        "MS_SENSOR_7","MS_SENSOR_8", "MS_SENSOR_9"]
       "10":
         file: "corridor/10.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
                        "ZONE_LIGHT_7", "ZONE_LIGHT_8", "ZONE_LIGHT_9", "ZONE_LIGHT_10", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4", "MS_SENSOR_5", "MS_SENSOR_6",
                        "MS_SENSOR_7","MS_SENSOR_8", "MS_SENSOR_9", "MS_SENSOR_10"]
       "11":
         file: "corridor/11.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
                        "ZONE_LIGHT_7", "ZONE_LIGHT_8", "ZONE_LIGHT_9", "ZONE_LIGHT_10", "ZONE_LIGHT_11", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4",
                        "MS_SENSOR_5", "MS_SENSOR_6", "MS_SENSOR_7","MS_SENSOR_8", "MS_SENSOR_9", "MS_SENSOR_10", "MS_SENSOR_11"]
       "12":
         file: "corridor/12.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5", "ZONE_LIGHT_6",
                        "ZONE_LIGHT_7", "ZONE_LIGHT_8", "ZONE_LIGHT_9", "ZONE_LIGHT_10", "ZONE_LIGHT_11", "ZONE_LIGHT_12", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4",
                        "MS_SENSOR_5", "MS_SENSOR_6", "MS_SENSOR_7","MS_SENSOR_8", "MS_SENSOR_9", "MS_SENSOR_10", "MS_SENSOR_11", "MS_SENSOR_12"]
     fallback:
@@ -62,10 +62,10 @@ card_types:
     variants:
       "2":
         file: "cabinet/2.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2","MS_SENSOR_1", "MS_SENSOR_2"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2","MS_SENSOR_1", "MS_SENSOR_2"]
       "3":
         file: "cabinet/3.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3",
                        "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3"]
     fallback:
       nearest_variant: true
@@ -75,19 +75,19 @@ card_types:
     variants:
       "1":
         file: "su/1.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "MS_SENSOR_1"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "MS_SENSOR_1"]
       "2":
         file: "su/2.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "MS_SENSOR_1", "MS_SENSOR_2"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "MS_SENSOR_1", "MS_SENSOR_2"]
       "3":
         file: "su/3.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3"]
       "4":
         file: "su/4.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4"]
       "5":
         file: "su/5.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5",
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "ZONE_LIGHT_4", "ZONE_LIGHT_5",
                        "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3", "MS_SENSOR_4", "MS_SENSOR_5"]
     fallback:
       nearest_variant: false
@@ -98,13 +98,13 @@ card_types:
     variants:
       "1":
         file: "lestnitsa/1.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "MS_SENSOR_1"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "MS_SENSOR_1"]
       "2":
         file: "lestnitsa/2.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "MS_SENSOR_1", "MS_SENSOR_2"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "MS_SENSOR_1", "MS_SENSOR_2"]
       "3":
         file: "lestnitsa/3.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1", "ZONE_LIGHT_2", "ZONE_LIGHT_3", "MS_SENSOR_1", "MS_SENSOR_2", "MS_SENSOR_3"]
     fallback:
       nearest_variant: false
       use_default_groups_count: "2"
@@ -114,6 +114,6 @@ card_types:
     variants:
       "1":
         file: "generic/1.yaml"
-        placeholders: ["HEADING", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1"]
+        placeholders: ["HEADING", "SPACE", "GENERAL_LIGHT_ENTITY", "ZONE_LIGHT_1"]
     fallback:
       nearest_variant: false
