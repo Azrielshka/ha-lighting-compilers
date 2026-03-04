@@ -13,7 +13,15 @@ old group/
 
 # Ignore legacy scripts
 scripts/old scripts/
+
+# Выходные данные
 data/normalized/
+
+# Конфигурация конкретных пространств
+templates/cabinet/
+templates/corridor/
+templates/lestnitsa/
+templates/su
 
 # Generated outputs (по желанию)
 lovelace_cards_generated.txt
