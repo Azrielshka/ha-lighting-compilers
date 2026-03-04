@@ -21,6 +21,9 @@ import argparse
 import datetime as dt
 import json
 import os
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
@@ -349,9 +352,6 @@ def normalize(
 
     # Parquet
     # Пишем через pyarrow напрямую (устойчивее, чем pandas.to_parquet в разных окружениях)
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
     device_rows_tbl = pa.Table.from_pandas(device_rows, preserve_index=False)
     spaces_tbl = pa.Table.from_pandas(spaces, preserve_index=False)
 
