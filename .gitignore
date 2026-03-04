@@ -13,6 +13,7 @@ old group/
 
 # Ignore legacy scripts
 scripts/old scripts/
+data/normalized/
 
 # Generated outputs (по желанию)
 lovelace_cards_generated.txt
