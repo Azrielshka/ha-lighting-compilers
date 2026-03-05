@@ -8,14 +8,12 @@
 __pycache__/
 *.pyc
 
-#мусор и черновики
-old group/
-
 # Ignore legacy scripts
 scripts/old scripts/
 
 # Выходные данные
 data/normalized/
+data/old group/
 
 # Конфигурация конкретных пространств
 templates/cabinet/
@@ -23,14 +21,8 @@ templates/corridor/
 templates/lestnitsa/
 templates/su
 
-# Generated outputs (по желанию)
-lovelace_cards_generated.txt
-lights_group.yaml
-lights_general_groups.yaml
-lights_floor_groups.yaml
-
 # Excel source (обычно не коммитят реальные таблицы)
 data/Таблица_устройств_Химки (неактуальная).xlsx
 data/Таблица_устройств_Химки.xlsx
 data/Тестовая таблица.xlsx
-data/Бестиарий карточек.json
+data/lovelace_cards_report.json
