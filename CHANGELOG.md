@@ -6,6 +6,16 @@ The format is based on Keep a Changelog.
 This project follows Semantic Versioning.
 
 ---
+
+## [2.0.1] - 2026-03-05
+
+### Changed
+- `generate_lights_groups.py` now reads normalized data from `data/normalized/device_rows.parquet` instead of Excel.
+- Lamp entity generation moved to canonical rule `normalize_lamp_id_to_entity()` in `scripts/_lib/canon.py`.
+
+### Added
+- Shared naming rule `normalize_lamp_id_to_entity()` for consistent Home Assistant entity IDs across generators.
+
 ## [2.0.0] - 2026-03-05
 
 ### Added
