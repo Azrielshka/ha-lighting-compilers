@@ -1,193 +1,152 @@
-import warnings
+# generate_general_groups.py
+# ------------------------------------------------------------
+# v2.0.1
+# Генератор общих групп света (general light groups)
+#
+# Источник данных: нормализованный parquet слой
+#   data/normalized/device_rows.parquet
+#
+# Выход:
+#   data/light_groups/lights_general_groups.yaml
+#
+# Логика:
+# - для каждого помещения (room_slug/space) собрать список подгрупп (group_id)
+# - сгенерировать одну общую группу: <room_slug>_obshchii
+#   entities:
+#     - light.<group_id_0>
+#     - light.<group_id_1>
+# ------------------------------------------------------------
+
+from __future__ import annotations
+
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 
-# Если warning от openpyxl не мешает — этот блок можно удалить
-warnings.filterwarnings(
-    "ignore",
-    category=UserWarning,
-    module="openpyxl.worksheet._reader"
-)
+# Канон проекта (единые правила нейминга)
+from scripts._lib.canon import GENERAL_LIGHT_RULE, HA_LIGHT_DOMAIN
+
+
+__version__ = "2.0.1"
 
 # === НАСТРОЙКИ ===
 
-# Корень проекта (на уровень выше папки scripts)
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Корень проекта (чтобы запуск из PyCharm/терминала работал одинаково)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Таблица лежит в папке data в корне проекта
-EXCEL_PATH = BASE_DIR / "data" / "Таблица_устройств_Химки.xlsx"
+# Вход: нормализованные строки устройств
+DEVICE_ROWS_PARQUET = PROJECT_ROOT / "data" / "normalized" / "device_rows.parquet"
 
-# Имя листа: 0 - первый лист, либо строкой, например "Лист1"
-SHEET_NAME = 0
+# Выход: папка и файл
+OUTPUT_DIR = PROJECT_ROOT / "data" / "light_groups"
+OUTPUT_PATH = OUTPUT_DIR / "lights_general_groups.yaml"
 
-# Буквы колонок в таблице
-COL_SPACE = "B"   # Имя пространства (комментарий)
-COL_LAMP = "E"    # Имя лампы (нам тут почти не нужен, но оставим для симметрии)
-COL_GROUP_N = "N" # Имя подгруппы (предпочтительно)
-COL_GROUP_D = "D" # Имя подгруппы (альтернатива, если N пустой)
+# Фильтры (оставляем как в других генераторах)
 
-# Выходной YAML кладём в корень проекта (как у тебя на скриншоте)
-OUTPUT_PATH = BASE_DIR / "lights_general_groups.yaml"   # для generate_general_groups.py
+# Ограничить генерацию только перечисленными пространствами.
+# Рекомендуется указывать room_slug (стабильный), но можно и space.
+SPACES_FILTER: List[str] = []  # например ["403_kabinet_medits", "402_kabinet"]
 
-# Фильтры, как в предыдущем скрипте
+# Исключить все пространства определённых этажей (берём floor из parquet)
+EXCLUDE_FLOORS: List[int] = []  # например [4] чтобы исключить весь 4-й этаж
 
-# Ограничить генерацию только перечисленными пространствами (по колонке B)
-SPACES_FILTER = []  # например ["403 кабинет медицинский", "404 кабинет"]
-
-# Исключить все пространства определённых этажей.
-# Этаж определяется по первой цифре в названии пространства (колонка B):
-# "403 кабинет ..." -> этаж 4, "112_с/у..." -> этаж 1
-EXCLUDE_FLOORS = []  # например [4] чтобы исключить все 4-й этаж
-
-# Исключить пространства, в названии которых встречаются эти подстроки (без учёта регистра)
-EXCLUDE_SPACE_CONTAINS = []  # например ["кабинет"]
+# Исключить пространства, в названии которых встречаются подстроки (без учёта регистра)
+EXCLUDE_SPACE_CONTAINS: List[str] = ["koridor"]  # например ["sklad", "server"]
 
 
 # === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
-def transliterate_ru_to_en(text: str) -> str:
+def _space_key(row: pd.Series) -> str:
     """
-    Очень простой транслит кириллицы в латиницу для формирования id.
-    Не претендует на идеальность — при необходимости можно поправить под себя.
+    Ключ помещения для группировки/фильтров.
+    Берём room_slug (стабильный), если его нет — space (человекочитаемое).
     """
-    mapping = {
-        "а": "a", "б": "b", "в": "v", "г": "g", "д": "d",
-        "е": "e", "ё": "e", "ж": "zh", "з": "z", "и": "i",
-        "й": "i", "к": "k", "л": "l", "м": "m", "н": "n",
-        "о": "o", "п": "p", "р": "r", "с": "s", "т": "t",
-        "у": "u", "ф": "f", "х": "h", "ц": "c", "ч": "ch",
-        "ш": "sh", "щ": "sch", "ъ": "", "ы": "y", "ь": "",
-        "э": "e", "ю": "yu", "я": "ya",
-        " ": "_", "-": "_", "/": "_",
-    }
-    out = []
-    for ch in text.lower():
-        if ch in mapping:
-            out.append(mapping[ch])
-        elif ch.isalnum():
-            out.append(ch)
-        else:
-            out.append("_")
-    return "".join(out)
+    rs = row.get("room_slug", None)
+    sp = row.get("space", None)
+
+    v = rs if rs is not None and str(rs).strip() else sp
+    return "" if v is None else str(v).strip()
 
 
-def make_general_group_name(space_name: str) -> str:
+def load_device_rows(path: Path) -> pd.DataFrame:
     """
-    Из имени пространства (колонка B) делаем РУССКОЕ name для общей группы.
-
-    Правило:
-      "<номер>_<остальное>" -> "<номер> Общий <остальное с пробелами>"
-
-    Примеры:
-      "113_учебный_кабинет" -> "113 Общий учебный кабинет"
-      "171_лестница"        -> "171 Общий лестница"
-      "126_с/у"             -> "126 Общий с/у"
+    Загрузить device_rows.parquet в DataFrame.
     """
-    raw = str(space_name).strip()
-    if not raw:
-        return "Общий"
+    if not path.exists():
+        raise FileNotFoundError(f"Parquet не найден: {path}")
 
-    import re
-
-    # Пытаемся отдельно вытащить номер в начале
-    m = re.match(r"^\s*(\d+)[_ ]*(.*)$", raw)
-    if m:
-        room = m.group(1)              # "113"
-        rest = m.group(2).strip()      # "учебный_кабинет" или "с/у" и т.п.
-    else:
-        room = ""
-        rest = raw
-
-    # В остатке заменяем "_" на пробелы
-    rest_clean = rest.replace("_", " ").strip()
-
-    if room:
-        if rest_clean:
-            # "113 Общий учебный кабинет"
-            return f"{room} Общий {rest_clean}"
-        else:
-            # Если вдруг нет хвоста: "113 Общий"
-            return f"{room} Общий"
-    else:
-        # Если нет номера в начале
-        if rest_clean:
-            return f"Общий {rest_clean}"
-        else:
-            return "Общий"
-
-
-
-def load_table(path: Path, sheet_name=0) -> pd.DataFrame:
-    """
-    Загрузить Excel в DataFrame.
-    """
-    df = pd.read_excel(path, sheet_name=sheet_name, dtype=str)
-    return df
+    return pd.read_parquet(path)
 
 
 def build_general_groups(df: pd.DataFrame) -> str:
     """
-    Собрать YAML-текст с общими группами по пространствам.
+    Собрать YAML-текст с общими группами по помещениям.
 
-    На входе: таблица с колонками B (пространство), N/D (подгруппа).
-    На выходе: для каждого пространства — одна общая группа,
-    включающая все подгруппы (light.<значение N/D>).
+    Ожидаемые колонки:
+      - group_id
+      - room_slug / space
+      - floor (желательно, для EXCLUDE_FLOORS)
+
+    Выход:
+      lights_general_group:
+        light:
+        #Общая группа для <space>
+          - platform: group
+            name: "<room_slug>_obshchii"
+            unique_id: "<room_slug>_obshchii"
+            entities:
+              - light.<group_id_0>
+              - light.<group_id_1>
     """
-
-    original_cols = list(df.columns)
     total_rows = len(df)
 
-    def col_by_letter(letter: str) -> str:
-        idx = ord(letter.upper()) - ord("A")
-        try:
-            return original_cols[idx]
-        except IndexError:
-            raise ValueError(f"В таблице нет колонки {letter}")
+    # --- проверка контракта данных ---
+    required_cols = ["group_id"]
+    for c in required_cols:
+        if c not in df.columns:
+            raise ValueError(f"В device_rows.parquet нет обязательной колонки: '{c}'")
 
-    col_space = col_by_letter(COL_SPACE)
-    col_group_n = col_by_letter(COL_GROUP_N)
-    col_group_d = col_by_letter(COL_GROUP_D)
+    df = df.copy()
 
-    # --- Подготовка данных ---
+    # ключ помещения для группировки/фильтров
+    df["__space_key"] = df.apply(_space_key, axis=1)
 
-    # Пространство (B)
-    space_raw = df[col_space]
-    df["__space"] = space_raw.fillna("").astype(str).str.strip()
+    # room_slug отдельно — он нужен, чтобы собрать стабильное имя общей группы
+    if "room_slug" in df.columns:
+        df["__room_slug"] = df["room_slug"].fillna("").astype(str).str.strip()
+    else:
+        df["__room_slug"] = ""
 
-    # Имя подгруппы: сначала N, если пусто — D
-    group_n = df[col_group_n].fillna("").astype(str).str.strip()
-    group_d = df[col_group_d].fillna("").astype(str).str.strip()
-    df["__group"] = group_n.where(group_n != "", group_d)
-    df["__group"] = df["__group"].fillna("").astype(str).str.strip()
+    # group_id как строка
+    df["__group"] = df["group_id"].fillna("").astype(str).str.strip()
 
-    # Тянем пространство вниз: пустые B наследуют значение сверху
-    df["__space"] = df["__space"].replace("", pd.NA).ffill().fillna("")
+    # floor для фильтра по этажам
+    if "floor" in df.columns:
+        df["__floor"] = pd.to_numeric(df["floor"], errors="coerce")
+    else:
+        df["__floor"] = pd.NA
 
-    # Нужны только строки, где есть пространство и группа
-    df = df[(df["__space"] != "") & (df["__group"] != "")]
+    # Базовая фильтрация: нужны space_key + group_id
+    df = df[(df["__space_key"] != "") & (df["__group"] != "")]
     rows_after_basic = len(df)
 
-    # Список пространств после базовой фильтрации
-    spaces_before_filters = list(dict.fromkeys(df["__space"]))
+    spaces_before_filters = list(dict.fromkeys(df["__space_key"]))
 
-    # Фильтр включения по SPACES_FILTER
+    # --- фильтры пользователя ---
+
+    # 1) SPACES_FILTER
     if SPACES_FILTER:
-        df = df[df["__space"].isin(SPACES_FILTER)]
+        df = df[df["__space_key"].isin(SPACES_FILTER)]
 
-    df = df.copy()  # чтобы не ловить SettingWithCopyWarning
+    df = df.copy()
 
-    # Фильтр по этажам: EXCLUDE_FLOORS (первая цифра в начале имени пространства)
+    # 2) EXCLUDE_FLOORS
     if EXCLUDE_FLOORS:
-        floors_str = [str(f) for f in EXCLUDE_FLOORS]
-        df["__floor_digit"] = (
-            df["__space"]
-            .str.extract(r"^\s*(\d)", expand=False)
-            .fillna("")
-        )
-        df = df[~df["__floor_digit"].isin(floors_str)]
+        floors = set(int(x) for x in EXCLUDE_FLOORS)
+        df = df[~df["__floor"].apply(lambda x: (not pd.isna(x)) and int(x) in floors)]
 
-    # Фильтр по подстрокам в названии пространства: EXCLUDE_SPACE_CONTAINS
+    # 3) EXCLUDE_SPACE_CONTAINS
     if EXCLUDE_SPACE_CONTAINS:
         subs = [s.lower() for s in EXCLUDE_SPACE_CONTAINS]
 
@@ -195,71 +154,77 @@ def build_general_groups(df: pd.DataFrame) -> str:
             s = str(space_name).lower()
             return not any(sub in s for sub in subs)
 
-        df = df[df["__space"].apply(space_allowed)]
+        df = df[df["__space_key"].apply(space_allowed)]
 
     rows_after_filters = len(df)
 
     if df.empty:
         print("⚠ После всех фильтров не осталось строк. Общие группы не будут сгенерированы.")
-        print(f"  Всего строк в таблице:             {total_rows}")
-        print(f"  После базовой фильтрации:          {rows_after_basic}")
+        print(f"  Всего строк в parquet:                 {total_rows}")
+        print(f"  После базовой фильтрации (space+group): {rows_after_basic}")
         return "# Нет данных для генерации общих групп\n"
 
-    # Нам нужны уникальные пары (пространство, подгруппа)
-    df_pairs = df[["__space", "__group"]].drop_duplicates()
-
-    # Статистика
-    spaces_after_filters = list(dict.fromkeys(df_pairs["__space"]))
+    # Уникальные пары (помещение, подгруппа)
+    df_pairs = df[["__space_key", "__room_slug", "__group"]].drop_duplicates()
+    spaces_after_filters = list(dict.fromkeys(df_pairs["__space_key"]))
     groups_after_filters = list(dict.fromkeys(df_pairs["__group"]))
     excluded_spaces = [s for s in spaces_before_filters if s not in spaces_after_filters]
 
-    print("📊 Статистика по общим группам:")
-    print(f"  Всего строк в таблице:                  {total_rows}")
+    # --- отчёт ---
+    print("📊 Статистика по общим группам света:")
+    print(f"  Версия:                                 {__version__}")
+    print(f"  Всего строк в parquet:                  {total_rows}")
     print(f"  После базовой фильтрации (space+group): {rows_after_basic}")
     print(f"  После всех фильтров (строк):            {rows_after_filters}")
-    print(f"  Уникальных пространств (после фильтров): {len(spaces_after_filters)}")
-    print(f"  Уникальных подгрупп (после фильтров):    {len(groups_after_filters)}")
+    print(f"  Уникальных пространств:                 {len(spaces_after_filters)}")
+    print(f"  Уникальных подгрупп:                    {len(groups_after_filters)}")
     if excluded_spaces:
-        print(f"  Пространства, исключённые фильтрами: {len(excluded_spaces)} шт (список не печатаем, чтобы не захламлять вывод)")
+        print(f"  Пространства, исключённые фильтрами:    {len(excluded_spaces)} шт")
     else:
-        print("  Пространства, исключённые фильтрами: нет")
+        print("  Пространства, исключённые фильтрами:    нет")
 
-    # --- Генерация YAML ---
-
-    lines = []
+    # --- генерация YAML ---
+    lines: List[str] = []
     lines.append("lights_general_group:")
     lines.append("  light:")
 
-    # Группируем по пространству (в порядке появления)
-    for space_name, df_space in df_pairs.groupby("__space", sort=False):
-        space_name_str = str(space_name).strip()
-        if not space_name_str:
+    # Группируем по помещению (в порядке появления)
+    for space_key, df_space in df_pairs.groupby("__space_key", sort=False):
+        space_key_str = str(space_key).strip()
+        if not space_key_str:
             continue
 
+        # room_slug нужен для стабильного object_id общей группы
+        # Если room_slug пуст (нежелательно), fallback на space_key
+        room_slug = (
+            df_space["__room_slug"].iloc[0]
+            if "__room_slug" in df_space.columns and str(df_space["__room_slug"].iloc[0]).strip()
+            else space_key_str
+        )
+
+        # object_id общей группы: "<room_slug>_obshchii"
+        # (чтобы entity_id стал "light.<room_slug>_obshchii")
+        general_object_id = f"{room_slug}{GENERAL_LIGHT_RULE.suffix}"
+
         # Комментарий к блоку
-        lines.append(f"  #Общая группа для {space_name_str}")
+        lines.append(f"  #Общая группа для {space_key_str}")
 
-        # Русское имя общей группы для name/unique_id
-        general_name = make_general_group_name(space_name_str)
-
-        # Одна общая группа на пространство
         lines.append("    - platform: group")
-        lines.append(f'      name: "{general_name}"')
-        lines.append(f'      unique_id: "{general_name}"')
+        lines.append(f'      name: "{general_object_id}"')
+        lines.append(f'      unique_id: "{general_object_id}"')
         lines.append("      entities:")
 
-
-        # Все подгруппы этого пространства
+        # Все подгруппы этого помещения: light.<group_id>
         for group_name in df_space["__group"]:
             group_name_str = str(group_name).strip()
             if not group_name_str:
                 continue
-            lines.append(f"        - light.{group_name_str}")
+            lines.append(f"        - {HA_LIGHT_DOMAIN}.{group_name_str}")
 
-        # пустая строка между общими группами
+        # пустая строка между группами
         lines.append("")
 
-    # убираем возможный лишний пустой хвост
+    # убрать пустой хвост
     while lines and lines[-1] == "":
         lines.pop()
 
@@ -268,13 +233,14 @@ def build_general_groups(df: pd.DataFrame) -> str:
 
 # === ТОЧКА ВХОДА ===
 
-def main():
-    if not EXCEL_PATH.exists():
-        raise FileNotFoundError(f"Файл не найден: {EXCEL_PATH}")
-
-    df = load_table(EXCEL_PATH, sheet_name=SHEET_NAME)
+def main() -> None:
+    df = load_device_rows(DEVICE_ROWS_PARQUET)
     yaml_text = build_general_groups(df)
 
+    # создаём папку data/light_groups если её нет
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # записываем YAML
     OUTPUT_PATH.write_text(yaml_text, encoding="utf-8")
     print(f"Готово! Файл с общими группами записан в: {OUTPUT_PATH.resolve()}")
 
