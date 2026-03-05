@@ -295,7 +295,9 @@ def normalize(
                 return None
             if s.startswith("sensor."):
                 return s
-            return "sensor." + s.replace(".", "_").replace("-", "_")
+            # Иначе: датчики в таблице вида "1.20.3" -> sensor.ms_1_20_3
+            clean = s.replace(".", "_").replace("-", "_")
+            return "sensor.ms_" + clean
 
         ms_sensors_by_group = [to_sensor_entity(x) for x in sensors_by_group_unique]
         ms_sensors_unique = sorted({s for s in ms_sensors_by_group if s}, key=lambda z: z)
