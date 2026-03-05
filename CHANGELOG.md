@@ -6,6 +6,16 @@ The format is based on Keep a Changelog.
 This project follows Semantic Versioning.
 
 ---
+## [2.0.2] - 2026-03-05
+
+### Added
+- Optional generation of technical room groups per floor in `generate_floor_groups.py`.
+- New flag `GENERATE_TECH_GROUPS` to enable/disable technical floor groups.
+- Canonical rule `TECHNICAL_CARD_TYPES` added to `scripts/_lib/canon.py`.
+
+### Changed
+- `generate_floor_groups.py` now reads `spaces.parquet` instead of `device_rows.parquet`.
+- Floor grouping uses canonical `general_light_entity` values from normalized data.
 
 ## [2.0.1] - 2026-03-05
 
