@@ -2,158 +2,78 @@
 Скрипт generate_floor_groups.py
 
 Назначение:
-    1. Прочитать файл lights_general_groups.yaml, в котором описаны
-       общие группы по помещениям (403 Общий кабинет медиц, 171 Общий лестница и т.п.).
+    1. Прочитать нормализованные данные из data/normalized/device_rows.parquet.
     2. На основе этих данных собрать группы по этажам:
-        - все помещения 1-го этажа (101, 102, 103, ...) -> "Весь 1-й этаж"
-        - все помещения 2-го этажа (201, 202, 203, ...) -> "Весь 2-й этаж"
+        - все помещения 1-го этажа -> "Весь 1-й этаж" (unique_id: floor_1_all)
+        - все помещения 2-го этажа -> "Весь 2-й этаж" (unique_id: floor_2_all)
         и т.д.
-    3. В группы этажей ДОБАВЛЯЕМ НЕ ЛАМПЫ, а сами общие группы помещений,
-       то есть их entity_id (light.<slug от name>).
-    4. Результат сохраняем в lights_floor_groups.yaml.
+    3. В группы этажей добавляем НЕ лампы, а общие группы помещений:
+        light.<room_slug>_obshchii
+    4. Результат сохраняем в data/light_groups/lights_floor_groups.yaml
 
-Требуется библиотека PyYAML:
-    pip install pyyaml
+Почему так:
+    - исключаем повторное чтение Excel и любые "хрупкие" правила нейминга
+    - используем канон (scripts/_lib/canon.py), чтобы entity_id всегда были едины
 """
 
+from __future__ import annotations
+
 from pathlib import Path
-from collections import defaultdict
-import re
-import yaml  # pip install pyyaml
+from typing import List, Dict, Set
 
+import pandas as pd
 
-# Версия скрипта (для контроля изменений)
-VERSION = "1.1.0"
+# Канон проекта
+from scripts._lib.canon import TECHNICAL_CARD_TYPES
 
+__version__ = "2.0.1"
 
 # === НАСТРОЙКИ ===
 
-# Определяем корень проекта (на уровень выше папки scripts)
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Корень проекта (чтобы запуск из PyCharm/терминала работал одинаково)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Абсолютные пути к файлам
-INPUT_PATH = BASE_DIR / "lights_general_groups.yaml"
-OUTPUT_PATH = BASE_DIR / "lights_floor_groups.yaml"
+# Вход: нормализованные строки устройств
+SPACES_PARQUET = PROJECT_ROOT / "data" / "normalized" / "spaces.parquet"
 
+# Выход: папка и файл
+OUTPUT_DIR = PROJECT_ROOT / "data" / "light_groups"
+OUTPUT_PATH = OUTPUT_DIR / "lights_floor_groups.yaml"
+
+# Фильтры (в стиле других генераторов)
 # Если INCLUDE_FLOORS не пустой — создаём группы только для этих этажей
-INCLUDE_FLOORS: list[int] = []  # например [1, 2]
+INCLUDE_FLOORS: List[int] = []  # например [1, 2]
 
 # Этажи, которые нужно исключить
-EXCLUDE_FLOORS: list[int] = []  # например [0, 4]
+EXCLUDE_FLOORS: List[int] = []  # например [0, 4]
 
+# Ограничить генерацию только перечисленными пространствами (room_slug предпочтительнее)
+SPACES_FILTER: List[str] = []  # например ["403_kabinet_medits", "402_kabinet_medits"]
+
+# Исключить пространства, в названии которых встречаются подстроки (без учёта регистра)
+EXCLUDE_SPACE_CONTAINS: List[str] = []  # например ["sklad", "server"]
+
+# Включить/выключить генерацию тех.групп по этажам (1 = да, 0 = нет)
+GENERATE_TECH_GROUPS: int = 0
 
 # === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
-def transliterate_ru_to_en(text: str) -> str:
+def _space_key(row: pd.Series) -> str:
     """
-    Транслитерация + slugify под Home Assistant.
-
-    Почему это нужно:
-        Home Assistant сам генерирует entity_id из "name" через slugify.
-        Если в генераторе этажей использовать "свой" транслит, то часть entity_id
-        не совпадёт (типичные кейсы: щ -> shch, ц -> ts, х -> kh).
-
-    Цель:
-        Дать максимально близкий к HA slug для кириллицы, чтобы:
-            name: "403 Общий кабинет медиц"
-            ->  "403_obshchii_kabinet_medits"
+    Ключ помещения для фильтров/комментариев:
+    - берём room_slug (стабильный)
+    - если его нет — fallback на space
     """
-    if text is None:
-        return ""
+    rs = row.get("room_slug", None)
+    sp = row.get("space", None)
 
-    # 1) Нормализуем к строке, чистим пробелы
-    raw = str(text).strip().lower()
-
-    # 2) Таблица транслитерации (ключевые отличия от "простого" транслита):
-    #    - "щ" -> "shch"
-    #    - "ц" -> "ts"
-    #    - "х" -> "kh"
-    mapping = {
-        "а": "a",  "б": "b",   "в": "v",   "г": "g",   "д": "d",
-        "е": "e",  "ё": "e",   "ж": "zh",  "з": "z",   "и": "i",
-        "й": "i",  "к": "k",   "л": "l",   "м": "m",   "н": "n",
-        "о": "o",  "п": "p",   "р": "r",   "с": "s",   "т": "t",
-        "у": "u",  "ф": "f",   "х": "kh",  "ц": "ts",  "ч": "ch",
-        "ш": "sh", "щ": "shch","ъ": "",    "ы": "y",   "ь": "",
-        "э": "e",  "ю": "yu",  "я": "ya",
-
-        # Разделители / спецсимволы → underscore (как в HA)
-        " ": "_",  "-": "_",   "/": "_",   ".": "_",
-    }
-
-    # 3) Строим "черновой" slug
-    out = []
-    for ch in raw:
-        if ch in mapping:
-            out.append(mapping[ch])
-        elif "a" <= ch <= "z" or "0" <= ch <= "9":
-            out.append(ch)
-        else:
-            # всё прочее превращаем в underscore
-            out.append("_")
-
-    slug = "".join(out)
-
-    # 4) Финальная очистка: оставляем только [a-z0-9_], сжимаем "_" и обрезаем края
-    slug = re.sub(r"[^a-z0-9_]+", "_", slug)
-    slug = re.sub(r"_+", "_", slug).strip("_")
-
-    return slug
-
-
-
-def general_group_entity_id_from_name(name: str) -> str:
-    """
-    Преобразует name общей группы помещения в ожидаемый entity_id.
-
-    Пример:
-        name: "403 Общий кабинет медиц"
-        -> "light.403_obshchii_kabinet_medits"
-    """
-    slug = transliterate_ru_to_en(name)
-    # На всякий случай, если slug пустой — подстрахуемся
-    if not slug:
-        slug = "general_group"
-    return f"light.{slug}"
-
-
-def detect_floor_from_entity(entity_id: str) -> int | None:
-    """
-    Определяем номер этажа по entity_id лампы/подгруппы.
-
-    Ожидаемый формат:
-        light.<room>_<...>
-
-    Где <room> — трёхзначный номер помещения:
-        101, 102, 126, 203, 304, ...
-
-    Правило:
-        floor = room // 100
-
-    Примеры:
-        light.101_0 -> room=101 -> floor=1
-        light.203_1 -> room=203 -> floor=2
-
-    Если формат не подходит — возвращаем None.
-    """
-    m = re.search(r"^light\.(\d+)_", entity_id)
-    if not m:
-        return None
-
-    room_num_str = m.group(1)
-    try:
-        room_num = int(room_num_str)
-    except ValueError:
-        return None
-
-    floor = room_num // 100
-    return floor
+    v = rs if rs is not None and str(rs).strip() else sp
+    return "" if v is None else str(v).strip()
 
 
 def make_floor_group_name(floor: int) -> str:
     """
-    Формирование name для группы этажа на РУССКОМ:
-
+    Формирование name для группы этажа (русское отображение):
         "Весь 1-й этаж", "Весь 2-й этаж", ...
     """
     return f"Весь {floor}-й этаж"
@@ -161,103 +81,154 @@ def make_floor_group_name(floor: int) -> str:
 
 def make_floor_group_unique_id(floor: int) -> str:
     """
-    Формирование unique_id для группы этажа.
-
-    Делаем его латинским и стабильным:
+    Формирование unique_id для группы этажа:
         "floor_1_all", "floor_2_all", ...
     """
     return f"floor_{floor}_all"
 
-
-# === ОСНОВНАЯ ЛОГИКА ===
-
-def load_general_groups(path: Path) -> list[dict]:
+def build_floor_entities_from_spaces(spaces_df: pd.DataFrame) -> tuple[Dict[int, Set[str]], Dict[int, Set[str]]]:
     """
-    Загрузка lights_general_groups.yaml и получение списка
-    общих групп по помещениям.
+    Собрать 2 структуры:
+      - floor_all: этаж -> множество entity_id общих групп ВСЕХ помещений этажа
+      - floor_tech: этаж -> множество entity_id общих групп ТЕХНИЧЕСКИХ помещений этажа (по card_type)
 
-    Ожидаем структуру:
-
-        lights_general_group:
-          light:
-            - platform: group
-              name: "403 Общий кабинет медиц"
-              unique_id: "403 Общий кабинет медиц"
-              entities:
-                - light.403_0
-                - light.403_1
-                - light.403_2
-
-    Возвращаем список этих словарей (элементы массива 'light').
+    Источник данных: spaces.parquet (уже агрегирован по помещениям).
     """
-    if not path.exists():
-        raise FileNotFoundError(f"Входной файл не найден: {path}")
+    total_rows = len(spaces_df)
 
-    text = path.read_text(encoding="utf-8")
-    data = yaml.safe_load(text)
+    # Контракт данных: необходимые колонки в spaces.parquet
+    required_cols = ["floor", "card_type", "general_light_entity", "room_slug", "space"]
+    for c in required_cols:
+        if c not in spaces_df.columns:
+            raise ValueError(f"В spaces.parquet нет обязательной колонки: '{c}'")
 
-    if not isinstance(data, dict) or "lights_general_group" not in data:
-        raise ValueError("Ожидается корневой ключ 'lights_general_group' в YAML.")
+    df = spaces_df.copy()
 
-    lg = data["lights_general_group"]
-    if not isinstance(lg, dict) or "light" not in lg:
-        raise ValueError("В 'lights_general_group' ожидается ключ 'light' со списком групп.")
+    # floor приводим к int (через numeric на случай NaN/строк)
+    df["__floor"] = pd.to_numeric(df["floor"], errors="coerce")
+    df = df[~df["__floor"].isna()]
+    df["__floor"] = df["__floor"].astype(int)
 
-    groups = lg["light"]
-    if not isinstance(groups, list):
-        raise ValueError("'lights_general_group.light' должен быть списком.")
+    # ключ помещения для фильтров: room_slug предпочтительнее, иначе space
+    df["__space_key"] = df["room_slug"].fillna("").astype(str).str.strip()
+    df.loc[df["__space_key"] == "", "__space_key"] = df["space"].fillna("").astype(str).str.strip()
 
-    return groups
+    # card_type нормализуем
+    df["__card_type"] = df["card_type"].fillna("").astype(str).str.strip()
 
+    # general_light_entity нормализуем
+    df["__general"] = df["general_light_entity"].fillna("").astype(str).str.strip()
 
-def build_floor_groups(groups: list[dict]) -> dict[int, set[str]]:
+    # Базовая фильтрация: должны быть ключ помещения + general entity
+    df = df[(df["__space_key"] != "") & (df["__general"] != "")]
+    rows_after_basic = len(df)
+
+    spaces_before_filters = list(dict.fromkeys(df["__space_key"]))
+
+    # --- фильтры пользователя (как в других генераторах) ---
+
+    # 1) SPACES_FILTER
+    if SPACES_FILTER:
+        df = df[df["__space_key"].isin(SPACES_FILTER)]
+
+    df = df.copy()
+
+    # 2) INCLUDE_FLOORS / EXCLUDE_FLOORS
+    if INCLUDE_FLOORS:
+        include_set = set(int(x) for x in INCLUDE_FLOORS)
+        df = df[df["__floor"].isin(include_set)]
+
+    if EXCLUDE_FLOORS:
+        exclude_set = set(int(x) for x in EXCLUDE_FLOORS)
+        df = df[~df["__floor"].isin(exclude_set)]
+
+    # 3) EXCLUDE_SPACE_CONTAINS
+    if EXCLUDE_SPACE_CONTAINS:
+        subs = [s.lower() for s in EXCLUDE_SPACE_CONTAINS]
+
+        def space_allowed(space_name: str) -> bool:
+            s = str(space_name).lower()
+            return not any(sub in s for sub in subs)
+
+        df = df[df["__space_key"].apply(space_allowed)]
+
+    rows_after_filters = len(df)
+
+    if df.empty:
+        print("⚠ После всех фильтров не осталось строк. Группы этажей не будут сгенерированы.")
+        print(f"  Всего строк в spaces.parquet:          {total_rows}")
+        print(f"  После базовой фильтрации:             {rows_after_basic}")
+        return {}, {}
+
+    # Уникальные строки по помещениям (spaces.parquet и так агрегирован, но на всякий случай)
+    df_rooms = df[["__floor", "__space_key", "__card_type", "__general"]].drop_duplicates()
+
+    # floor -> entities (all)
+    floor_all: Dict[int, Set[str]] = {}
+    # floor -> entities (tech)
+    floor_tech: Dict[int, Set[str]] = {}
+
+    for floor, sdf in df_rooms.groupby("__floor", sort=False):
+        f = int(floor)
+
+        # Все помещения этажа
+        all_ents = set(sdf["__general"].tolist())
+        floor_all[f] = all_ents
+
+        # Только тех.помещения этажа
+        tech_sdf = sdf[sdf["__card_type"].isin(TECHNICAL_CARD_TYPES)]
+        tech_ents = set(tech_sdf["__general"].tolist())
+        floor_tech[f] = tech_ents
+
+    # --- отчёт ---
+    spaces_after_filters = list(dict.fromkeys(df_rooms["__space_key"]))
+    excluded_spaces = [s for s in spaces_before_filters if s not in spaces_after_filters]
+
+    print("📊 Статистика по группам этажей (из spaces.parquet):")
+    print(f"  Версия:                                 {__version__}")
+    print(f"  Всего строк в spaces.parquet:           {total_rows}")
+    print(f"  После базовой фильтрации:               {rows_after_basic}")
+    print(f"  После всех фильтров (строк):            {rows_after_filters}")
+    print(f"  Этажей найдено:                         {len(floor_all)}")
+
+    total_entities_all = sum(len(s) for s in floor_all.values())
+    print(f"  Всего сущностей в группах этажей:       {total_entities_all}")
+
+    if GENERATE_TECH_GROUPS:
+        tech_floors = len([f for f in floor_tech.keys() if len(floor_tech[f]) > 0])
+        total_entities_tech = sum(len(s) for s in floor_tech.values())
+        print(f"  Тех. этажей (не пустых):                {tech_floors}")
+        print(f"  Всего сущностей в тех. группах:         {total_entities_tech}")
+    else:
+        print("  Генерация тех. групп:                   выключена (GENERATE_TECH_GROUPS=0)")
+
+    if excluded_spaces:
+        print(f"  Пространства, исключённые фильтрами:    {len(excluded_spaces)} шт")
+    else:
+        print("  Пространства, исключённые фильтрами:    нет")
+
+    return floor_all, floor_tech
+
+def make_tech_floor_group_name(floor: int) -> str:
     """
-    Собрать структуру: этаж -> множество entity_id ОБЩИХ ГРУПП помещений.
-
-    Логика:
-        - Для каждой общей группы берём её entities (лампы) и name.
-        - По ПЕРВОЙ лампе определяем этаж.
-        - Формируем entity_id самой общей группы по её name
-          (light.<slug(name)>).
-        - Добавляем этот entity_id в множество сущностей для этажа.
-
-    Возвращаем:
-        { floor_number: { "light.xxx", "light.yyy", ... }, ... }
+    Формирование name для тех.группы этажа:
+        "Тех.пом 4-й этаж"
     """
-    floor_entities: dict[int, set[str]] = defaultdict(set)
-
-    for grp in groups:
-        name = grp.get("name", "")
-        entities = grp.get("entities", [])
-        if not entities:
-            # Нет ламп внутри общей группы — пропускаем
-            continue
-
-        # Определяем этаж по первой лампе в общей группе
-        first_entity = entities[0]
-        floor = detect_floor_from_entity(first_entity)
-        if floor is None:
-            # Если не удалось распознать этаж — пропускаем
-            continue
-
-        # Применяем фильтры по этажам, если заданы
-        if INCLUDE_FLOORS and floor not in INCLUDE_FLOORS:
-            continue
-        if EXCLUDE_FLOORS and floor in EXCLUDE_FLOORS:
-            continue
-
-        # entity_id самой общей группы, которую будем включать в этаж
-        group_entity_id = general_group_entity_id_from_name(name)
-
-        floor_entities[floor].add(group_entity_id)
-
-    return floor_entities
+    return f"Тех.пом {floor}-й этаж"
 
 
-def render_floor_groups_yaml(floor_entities: dict[int, set[str]]) -> str:
+def make_tech_floor_group_unique_id(floor: int) -> str:
     """
-    Собрать YAML-текст для групп по этажам из словаря floor_entities.
+    Формирование unique_id для тех.группы этажа:
+        "tex_floor_4"
+    """
+    return f"tex_floor_{floor}"
 
+def render_floor_groups_yaml(floor_all: Dict[int, Set[str]], floor_tech: Dict[int, Set[str]]) -> str:
+    """
+    Собрать YAML-текст для групп по этажам.
+      - всегда: группа "Весь N-й этаж"
+      - опционально: "Тех.пом N-й этаж" если GENERATE_TECH_GROUPS=1 и список не пуст
     Формат результата:
 
         lights_floor_group:
@@ -267,39 +238,60 @@ def render_floor_groups_yaml(floor_entities: dict[int, set[str]]) -> str:
               name: "Весь 1-й этаж"
               unique_id: "floor_1_all"
               entities:
-                - light.403_obshchii_kabinet_medits
-                - light.402_obshchii_kabinet_medits
+                - light.101_kabinet_obshchii
+                - light.102_kabinet_obshchii
                 ...
 
-    Этажи сортируем по возрастанию.
+    Этажи сортируем по возрастанию, entity_id внутри — тоже сортируем для стабильности.
     """
-    if not floor_entities:
+    if not floor_all:
         return "# Нет данных для формирования групп по этажам\n"
 
-    lines: list[str] = []
+    lines: List[str] = []
     lines.append("lights_floor_group:")
     lines.append("  light:")
 
-    for floor in sorted(floor_entities.keys()):
-        ents = sorted(floor_entities[floor])  # сортируем entity_id для стабильности
+    for floor in sorted(floor_all.keys()):
+        # --- 1) Весь этаж ---
+        ents_all = sorted(floor_all.get(floor, set()))
 
-        comment = f"  #Группа для всего {floor}-го этажа"
-        name = make_floor_group_name(floor)
-        unique_id = make_floor_group_unique_id(floor)
+        comment_all = f"  #Группа для всего {floor}-го этажа"
+        name_all = make_floor_group_name(floor)
+        unique_id_all = make_floor_group_unique_id(floor)
 
-        lines.append(comment)
+        lines.append(comment_all)
         lines.append("    - platform: group")
-        lines.append(f'      name: "{name}"')
-        lines.append(f'      unique_id: "{unique_id}"')
+        lines.append(f'      name: "{name_all}"')
+        lines.append(f'      unique_id: "{unique_id_all}"')
         lines.append("      entities:")
 
-        for ent in ents:
+        for ent in ents_all:
             lines.append(f"        - {ent}")
 
-        # Пустая строка между группами этажей
         lines.append("")
 
-    # Убираем возможный лишний пустой хвост
+        # --- 2) Тех.помещения этажа (по флагу) ---
+        if GENERATE_TECH_GROUPS:
+            ents_tech = sorted(floor_tech.get(floor, set()))
+
+            # если на этаже нет тех.помещений — блок не выводим
+            if ents_tech:
+                comment_tech = f"  #Группа для тех помещений {floor}-го этажа"
+                name_tech = make_tech_floor_group_name(floor)
+                unique_id_tech = make_tech_floor_group_unique_id(floor)
+
+                lines.append(comment_tech)
+                lines.append("    - platform: group")
+                lines.append(f'      name: "{name_tech}"')
+                lines.append(f'      unique_id: "{unique_id_tech}"')
+                lines.append("      entities:")
+
+                for ent in ents_tech:
+                    lines.append(f"        - {ent}")
+
+                lines.append("")
+
+    # убрать пустой хвост
     while lines and lines[-1] == "":
         lines.pop()
 
@@ -308,28 +300,20 @@ def render_floor_groups_yaml(floor_entities: dict[int, set[str]]) -> str:
 
 # === ТОЧКА ВХОДА ===
 
-def main():
-    # 1. Загружаем общие группы по помещениям
-    groups = load_general_groups(INPUT_PATH)
+def main() -> None:
+    # Загружаем агрегированные помещения (spaces.parquet)
+    spaces_df = pd.read_parquet(SPACES_PARQUET)
 
-    # 2. Строим структуру "этаж -> множество entity_id общих групп"
-    floor_entities = build_floor_groups(groups)
+    # Собираем 2 набора: "весь этаж" и "тех этаж"
+    floor_all, floor_tech = build_floor_entities_from_spaces(spaces_df)
 
-    # 3. Небольшая статистика в консоль
-    total_floors = len(floor_entities)
-    total_entities = sum(len(s) for s in floor_entities.values())
-    print("📊 Статистика по группам этажей:")
-    print(f"  Этажей найдено:         {total_floors}")
-    print(f"  Всего общих групп в них: {total_entities}")
-    if INCLUDE_FLOORS:
-        print(f"  Фильтр INCLUDE_FLOORS: {INCLUDE_FLOORS}")
-    if EXCLUDE_FLOORS:
-        print(f"  Фильтр EXCLUDE_FLOORS: {EXCLUDE_FLOORS}")
+    # Рендерим YAML (тех-блоки добавляются по флагу GENERATE_TECH_GROUPS)
+    yaml_text = render_floor_groups_yaml(floor_all, floor_tech)
 
-    # 4. Генерируем YAML
-    yaml_text = render_floor_groups_yaml(floor_entities)
+    # создаём папку data/light_groups если её нет
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 5. Записываем результат
+    # записываем YAML
     OUTPUT_PATH.write_text(yaml_text, encoding="utf-8")
     print(f"Готово! Файл с группами по этажам записан в: {OUTPUT_PATH.resolve()}")
 

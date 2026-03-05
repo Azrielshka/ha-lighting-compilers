@@ -15,7 +15,9 @@ This project follows Semantic Versioning.
 - `generate_general_groups.py` refactored to read normalized data from `data/normalized/device_rows.parquet` instead of Excel.
 - Output moved to `data/light_groups/lights_general_groups.yaml`.
 - General light group IDs now follow canonical rule `<room_slug>_obshchii` (via `GENERAL_LIGHT_RULE`).
-
+- `generate_floor_groups.py` refactored to read normalized data from `data/normalized/device_rows.parquet` instead of parsing `lights_general_groups.yaml`.
+- Output moved to `data/light_groups/lights_floor_groups.yaml`.
+- Floor groups now include canonical general room groups (`light.<room_slug>_obshchii`) built via `GENERAL_LIGHT_RULE`.
 2) Команды в терминале PyCharm
 ### Added
 - Shared naming rule `normalize_lamp_id_to_entity()` for consistent Home Assistant entity IDs across generators.

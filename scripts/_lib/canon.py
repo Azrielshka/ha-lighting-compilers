@@ -28,6 +28,13 @@ ALLOWED_CARD_TYPES = {
     "generic",
 }
 
+# Типы помещений, которые считаем "техническими" для отдельных групп на этаж
+# Можно менять состав без правок генераторов.
+TECHNICAL_CARD_TYPES = {
+    "corridor",
+    "su",
+    "lestnitsa",
+}
 
 # Префиксы доменов Home Assistant (если позже понадобится расширять)
 HA_LIGHT_DOMAIN: str = "light"
