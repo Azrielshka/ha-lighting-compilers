@@ -1,8 +1,60 @@
-# 1) (опционально) пересобрать нормализованные parquet-данные из Excel
+# bash_command.txt — команды для тестирования/отладки ha-college-lighting
+# Запускай из КОРНЯ проекта (там где лежат папки scripts/ и data/)
+
+# 1) Проверить, что ты в нужной папке и видеть текущие изменения (удобно перед тестами)
+pwd
+git status
+
+# 2) Быстро посмотреть структуру data/ (понимать, что уже сгенерировано)
+ls -la data
+ls -la data/normalized
+ls -la data/light_groups
+
+# 3) Прогнать нормализатор (пересобирает parquet слой из Excel)
+# Зачем: если правилась таблица или правила нормализации — обязательно пересобрать parquet
 python scripts/normalize_excel.py --excel "data/Тестовая таблица.xlsx"
 
-# 2) сгенерировать lights_group.yaml из data/normalized/device_rows.parquet
+# 4) Быстро убедиться, что parquet файлы реально созданы
+# Зачем: если тут пусто/нет файлов — генераторы дальше бессмысленно гонять
+ls -la data/normalized
+
+# 5) Сгенерировать подгруппы света (лампы -> light.<group_id>)
+# Зачем: проверка, что normalize_lamp_id_to_entity работает и группы собираются корректно
 python scripts/generate_lights_groups.py
 
-# 3) быстро посмотреть начало результата (Windows PowerShell)
-Get-Content .\lights_group.yaml -TotalCount 60
+# 6) Посмотреть первые строки результата lights_group.yaml
+sed -n '1,80p' data/light_groups/lights_group.yaml
+
+# 7) Сгенерировать общие группы помещений (light.<room_slug>_obshchii -> включает light.<group_id>)
+# Зачем: проверить, что GENERAL_LIGHT_RULE применяется, и группы корректно включают подгруппы
+python scripts/generate_general_groups.py
+
+# 8) Посмотреть первые строки результата lights_general_groups.yaml
+sed -n '1,80p' data/light_groups/lights_general_groups.yaml
+
+# 9) Сгенерировать группы этажей (весь этаж + опционально тех.пом этаж)
+# Зачем: проверить floor-группы и фильтрацию тех.помещений по TECHNICAL_CARD_TYPES
+python scripts/generate_floor_groups.py
+
+# 10) Найти блок для конкретного этажа (пример: 4-й этаж) в floor YAML
+grep -n "4-го этажа" -n data/light_groups/lights_floor_groups.yaml | head -n 20
+
+# 11) Сгенерировать Lovelace карточки (v2)
+# Зачем: проверить выбор шаблонов по (card_type, groups_count) и подстановки placeholder-ов
+python scripts/generate_lovelace_cards_v2.py
+
+# 12) Посмотреть начало выходного файла карточек (первые карточки)
+sed -n '1,120p' data/lovelace_cards_generated.txt
+
+# 13) Быстро найти карточку по room_slug/space (пример: 403) в сгенерированном файле
+grep -n "### 403" -n data/lovelace_cards_generated.txt | head -n 20
+
+# 14) Полный пересбор в правильном порядке (удобно как “one-shot” отладка)
+python scripts/normalize_excel.py --excel "data/Тестовая таблица.xlsx" && \
+python scripts/generate_lights_groups.py && \
+python scripts/generate_general_groups.py && \
+python scripts/generate_floor_groups.py && \
+python scripts/generate_lovelace_cards_v2.py
+
+# 15) Проверка диффов (понять что изменилось в YAML после правок правил/шаблонов)
+git diff
