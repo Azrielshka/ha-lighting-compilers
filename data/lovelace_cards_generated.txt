@@ -1,0 +1,870 @@
+{{
+# --=== Для копирования===--
+# - 403 кабинет медиц
+# - 403_кабинет_медиц
+# - light.403_kabinet_medits_obshchii
+# - light.403_0
+# - sensor.ms_1_20_3
+
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 403 кабинет медиц
+    heading_style: title
+  - type: tile
+    entity: light.403_kabinet_medits_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.403_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.403_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.403_2
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_3
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_4
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_5
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+}}
+
+{{
+# --=== Для копирования===--
+# - 402 кабинет медиц
+# - 402_кабинет_медиц
+# - light.402_kabinet_medits_obshchii
+# - light.402_0
+# - sensor.ms_1_20_0
+
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 402 кабинет медиц
+    heading_style: title
+  - type: tile
+    entity: light.402_kabinet_medits_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.402_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.402_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.402_2
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_0
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_1
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_2
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+}}
+
+{{
+# --=== Для копирования===--
+# - 413 коридор
+# - 413_коридор
+# - light.413_koridor_obshchii
+# - light.413_0
+# - sensor.ms_1_22_0
+
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: 🏰 413 коридор
+    icon: ""
+  - type: vertical-stack
+    cards:
+      - features:
+          - type: toggle
+          - type: light-brightness
+        type: tile
+        entity: light.413_koridor_obshchii
+        features_position: bottom
+        vertical: true
+        grid_options:
+          columns: 12
+          rows: 1
+      - type: markdown
+        content: |+
+          {% set st = states('sensor.tekushchii_rezhi_raboty_kolledzha') %}
+          {% set v = states('input_select.mode_work_colhim') %} {% set map = {
+            'По расписанию': '✅ **По расписанию** — работа по расписанию буднего дня. Освещение переключается в соответствии с установленным расписанием.',
+            'Работа по датчикам': '🟦 **Работа по датчикам** — свет во всей школе работает только по датчикам движения. На первом этаже зона **102** работает на **30%**.',
+            'Ручной режим': '🟩 **Ручной режим** — переключение света возможно только вручную.'
+          } %}
+          ### 🏫 Текущий режим: - *{{ st }}* 
+          ----
+          #### **Описание** 
+          {{ map.get(v, '⚠️ Неизвестное значение режима: **' ~ v ~ '**') }}
+
+
+        grid_options:
+          columns: 12
+          rows: null
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_0
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_22_0
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_1
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_22_1
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_2
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_22_2
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_3
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_21_10
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_4
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.unavailable
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: light.413_5
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: sensor.ms_1_21_8
+    grid_options:
+      columns: 8
+      rows: auto
+column_span: 3
+}}
+
+{{
+# --=== Для копирования===--
+# - 412 лекц.кабин
+# - 412_лекц.кабин
+# - light.412_lekts_kabin_obshchii
+# - light.412_0
+# - sensor.ms_1_21_6
+
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 412 лекц.кабин
+    heading_style: title
+  - type: tile
+    entity: light.412_lekts_kabin_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.412_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 6
+      rows: 3
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.412_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 6
+      rows: 3
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_6
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_7
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    grid_options:
+      columns: 6
+      rows: auto
+    color: red
+    features_position: bottom
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    grid_options:
+      columns: 6
+      rows: auto
+    color: red
+    features_position: bottom
+}}
+
+{{
+
+}}
+
+{{
+
+}}
+
+{{
+# --=== Для копирования===--
+# - 407 лекц.кабинет
+# - 407_лекц.кабинет
+# - light.407_lekts_kabinet_obshchii
+# - light.407_0
+# - sensor.ms_1_20_6
+
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 407 лекц.кабинет
+    heading_style: title
+  - type: tile
+    entity: light.407_lekts_kabinet_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.407_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.407_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.407_2
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_6
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_7
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_20_8
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+}}
+
+{{
+# --=== Для копирования===--
+# - 409 лекц.кабинет мед
+# - 409_лекц.кабинет_мед
+# - light.409_lekts_kabinet_med_obshchii
+# - light.409_0
+# - sensor.ms_1_21_0
+
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 409 лекц.кабинет мед
+    heading_style: title
+  - type: tile
+    entity: light.409_lekts_kabinet_med_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.409_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.409_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.409_2
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_0
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_1
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_2
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+}}
+
+{{
+# --=== Для копирования===--
+# - 411 лекц.кабинет мед
+# - 411_лекц.кабинет_мед
+# - light.411_lekts_kabinet_med_obshchii
+# - light.411_0
+# - sensor.ms_1_21_3
+
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 411 лекц.кабинет мед
+    heading_style: title
+  - type: tile
+    entity: light.411_lekts_kabinet_med_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.411_0
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.411_1
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.411_2
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_3
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_4
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_21_5
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+}}
+
+{{
+# --=== Для копирования===--
+# - 404 лестница
+# - 404_лестница
+# - light.404_lestnitsa_obshchii
+# - light.404_0
+# - sensor.ms_1_7_8
+
+type: grid
+cards:
+  - type: heading
+    heading: 🌈 404 лестница
+    heading_style: title
+  - type: tile
+    entity: light.404_lestnitsa_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.404_0
+    features_position: bottom
+    vertical: false
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.404_1
+    features_position: bottom
+    vertical: false
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_7_8
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_7_7
+    grid_options:
+      columns: 6
+      rows: auto
+}}
+
+{{
+# --=== Для копирования===--
+# - 501 лестница
+# - 501_лестница
+# - light.501_lestnitsa_obshchii
+# - light.501_0
+# - sensor.ms_1_7_9
+
+type: grid
+cards:
+  - type: heading
+    heading: 🌈 501 лестница
+    heading_style: title
+  - type: tile
+    entity: light.501_lestnitsa_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - type: tile
+    grid_options:
+      columns: 6
+      rows: 2
+    entity: light.501_0
+    vertical: false
+    features:
+      - type: light-brightness
+    features_position: bottom
+  - type: vertical-stack
+    cards:
+      - type: tile
+        entity: sensor.ms_1_7_9
+        show_entity_picture: false
+        hide_state: false
+        vertical: true
+        features_position: bottom
+    grid_options:
+      columns: 6
+      rows: 2
+}}
+
+{{
+# --=== Для копирования===--
+# - 408 лестница
+# - 408_лестница
+# - light.408_lestnitsa_obshchii
+# - light.408_0
+# - sensor.ms_1_11_7
+
+type: grid
+cards:
+  - type: heading
+    heading: 🌈 408 лестница
+    heading_style: title
+  - type: tile
+    entity: light.408_lestnitsa_obshchii
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.408_0
+    features_position: bottom
+    vertical: false
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: light.408_1
+    features_position: bottom
+    vertical: false
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_11_7
+    grid_options:
+      columns: 6
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: sensor.ms_1_11_8
+    grid_options:
+      columns: 6
+      rows: auto
+}}
