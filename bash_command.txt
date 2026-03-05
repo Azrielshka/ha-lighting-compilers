@@ -1,0 +1,8 @@
+# 1) (опционально) пересобрать нормализованные parquet-данные из Excel
+python scripts/normalize_excel.py --excel "data/Тестовая таблица.xlsx"
+
+# 2) сгенерировать lights_group.yaml из data/normalized/device_rows.parquet
+python scripts/generate_lights_groups.py
+
+# 3) быстро посмотреть начало результата (Windows PowerShell)
+Get-Content .\lights_group.yaml -TotalCount 60
