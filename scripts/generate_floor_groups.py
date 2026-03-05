@@ -18,6 +18,9 @@
 
 from __future__ import annotations
 
+from _lib.bootstrap import setup_project_path
+setup_project_path()
+
 from pathlib import Path
 from typing import List, Dict, Set
 

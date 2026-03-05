@@ -16,8 +16,11 @@
 
 from __future__ import annotations
 
+from _lib.bootstrap import setup_project_path
+setup_project_path()
+
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from scripts._lib.canon import normalize_lamp_id_to_entity
 
 import pandas as pd

@@ -12,8 +12,10 @@ This project follows Semantic Versioning.
 - Optional generation of technical room groups per floor in `generate_floor_groups.py`.
 - New flag `GENERATE_TECH_GROUPS` to enable/disable technical floor groups.
 - Canonical rule `TECHNICAL_CARD_TYPES` added to `scripts/_lib/canon.py`.
+- Added helper `scripts/_lib/bootstrap.py` to ensure project root is added to PYTHONPATH when running generators directly.
 
 ### Changed
+- Generators now call `setup_project_path()` before importing project modules.
 - `generate_floor_groups.py` now reads `spaces.parquet` instead of `device_rows.parquet`.
 - Floor grouping uses canonical `general_light_entity` values from normalized data.
 
