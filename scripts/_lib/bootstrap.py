@@ -3,18 +3,15 @@
 # Вспомогательный модуль для CLI-скриптов проекта.
 #
 # Зачем нужен:
-#   когда мы запускаем скрипт так:
-#       python scripts/generate_*.py
+#   при запуске:
+#       python scripts/<script>.py
 #
-#   Python не считает папку проекта корнем модулей.
-#   Поэтому импорт вида:
+#   Python не добавляет корень проекта в sys.path автоматически.
+#   Поэтому импорты вида:
 #
 #       from scripts._lib.canon import ...
 #
-#   не работает.
-#
-#   Этот модуль добавляет корень проекта в sys.path,
-#   чтобы все скрипты могли импортировать модули проекта.
+#   начинают работать только после ручного добавления PROJECT_ROOT.
 # ------------------------------------------------------------
 
 from __future__ import annotations
@@ -23,22 +20,21 @@ import sys
 from pathlib import Path
 
 
-def setup_project_path() -> None:
+def setup_project_path() -> Path:
     """
-    Добавляет корень проекта в PYTHONPATH.
+    Добавляет корень проекта в sys.path и возвращает его.
 
-    Это позволяет импортировать модули проекта из scripts/,
-    даже если скрипт запущен напрямую через:
-
-        python scripts/<script>.py
+    Возврат пути удобен для отладки и при желании
+    может использоваться в самих скриптах.
     """
-
-    # путь до текущего файла bootstrap.py
     current_file = Path(__file__).resolve()
 
-    # scripts/_lib/bootstrap.py -> scripts/_lib -> scripts -> PROJECT_ROOT
+    # scripts/_lib/bootstrap.py -> PROJECT_ROOT
     project_root = current_file.parents[2]
 
-    # добавляем путь только если его ещё нет
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
+    project_root_str = str(project_root)
+
+    if project_root_str not in sys.path:
+        sys.path.insert(0, project_root_str)
+
+    return project_root
