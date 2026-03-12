@@ -17,6 +17,9 @@ normalize_excel.py
 
 from __future__ import annotations
 
+from _lib.bootstrap import setup_project_path
+setup_project_path()
+
 import argparse
 import datetime as dt
 import json
