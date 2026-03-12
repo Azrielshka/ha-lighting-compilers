@@ -10,6 +10,7 @@ __pycache__/
 
 # Ignore legacy scripts
 scripts/old scripts/
+scripts/test_bootstrap.py
 
 # Выходные данные
 data/normalized/
