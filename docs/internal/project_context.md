@@ -307,6 +307,7 @@ Launcher:
 ```
 launcher/
 ├── main.py
+├── __init__.py
 ├── ui/
 │   └── main_window.py
 ├── services/
@@ -405,17 +406,23 @@ ha-college-lighting/
 data/
   normalized/
   light_groups/
+  тестовая таблица.excel
 
 docs/
   internal/
     architecture_rules.md
     project_context.md
+    mermaid-diagram.png
+    know-limitation.md
 
 launcher/
   main.py
   ui/
+    __init__.py
+    main.py
   services/
   config/
+    launcher_config.json
 
 scripts/
   normalize_excel.py
@@ -431,9 +438,12 @@ scripts/_lib/
   excel_schema.py
 
 templates/
-
+  manifest.yaml
+templates/тип_помещения/
+  
 CHANGELOG.md
 README.md
+.gitignore
 requirements.txt
 ```
 
