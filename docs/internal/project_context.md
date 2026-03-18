@@ -42,19 +42,18 @@ data/light_groups/
 
 # Основные принципы архитектуры
 
-1. Excel читается **только один раз** (в normalize_excel.py).
+1. Excel читается **только один раз** (в normalize_excel.py)
 
-2. Все генераторы работают только с **parquet слоем**.
+2. Все генераторы работают только с **parquet слоем**
 
-3. Правила нейминга централизованы.
+3. Правила нейминга централизованы
 
 4. Генераторы не должны:
+   - читать Excel
+   - парсить YAML других генераторов
+   - дублировать правила канона
 
-   * читать Excel
-   * парсить YAML других генераторов
-   * дублировать правила канона.
-
-5. YAML генерируется **текстом**, а не сериализацией.
+5. YAML генерируется **текстом**, а не сериализацией
 
 ---
 
@@ -62,11 +61,10 @@ data/light_groups/
 
 ## device_rows.parquet
 
-Содержит строки устройств.
+Содержит строки устройств
 
 Используется для генерации:
-
-* подгрупп света
+- подгрупп света
 
 Основные поля:
 
@@ -84,13 +82,12 @@ card_type
 
 ## spaces.parquet
 
-Агрегированные данные помещений.
+Агрегированные данные помещений
 
 Используется для:
-
-* генерации общих групп помещений
-* генерации групп этажей
-* генерации Lovelace карточек
+- генерации общих групп помещений
+- генерации групп этажей
+- генерации Lovelace карточек
 
 Основные поля:
 
@@ -115,9 +112,9 @@ ms_sensors_by_group
 scripts/_lib/canon.py
 ```
 
-Основные правила:
+---
 
-### Entity лампы
+## Entity лампы
 
 ```
 lamp_id: 1.20.15
@@ -132,7 +129,7 @@ normalize_lamp_id_to_entity()
 
 ---
 
-### Общая группа помещения
+## Общая группа помещения
 
 ```
 light.<room_slug>_obshchii
@@ -147,7 +144,7 @@ light.<room_slug>_obshchii
 
 ---
 
-### Технические помещения
+## Технические помещения
 
 Типы технических помещений задаются:
 
@@ -184,10 +181,9 @@ lestnitsa
 ## normalize_excel.py
 
 Назначение:
-
-* читает Excel
-* нормализует данные
-* сохраняет parquet
+- читает Excel
+- нормализует данные
+- сохраняет parquet
 
 Выход:
 
@@ -229,12 +225,6 @@ device_rows.parquet
 light.<room_slug>_obshchii
 ```
 
-пример:
-
-```
-light.403_kabinet_medits_obshchii
-```
-
 Источник:
 
 ```
@@ -250,15 +240,13 @@ device_rows.parquet
 ### группу всего этажа
 
 ```
-Весь 4-й этаж
-floor_4_all
+floor_<n>_all
 ```
 
-### группу технических помещений этажа
+### группу технических помещений
 
 ```
-Тех.пом 4-й этаж
-tex_floor_4
+tex_floor_<n>
 ```
 
 Источник:
@@ -271,7 +259,7 @@ spaces.parquet
 
 ## generate_lovelace_cards_v2.py
 
-Генерирует карточки Lovelace.
+Генерирует карточки Lovelace
 
 Источник:
 
@@ -288,19 +276,124 @@ manifest.yaml
 
 ---
 
+# Launcher v1 (GUI)
+
+## Назначение
+
+Launcher — это GUI-оболочка для управления pipeline.
+
+Он позволяет запускать генерацию без терминала.
+
+---
+
+## Архитектурная роль
+
+```
+Excel → normalize → parquet → generators → YAML → Lovelace
+                        ↑
+                     Launcher
+```
+
+Launcher:
+- управляет запуском шагов
+- передаёт параметры
+- отображает лог
+- не содержит бизнес-логики
+
+---
+
+## Расположение
+
+```
+launcher/
+├── main.py
+├── ui/
+│   └── main_window.py
+├── services/
+│   ├── process_runner.py
+│   └── config_store.py
+```
+
+---
+
+## Возможности
+
+- выбор Project Root
+- выбор Excel файла
+- запуск отдельных шагов
+- запуск Build All
+- лог выполнения
+- очистка логов
+- сохранение конфигурации
+
+---
+
+## Execution model
+
+- запуск через `subprocess`
+- каждый шаг = отдельный Python процесс
+- pipeline выполняется последовательно
+
+---
+
+## Определение Python
+
+```
+<Project Root>/.venv/Scripts/python.exe
+```
+
+---
+
+## Конфигурация
+
+```
+launcher/config/launcher_config.json
+```
+
+---
+
+## Ограничения
+
+- синхронное выполнение
+- UI блокируется во время выполнения
+- лог появляется после завершения шага
+- возможна очередь кликов
+
+---
+
+## EXE сборка
+
+```
+pyinstaller --noconfirm --windowed --name ha_launcher_v1 launcher/main.py
+```
+
+Результат:
+
+```
+dist/ha_launcher_v1/
+```
+
+---
+
+## Важно
+
+Launcher:
+- не автономный
+- требует проект
+- использует `.venv`
+- является orchestration layer
+
+---
+
 # Bootstrap для CLI
 
-CLI-скрипты используют helper:
+CLI-скрипты используют:
 
 ```
 scripts/_lib/bootstrap.py
 ```
 
-Он добавляет **корень проекта в sys.path**, чтобы работали импорты:
-
-```
-from scripts._lib.canon import ...
-```
+Добавляет корень проекта в `sys.path`
 
 ---
 
@@ -318,6 +411,12 @@ docs/
     architecture_rules.md
     project_context.md
 
+launcher/
+  main.py
+  ui/
+  services/
+  config/
+
 scripts/
   normalize_excel.py
   generate_lights_groups.py
@@ -326,7 +425,6 @@ scripts/
   generate_lovelace_cards_v2.py
 
 scripts/_lib/
-  __init__.py
   bootstrap.py
   canon.py
   naming.py
@@ -337,26 +435,6 @@ templates/
 CHANGELOG.md
 README.md
 requirements.txt
-bash_command.txt
-```
-
----
-
-# Следующий этап развития
-
-Планируется создание **Launcher v1** — desktop-инструмента для запуска pipeline без терминала.
-
-Launcher будет:
-
-* запускать генераторы
-* показывать лог
-* запускать полный pipeline
-* работать с `.venv`
-
-Техническое задание:
-
-```
-docs/internal/launcher_v1_spec.docx
 ```
 
 ---
@@ -376,6 +454,6 @@ Excel
 → Lovelace cards
 ```
 
-Правила нейминга централизованы в `canon.py`.
-
 Все генераторы работают с **нормализованным parquet слоем**, а не с Excel.
+
+Launcher предоставляет GUI для управления этим pipeline.

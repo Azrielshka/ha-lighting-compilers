@@ -6,6 +6,83 @@ The format is based on Keep a Changelog.
 This project follows Semantic Versioning.
 
 ---
+## [2.1.0] - 2026-03-18
+
+### Added
+
+- Реализован **Launcher v1 (GUI на PySide6)** для управления пайплайном генерации.
+- Добавлена структура модуля launcher:
+  - `launcher/main.py` — точка входа
+  - `launcher/ui/main_window.py` — пользовательский интерфейс
+  - `launcher/services/process_runner.py` — запуск subprocess
+  - `launcher/services/config_store.py` — сохранение конфигурации
+
+- Добавлен запуск отдельных этапов pipeline из GUI:
+  - `normalize_excel`
+  - `generate_lights_groups`
+  - `generate_general_groups`
+  - `generate_floor_groups`
+  - `generate_lovelace_cards_v2`
+
+- Добавлен режим **Build All** (последовательное выполнение pipeline).
+
+- Добавлено сохранение конфигурации между запусками:
+  - `Project Root`
+  - `Excel File Path`
+  - хранение в `launcher/config/launcher_config.json`
+
+- Добавлено автоматическое определение Python интерпретатора:
+  ```text
+  <project_root>/.venv/Scripts/python.exe
+  ```
+
+- Добавлена поддержка dual-mode для `normalize_excel.py`:
+  - standalone режим (внутренний путь)
+  - launcher режим (`--excel`)
+
+- Добавлены элементы GUI:
+  - окно логов выполнения
+  - кнопка `Clear Log`
+  - выбор файлов и папок через диалоги
+
+- Добавлена сборка launcher в EXE через PyInstaller.
+
+### Changed
+
+- Упрощён UI launcher:
+  - удалено поле `Python Interpreter`
+  - используется автоматическое определение Python
+
+- Улучшено логирование:
+  - добавлены стартовые сообщения перед выполнением
+  - улучшена читаемость pipeline
+  - добавлена очистка логов
+
+- Добавлена автоподстановка стартовых путей:
+  - `Project Root`
+  - `Excel File Path`
+
+### Fixed
+
+- Исправлена проблема кодировки при запуске subprocess из GUI на Windows:
+  - принудительно включён UTF-8 режим для дочерних Python-процессов
+
+- Исправлена проблема позднего отображения стартовых сообщений в логе:
+  - добавлен принудительный flush UI перед запуском блокирующего subprocess
+
+### Notes
+
+- Launcher реализован как orchestration layer и не содержит бизнес-логики обработки данных.
+- `normalize_excel.py` продолжает поддерживать прямой CLI-запуск без launcher.
+- Текущая версия launcher использует синхронное выполнение через `subprocess.run`.
+
+### Known limitations
+
+- Выполнение синхронное (`subprocess.run`)
+- `stdout/stderr` выводится после завершения процесса
+- UI блокируется во время выполнения
+- Возможна очередь пользовательских кликов при быстром вводе
+
 ## [2.0.2] - 2026-03-05
 
 ### Added
