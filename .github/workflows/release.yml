@@ -29,13 +29,13 @@ jobs:
       # 4. Сборка exe
       - name: Build EXE
         run: |
-          pyinstaller --onefile --noconsole launcher/main.py
+          pyinstaller --onefile --noconsole launcher/main.py --name launcher
 
       # 5. Подготовка runtime-пакета
       - name: Prepare release folder
         run: |
           mkdir release
-          copy dist\ha_launcher_v1\ha_launcher_v1.exe release\launcher.exe
+          copy dist\launcher.exe release\launcher.exe
           xcopy templates release\templates /E /I
           mkdir release\data
 
