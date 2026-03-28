@@ -1,0 +1,35 @@
+# --=== Для копирования===--
+# - [[HEADING]]
+# - [[SPACE]]
+# - [[GENERAL_LIGHT_ENTITY]]
+# - [[ZONE_LIGHT_1]]
+# - [[MS_SENSOR_1]]
+
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: 🏛️ [[HEADING]]
+    icon: mdi:town-hall
+  - type: vertical-stack
+    cards:
+      - features:
+          - type: light-brightness
+          - type: toggle
+        type: tile
+        entity: [[GENERAL_LIGHT_ENTITY]]
+        features_position: bottom
+        vertical: true
+        grid_options:
+          columns: 12
+          rows: 1
+        name: [[SPACE]]
+    grid_options:
+      columns: 12
+      rows: auto
+  - type: tile
+    entity: [[MS_SENSOR_1]]
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: full

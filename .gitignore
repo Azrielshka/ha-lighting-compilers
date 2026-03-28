@@ -1,30 +1,52 @@
-# venv
+# =========================
+# Python / venv
+# =========================
 .venv/
+venv/
 
-# PyCharm
-.idea/
-
-# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Ignore legacy scripts
+# =========================
+# IDE
+# =========================
+.idea/
+.vscode/
+
+# =========================
+# Build artifacts (EXE)
+# =========================
+build/
+dist/
+*.spec
+
+# =========================
+# Data (generated)
+# =========================
+data/normalized/
+data/light_groups/
+data/old group/
+data/lovelace_cards_generated.txt
+data/lovelace_cards_report.json
+
+# =========================
+# Local / temporary
+# =========================
+*.log
+*.tmp
+
+# =========================
+# Excel (private)
+# =========================
+data/*.xlsx
+
+# но оставить пример:
+!data/Тестовая таблица.xlsx
+
+# =========================
+# Legacy / мусор
+# =========================
 scripts/old scripts/
 scripts/test_bootstrap.py
-
-# Выходные данные
-data/normalized/
-data/old group/
-data/light_groups/
-
-# Конфигурация конкретных пространств
-templates/cabinet/
-templates/corridor/
-templates/lestnitsa/
-templates/su
-
-# Excel source (обычно не коммитят реальные таблицы)
-data/Таблица_устройств_Химки (неактуальная).xlsx
-data/Таблица_устройств_Химки.xlsx
-data/Тестовая таблица.xlsx
-data/lovelace_cards_report.json

@@ -1,0 +1,42 @@
+# --=== Для копирования===--
+# - [[HEADING]]
+# - [[SPACE]]
+# - [[GENERAL_LIGHT_ENTITY]]
+# - [[ZONE_LIGHT_1]]
+# - [[MS_SENSOR_1]]
+
+type: grid
+cards:
+  - type: heading
+    heading: 🌈 [[HEADING]]
+    heading_style: title
+  - type: tile
+    entity: [[GENERAL_LIGHT_ENTITY]]
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - type: tile
+    grid_options:
+      columns: 6
+      rows: 2
+    entity: [[ZONE_LIGHT_1]]
+    vertical: false
+    features:
+      - type: light-brightness
+    features_position: bottom
+  - type: vertical-stack
+    cards:
+      - type: tile
+        entity: [[MS_SENSOR_1]]
+        show_entity_picture: false
+        hide_state: false
+        vertical: true
+        features_position: bottom
+    grid_options:
+      columns: 6
+      rows: 2

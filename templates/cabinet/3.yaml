@@ -1,0 +1,97 @@
+# --=== Для копирования===--
+# - [[HEADING]]
+# - [[SPACE]]
+# - [[GENERAL_LIGHT_ENTITY]]
+# - [[ZONE_LIGHT_1]]
+# - [[MS_SENSOR_1]]
+
+type: grid
+cards:
+  - type: heading
+    heading: 🏢 [[HEADING]]
+    heading_style: title
+  - type: tile
+    entity: [[GENERAL_LIGHT_ENTITY]]
+    features_position: bottom
+    vertical: false
+    grid_options:
+      columns: 12
+      rows: 1
+    features:
+      - type: toggle
+      - type: light-brightness
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: [[ZONE_LIGHT_1]]
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: [[ZONE_LIGHT_2]]
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - features:
+      - type: light-brightness
+    type: tile
+    entity: [[ZONE_LIGHT_3]]
+    features_position: bottom
+    vertical: true
+    grid_options:
+      columns: 4
+      rows: 2
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: [[MS_SENSOR_1]]
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: [[MS_SENSOR_2]]
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: tile
+        features_position: bottom
+        vertical: false
+        entity: [[MS_SENSOR_3]]
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторона двери
+    icon: mdi:home-floor-negative-1
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Средний ряд
+    icon: mdi:border-outside
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto
+  - type: custom:mushroom-template-card
+    primary: Сторна окна
+    icon: mdi:school
+    icon_color: red
+    grid_options:
+      columns: 4
+      rows: auto

@@ -1,0 +1,128 @@
+# --=== Для копирования===--
+# - [[HEADING]]
+# - [[SPACE]]
+# - [[GENERAL_LIGHT_ENTITY]]
+# - [[ZONE_LIGHT_1]]
+# - [[MS_SENSOR_1]]
+
+type: grid
+cards:
+  - type: heading
+    heading_style: title
+    heading: 🏰 [[HEADING]]
+    icon: ""
+  - type: vertical-stack
+    cards:
+      - features:
+          - type: toggle
+          - type: light-brightness
+        type: tile
+        entity: [[GENERAL_LIGHT_ENTITY]]
+        features_position: bottom
+        vertical: true
+        grid_options:
+          columns: 12
+          rows: 1
+      - type: markdown
+        content: |+
+          {% set st = states('sensor.tekushchii_rezhi_raboty_kolledzha') %}
+          {% set v = states('input_select.mode_work_colhim') %} {% set map = {
+            'По расписанию': '✅ **По расписанию** — работа по расписанию буднего дня. Освещение переключается в соответствии с установленным расписанием.',
+            'Работа по датчикам': '🟦 **Работа по датчикам** — свет во всей школе работает только по датчикам движения. На первом этаже зона **102** работает на **30%**.',
+            'Ручной режим': '🟩 **Ручной режим** — переключение света возможно только вручную.'
+          } %}
+          ### 🏫 Текущий режим: - *{{ st }}* 
+          ----
+          #### **Описание** 
+          {{ map.get(v, '⚠️ Неизвестное значение режима: **' ~ v ~ '**') }}
+
+
+        grid_options:
+          columns: 12
+          rows: null
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: [[ZONE_LIGHT_1]]
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: [[MS_SENSOR_1]]
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: [[ZONE_LIGHT_2]]
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: [[MS_SENSOR_2]]
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: [[ZONE_LIGHT_3]]
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: [[MS_SENSOR_3]]
+    grid_options:
+      columns: 8
+      rows: auto
+  - type: vertical-stack
+    cards:
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: [[ZONE_LIGHT_4]]
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: [[MS_SENSOR_4]]
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: [[ZONE_LIGHT_5]]
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: [[MS_SENSOR_5]]
+      - type: horizontal-stack
+        cards:
+          - features:
+              - type: light-brightness
+            type: tile
+            entity: [[ZONE_LIGHT_6]]
+            features_position: bottom
+            vertical: true
+          - type: tile
+            features_position: bottom
+            vertical: true
+            entity: [[MS_SENSOR_6]]
+    grid_options:
+      columns: 8
+      rows: auto
+column_span: 3
