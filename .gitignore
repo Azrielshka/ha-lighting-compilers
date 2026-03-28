@@ -1,4 +1,12 @@
 # =========================
+# ha-college-lighting gitignore
+# Defines separation between:
+# - source code (tracked)
+# - generated data (ignored)
+# - runtime artifacts (ignored)
+# =========================
+
+# =========================
 # Python / venv
 # =========================
 .venv/
@@ -50,3 +58,5 @@ data/*.xlsx
 # =========================
 scripts/old scripts/
 scripts/test_bootstrap.py
+
+launcher/config/
