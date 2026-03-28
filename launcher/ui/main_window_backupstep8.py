@@ -180,7 +180,7 @@ class LauncherWindow(QMainWindow):
         excel_file_label = QLabel("Excel File Path:")
         self.excel_file_input = QLineEdit()
         self.excel_file_input.setPlaceholderText(
-            "data/Тестовая таблица.xlsx"
+            "data/example.xlsx"
         )
         self.excel_file_browse_btn = QPushButton("Browse...")
 

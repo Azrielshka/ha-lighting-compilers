@@ -43,7 +43,7 @@ data/lovelace_cards_report.json
 data/*.xlsx
 
 # но оставить пример:
-!data/Тестовая таблица.xlsx
+!data/example.xlsx
 
 # =========================
 # Legacy / мусор

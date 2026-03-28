@@ -40,7 +40,7 @@ from scripts._lib.naming import slugify_room
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ===== CONFIG (для запуска из PyCharm) =====
-DEFAULT_EXCEL_PATH = str(BASE_DIR / "data" / "Тестовая таблица.xlsx")
+DEFAULT_EXCEL_PATH = str(BASE_DIR / "data" / "example.xlsx")
 DEFAULT_OUTPUT_DIR = str(BASE_DIR / "data" / "normalized")
 DEFAULT_SHEET_NAME = None
 
@@ -399,7 +399,7 @@ def normalize(
 def main() -> None:
     """
     CLI-обёртка, чтобы запускать из терминала PyCharm:
-    python scripts/normalize_excel.py --excel data/Тестовая таблица.xlsx
+    python scripts/normalize_excel.py --excel data/example.xlsx
     """
     parser = argparse.ArgumentParser(description="Normalize Excel table into canonical parquet datasets.")
     parser.add_argument(

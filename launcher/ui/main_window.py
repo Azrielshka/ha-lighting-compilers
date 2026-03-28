@@ -538,7 +538,7 @@ class LauncherWindow(QMainWindow):
         Пытается найти excel-файл по умолчанию в папке data.
 
         Приоритет:
-            1. data/Тестовая таблица.xlsx
+            1. data/example.xlsx
             2. первый найденный *.xlsx в data
         """
 
@@ -546,7 +546,7 @@ class LauncherWindow(QMainWindow):
         if not data_dir.exists():
             return None
 
-        preferred_file = data_dir / "Тестовая таблица.xlsx"
+        preferred_file = data_dir / "example.xlsx"
         if preferred_file.exists():
             return preferred_file
 
