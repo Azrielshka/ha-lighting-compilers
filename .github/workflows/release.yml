@@ -1,0 +1,53 @@
+name: Build and Release EXE
+
+on:
+  push:
+    tags:
+      - 'v*'   # запуск при создании тега (v1.0, v1.1 и т.д.)
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # 1. Клонируем репозиторий
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Устанавливаем зависимости
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # 4. Сборка exe
+      - name: Build EXE
+        run: |
+          pyinstaller --onefile --noconsole launcher/main.py
+
+      # 5. Подготовка runtime-пакета
+      - name: Prepare release folder
+        run: |
+          mkdir release
+          copy dist\ha_launcher_v1\ha_launcher_v1.exe release\launcher.exe
+          xcopy templates release\templates /E /I
+          mkdir release\data
+
+      # 6. Архивация
+      - name: Create ZIP archive
+        run: |
+          powershell Compress-Archive -Path release\* -DestinationPath ha-college-lighting.zip
+
+      # 7. Создание релиза
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ha-college-lighting.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
