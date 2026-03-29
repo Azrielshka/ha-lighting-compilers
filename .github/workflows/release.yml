@@ -52,7 +52,7 @@ jobs:
           copy requirements.txt release\requirements.txt
 
           # инструкция
-          README_RELEASE.txt release\INSTALL.txt
+          copy README_RELEASE.txt release\INSTALL.txt
 
       # 6. Архивация
       - name: Create ZIP archive
