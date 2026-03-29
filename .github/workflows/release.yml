@@ -4,13 +4,13 @@ on:
   push:
     tags:
       - 'v*'   # запуск при создании тега (v1.0, v1.1 и т.д.)
-permissions:
-  contents: write
-  releases: write
+
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       # 1. Клонируем репозиторий
