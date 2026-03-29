@@ -38,20 +38,20 @@ jobs:
         run: |
           mkdir release
 
-      # exe
+          # exe
           copy dist\launcher.exe release\launcher.exe
 
-      # templates
+          # templates
           xcopy templates release\templates /E /I
 
-      # data + пример excel
+          # data + пример excel
           mkdir release\data
           copy data\*.xlsx release\data\
 
-      # requirements
+          # requirements
           copy requirements.txt release\requirements.txt
 
-      # инструкция
+          # инструкция
           if exist README_RELEASE.txt copy README_RELEASE.txt release\INSTALL.txt
 
       # 6. Архивация
