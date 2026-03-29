@@ -53,6 +53,9 @@ jobs:
 
           # инструкция
           copy README_RELEASE.txt release\INSTALL.txt
+          
+          # scripts
+          xcopy scripts release\scripts /E /I
 
       # 6. Архивация
       - name: Create ZIP archive
