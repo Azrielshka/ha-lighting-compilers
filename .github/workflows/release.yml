@@ -34,7 +34,6 @@ jobs:
         run: |
           pyinstaller --onefile --noconsole launcher/main.py --name launcher
 
-      # 5. Подготовка runtime-пакета
       - name: Prepare release folder
         run: |
           mkdir release
