@@ -38,9 +38,22 @@ jobs:
       - name: Prepare release folder
         run: |
           mkdir release
+
+      # exe
           copy dist\launcher.exe release\launcher.exe
+
+      # templates
           xcopy templates release\templates /E /I
+
+      # data + пример excel
           mkdir release\data
+          copy data\*.xlsx release\data\
+
+      # requirements
+          copy requirements.txt release\requirements.txt
+
+      # инструкция
+          if exist README_RELEASE.txt copy README_RELEASE.txt release\INSTALL.txt
 
       # 6. Архивация
       - name: Create ZIP archive
