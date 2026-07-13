@@ -39,6 +39,12 @@ data/old group/
 data/lovelace_cards_generated.txt
 data/lovelace_cards_report.json
 data/validation_report.json
+data/areas/
+
+# =========================
+# Секреты (доступ к Home Assistant)
+# =========================
+.env
 
 # =========================
 # Tests

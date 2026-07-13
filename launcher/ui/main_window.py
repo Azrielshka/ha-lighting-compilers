@@ -120,6 +120,7 @@ class LauncherWindow(QMainWindow):
             "lights": "scripts/generate_lights_groups.py",
             "general": "scripts/generate_general_groups.py",
             "floor": "scripts/generate_floor_groups.py",
+            "areas": "scripts/generate_areas.py",
             "lovelace": "scripts/generate_lovelace_cards_v2.py",
         }
 
@@ -133,6 +134,10 @@ class LauncherWindow(QMainWindow):
         # lovelace в pipeline НЕ входит: генератор карточек ещё не переехал
         # на схему v2 (этап 5) и падает на отсутствующей колонке card_type.
         # Кнопка остаётся — нажал и увидел, — но Build All на ней не спотыкается.
+        #
+        # areas входит: шаг ОФЛАЙНОВЫЙ, он лишь готовит файл-задание.
+        # Само создание пространств в Home Assistant — отдельный шаг деплоя,
+        # по явному действию наладчика. Build All в живую систему не пишет.
         # ------------------------------------------------------------
         self.pipeline_order = [
             "validate",
@@ -140,6 +145,7 @@ class LauncherWindow(QMainWindow):
             "lights",
             "general",
             "floor",
+            "areas",
         ]
 
         # ------------------------------------------------------------
@@ -193,7 +199,8 @@ class LauncherWindow(QMainWindow):
         # Стартовые строки в лог
         # ------------------------------------------------------------
         self.append_log("Launcher готов")
-        self.append_log("Pipeline: validate → normalize → lights → general → floor")
+        self.append_log("Pipeline: validate → normalize → lights → general → floor → areas")
+        self.append_log("Build All работает офлайн: в Home Assistant ничего не пишет")
         self.append_log("Build All останавливается, если таблица не прошла проверку")
         self.append_log("Lovelace не переехал на новый формат (этап 5) — в Build All не входит")
         self.append_log("Python берётся из <Project Root>/.venv/Scripts/python.exe")
@@ -283,6 +290,13 @@ class LauncherWindow(QMainWindow):
         self.btn_general = QPushButton("4. Generate General Groups")
         self.btn_floor = QPushButton("5. Generate Floor Groups")
 
+        # Офлайн: готовит data/areas/areas.yaml, в Home Assistant не пишет.
+        self.btn_areas = QPushButton("6. Generate Areas && Floors")
+        self.btn_areas.setToolTip(
+            "Готовит пространства и этажи для Home Assistant в файл data/areas/areas.yaml.\n"
+            "К HA не подключается: создание — на шаге деплоя."
+        )
+
         # Не входит в Build All: генератор ещё не переехал на схему v2.
         self.btn_lovelace = QPushButton("Generate Lovelace Cards ⚠")
         self.btn_lovelace.setToolTip(
@@ -302,6 +316,7 @@ class LauncherWindow(QMainWindow):
         layout.addWidget(self.btn_lights)
         layout.addWidget(self.btn_general)
         layout.addWidget(self.btn_floor)
+        layout.addWidget(self.btn_areas)
 
         layout.addSpacing(8)
         layout.addWidget(self.btn_lovelace)
@@ -381,6 +396,9 @@ class LauncherWindow(QMainWindow):
         self.btn_floor.clicked.connect(
             lambda: self._run_single_operation("floor")
         )
+        self.btn_areas.clicked.connect(
+            lambda: self._run_single_operation("areas")
+        )
         self.btn_lovelace.clicked.connect(
             lambda: self._run_single_operation("lovelace")
         )
@@ -407,7 +425,9 @@ class LauncherWindow(QMainWindow):
             QMessageBox.warning(self, "Launcher", "Заполни поле Project Root.")
             return
 
-        output_dir = Path(project_root) / "data" / "light_groups"
+        # Открываем data/, а не light_groups: результаты лежат в двух местах
+        # (light_groups/*.yaml и areas/areas.yaml), плюс отчёт валидации.
+        output_dir = Path(project_root) / "data"
 
         if not output_dir.exists():
             self.append_log(f"Папки с результатами ещё нет: {output_dir}")
@@ -492,6 +512,7 @@ class LauncherWindow(QMainWindow):
         self.btn_lights.setEnabled(not is_running)
         self.btn_general.setEnabled(not is_running)
         self.btn_floor.setEnabled(not is_running)
+        self.btn_areas.setEnabled(not is_running)
         self.btn_lovelace.setEnabled(not is_running)
         self.btn_build_all.setEnabled(not is_running)
         self.btn_open_output.setEnabled(not is_running)

@@ -194,3 +194,47 @@ GENERAL_LIGHT_RULE = GeneralLightNamingRule()
 def general_light_entity(room_slug: str) -> str:
     """104_metodicheskii_kabinet -> light.104_metodicheskii_kabinet_obshchii"""
     return GENERAL_LIGHT_RULE.build(room_slug)
+
+
+# ============================================================
+# РЕЕСТРЫ HOME ASSISTANT: ПРОСТРАНСТВА И ЭТАЖИ
+# ============================================================
+#
+# Areas и Floors — не YAML-конфигурация, а записи в реестрах HA.
+# Создаются по WebSocket API на шаге деплоя.
+#
+# Имя пространства берём ПРЯМО из таблицы (колонка «Название помещения»):
+# проектировщик уже написал его по-человечески, восстанавливать из транслита
+# нечего. Транслит идёт в алиасы — чтобы в HA искалось и так, и так.
+
+def area_name(space: str) -> str:
+    """Имя Area = название помещения из таблицы: «103_Вестибюль»."""
+    return str(space).strip()
+
+
+def area_aliases(room_slug: str) -> list[str]:
+    """Алиасы Area: транслит, чтобы помещение находилось и по нему."""
+    slug = str(room_slug).strip()
+    return [slug] if slug else []
+
+
+def floor_name(floor: int) -> str:
+    """Имя Floor в реестре HA: «1 этаж»."""
+    return f"{int(floor)} этаж"
+
+
+def floor_icon(floor: int) -> str:
+    """
+    Иконка этажа в HA: mdi:home-floor-1 ... mdi:home-floor-3.
+
+    У Material Design Icons пронумерованы только этажи 1–3 (плюс 0 и -1),
+    для остальных берём общую mdi:home-floor-a.
+    """
+    n = int(floor)
+    if n == 0:
+        return "mdi:home-floor-0"
+    if n < 0:
+        return "mdi:home-floor-negative-1"
+    if 1 <= n <= 3:
+        return f"mdi:home-floor-{n}"
+    return "mdi:home-floor-a"
