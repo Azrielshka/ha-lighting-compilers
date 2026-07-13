@@ -229,7 +229,18 @@ def test_floor_uses_excel_floor_column(tmp_path):
     assert [g["unique_id"] for g in _groups(doc, "lights_floor_group")] == ["floor_2_all"]
 
 
-def test_tech_groups_off_by_default(layer):
+def test_tech_groups_on_by_default(layer):
+    """Тех.группы создаются без флагов; --no-tech-groups их отключает."""
+    from scripts._lib.normalized import load_dataset
+
+    df = load_dataset(layer, "spaces")
+    doc = yaml.safe_load(FLOOR.build_yaml(df, Filters()))  # без tech_groups=
+
+    ids = {g["unique_id"] for g in _groups(doc, "lights_floor_group")}
+    assert "tex_floor_1" in ids
+
+
+def test_tech_groups_can_be_disabled(layer):
     doc = _run(FLOOR, layer, tech_groups=False)
     ids = {g["unique_id"] for g in _groups(doc, "lights_floor_group")}
 
@@ -440,10 +451,19 @@ def test_cli_filter_args(monkeypatch, tmp_path, object_layer):
     assert [g["unique_id"] for g in doc["lights_group"]["light"]] == ["102_1"]
 
 
-def test_cli_tech_groups_flag(monkeypatch, tmp_path, layer):
+def test_cli_generates_tech_groups_without_flags(monkeypatch, tmp_path, layer):
     out = tmp_path / "out.yaml"
-    _main(FLOOR, monkeypatch, layer, out, "--generate-tech-groups")
+    _main(FLOOR, monkeypatch, layer, out)
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
     ids = {g["unique_id"] for g in doc["lights_floor_group"]["light"]}
     assert "tex_floor_1" in ids
+
+
+def test_cli_no_tech_groups_flag(monkeypatch, tmp_path, layer):
+    out = tmp_path / "out.yaml"
+    _main(FLOOR, monkeypatch, layer, out, "--no-tech-groups")
+
+    doc = yaml.safe_load(out.read_text(encoding="utf-8"))
+    ids = {g["unique_id"] for g in doc["lights_floor_group"]["light"]}
+    assert not any(i.startswith("tex_floor") for i in ids)

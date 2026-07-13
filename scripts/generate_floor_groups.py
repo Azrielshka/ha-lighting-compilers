@@ -18,8 +18,11 @@ generate_floor_groups.py
 физически стоять на границе (лестница), и в группу этажа должно попасть
 туда, куда его отнёс проектировщик.
 
-Опционально — группа технических помещений этажа (tex_floor_<n>).
-Состав TECHNICAL_SPACE_TYPES пока не согласован, флаг по умолчанию выключен.
+Дополнительно — группа технических помещений этажа:
+
+    tex_floor_1  ->  общие группы помещений типов korridor / special / recreation
+
+Создаётся по умолчанию; отключается флагом --no-tech-groups.
 """
 
 from __future__ import annotations
@@ -75,7 +78,7 @@ def tech_group_unique_id(floor: int) -> str:
     return f"tex_floor_{floor}"
 
 
-def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool) -> str:
+def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = True) -> str:
     """Собрать YAML групп этажей из spaces.parquet."""
     total_spaces = len(spaces_df)
     filtered, excluded = apply_filters(spaces_df, filters)
@@ -139,7 +142,7 @@ def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool) -> 
         types = ", ".join(sorted(TECHNICAL_SPACE_TYPES))
         print(f"  Тех.группы:           {tech_count} (типы: {types})")
     else:
-        print("  Тех.группы:           выключены (--generate-tech-groups)")
+        print("  Тех.группы:           выключены (--no-tech-groups)")
 
     return render_document(ROOT_KEY, groups, "Нет данных для формирования групп по этажам")
 
@@ -152,8 +155,8 @@ def main() -> int:
                         help="Папка с parquet")
     parser.add_argument("--out", default=str(DEFAULT_OUTPUT_PATH),
                         help="Куда записать YAML")
-    parser.add_argument("--generate-tech-groups", action="store_true",
-                        help=f"Дополнительно создать tex_floor_<n> "
+    parser.add_argument("--no-tech-groups", action="store_true",
+                        help=f"Не создавать tex_floor_<n>. По умолчанию они создаются "
                              f"для типов: {', '.join(sorted(TECHNICAL_SPACE_TYPES))}")
     add_filter_args(parser, with_include_floors=True)
     args = parser.parse_args()
@@ -171,7 +174,7 @@ def main() -> int:
         print(f"❌ {exc}")
         return 2
 
-    yaml_text = build_yaml(spaces_df, filters_from_args(args), args.generate_tech_groups)
+    yaml_text = build_yaml(spaces_df, filters_from_args(args), tech_groups=not args.no_tech_groups)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(yaml_text, encoding="utf-8")

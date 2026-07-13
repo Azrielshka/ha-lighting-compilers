@@ -143,8 +143,8 @@
 - [x] `generate_floor_groups.py` → `spaces.parquet`, `floor` из колонки «Этаж»
 - [x] удалён legacy из `canon.py` / `excel_schema.py`
 - [x] `TECHNICAL_SPACE_TYPES = {"korridor", "special", "recreation"}` —
-      проходные пространства (владелец, 2026-07-13). Флаг
-      `--generate-tech-groups` по умолчанию выключен
+      проходные пространства (владелец, 2026-07-13). `tex_floor_<n>` создаются
+      **по умолчанию**, отключаются флагом `--no-tech-groups`
 
 ### Что сделано сверх переноса
 
@@ -157,7 +157,7 @@
 --floors 1 2                                       # только floor
 --exclude-floors 4
 --exclude-space-contains sklad server
---generate-tech-groups                             # только floor
+--no-tech-groups                                   # только floor
 ```
 
 `--spaces` и `--exclude-space-contains` понимают и транслит, и русское имя:

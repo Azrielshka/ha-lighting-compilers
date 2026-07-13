@@ -159,8 +159,8 @@ TECHNICAL_SPACE_TYPES = {"korridor", "special", "recreation"}
 ```
 
 Проходные пространства, где никто не находится постоянно. Из них
-`generate_floor_groups.py` собирает `tex_floor_<n>` — по флагу
-`--generate-tech-groups`, по умолчанию выключено.
+`generate_floor_groups.py` собирает `tex_floor_<n>` — **по умолчанию**;
+отключается флагом `--no-tech-groups`.
 
 За рамками: `class` (люди сидят за партами) и `zal` (управляется только
 с панелей). Согласовано с владельцем 2026-07-13.
