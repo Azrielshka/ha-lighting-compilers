@@ -33,7 +33,9 @@ from pathlib import Path
 import pandas as pd
 
 from scripts._lib.canon import NORMALIZED_SCHEMA_VERSION, GENERAL_LIGHT_RULE, ALLOWED_CARD_TYPES
-from scripts._lib.excel_schema import COLUMNS
+# LEGACY: этот скрипт ещё читает таблицу v1 (data/example.xlsx).
+# Переезд на v2 — этап 3 в docs/ROADMAP.md.
+from scripts._lib.excel_schema import COLUMNS_V1 as COLUMNS
 from scripts._lib.naming import slugify_room
 
 # Корень проекта (на уровень выше папки scripts)
