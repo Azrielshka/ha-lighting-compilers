@@ -297,6 +297,77 @@ BLUEPRINTS_BY_FAMILY: Dict[str, Dict[str, str]] = {
     "special": {"on": "zm_special_on.yaml", "off": "zm_special_off.yaml"},
 }
 
+# Куда blueprint'ы кладутся на Home Assistant.
+# В use_blueprint путь считается от config/blueprints/automation/.
+BLUEPRINT_DIR: str = "zone_manager"
+
+# input_number с задержкой перехода в vacant. Один на объект.
+# ⚠ Пайплайн его НЕ создаёт (договорённость с владельцем, 2026-07-13).
+# Без него OFF-автоматизации соберутся, но триггер не сработает:
+# `for: seconds: {{ states(...) }}` вернёт unknown, и свет не будет гаснуть.
+VACANT_DELAY_ENTITY: str = "input_number.vacant_delay"
+
+
+# Какие входы принимает blueprint каждого семейства.
+#
+# ⚠ У special OFF вход ОДИН (off_script), у default и hall — два
+# (off_script_1 = своя зона, off_script_2 = соседние). Имена входов различаются,
+# поэтому описаны явно, а не выводятся из числа скриптов.
+#
+# Значение — какую роль скрипта подставить в этот вход.
+# sensors — специальное значение: список датчиков единицы.
+BLUEPRINT_INPUTS_BY_FAMILY: Dict[str, Dict[str, Dict[str, str]]] = {
+    "default": {
+        "on": {
+            "motion_sensors": "sensors",
+            "on_script": "on",
+        },
+        "off": {
+            "vacancy_sensors": "sensors",
+            "vacant_delay_input": "vacant_delay",
+            "off_script_1": "off",
+            "off_script_2": "near_off",
+        },
+    },
+    "hall": {
+        "on": {
+            "motion_sensors": "sensors",
+            "on_script": "on",
+        },
+        "off": {
+            "vacancy_sensors": "sensors",
+            "vacant_delay_input": "vacant_delay",
+            "off_script_1": "off",
+            "off_script_2": "hall_near",
+        },
+    },
+    "special": {
+        "on": {
+            "motion_sensors": "sensors",
+            "on_script": "on",
+        },
+        "off": {
+            "vacancy_sensors": "sensors",
+            "vacant_delay_input": "vacant_delay",
+            "off_script": "off",
+        },
+    },
+}
+
+
+def automation_id(unit_id: str, role: str) -> str:
+    """Уникальный id автоматизации: zm_103_vestibiul_on."""
+    return f"zm_{str(unit_id).strip()}_{role}"
+
+
+def blueprint_path(filename: str, directory: str = BLUEPRINT_DIR) -> str:
+    """
+    Путь для use_blueprint: считается от config/blueprints/automation/.
+
+        zm_default_on.yaml -> zone_manager/zm_default_on.yaml
+    """
+    return f"{directory}/{filename}"
+
 # Предел зашит в сами blueprint'ы: при большем числе датчиков автоматизация
 # останавливается и пишет warning в лог HA. Валидатор предупреждает заранее.
 MAX_SENSORS_PER_UNIT: int = 12
