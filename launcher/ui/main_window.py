@@ -32,9 +32,11 @@ from pathlib import Path
 # ------------------------------------------------------------
 # Импорты Qt
 # ------------------------------------------------------------
-from PySide6.QtCore import QEventLoop
+from PySide6.QtCore import QEventLoop, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QMainWindow,
     QWidget,
     QVBoxLayout,
@@ -113,6 +115,7 @@ class LauncherWindow(QMainWindow):
         # значение — относительный путь до скрипта проекта
         # ------------------------------------------------------------
         self.script_map = {
+            "validate": "scripts/validate_excel.py",
             "normalize": "scripts/normalize_excel.py",
             "lights": "scripts/generate_lights_groups.py",
             "general": "scripts/generate_general_groups.py",
@@ -121,14 +124,22 @@ class LauncherWindow(QMainWindow):
         }
 
         # ------------------------------------------------------------
-        # Порядок шагов полного pipeline для Build All
+        # Порядок шагов полного pipeline для Build All.
+        #
+        # validate идёт первым: он возвращает ненулевой код на битой таблице,
+        # и Build All останавливается ДО генерации. Иначе ошибки таблицы
+        # всплыли бы уже в Home Assistant.
+        #
+        # lovelace в pipeline НЕ входит: генератор карточек ещё не переехал
+        # на схему v2 (этап 5) и падает на отсутствующей колонке card_type.
+        # Кнопка остаётся — нажал и увидел, — но Build All на ней не спотыкается.
         # ------------------------------------------------------------
         self.pipeline_order = [
+            "validate",
             "normalize",
             "lights",
             "general",
             "floor",
-            "lovelace",
         ]
 
         # ------------------------------------------------------------
@@ -181,11 +192,11 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         # Стартовые строки в лог
         # ------------------------------------------------------------
-        self.append_log("Launcher UI initialized")
-        self.append_log("Step 12: Clear Log button is enabled")
-        self.append_log("Project Root and Excel File Path are saved between launches")
-        self.append_log("Python is auto-detected from Project Root/.venv/Scripts/python.exe")
-        self.append_log("Hotfix: immediate UI refresh before blocking subprocess execution")
+        self.append_log("Launcher готов")
+        self.append_log("Pipeline: validate → normalize → lights → general → floor")
+        self.append_log("Build All останавливается, если таблица не прошла проверку")
+        self.append_log("Lovelace не переехал на новый формат (этап 5) — в Build All не входит")
+        self.append_log("Python берётся из <Project Root>/.venv/Scripts/python.exe")
 
         # ------------------------------------------------------------
         # Сразу применяем стартовый лог визуально
@@ -260,22 +271,44 @@ class LauncherWindow(QMainWindow):
         layout.setSpacing(10)
         group.setLayout(layout)
 
-        self.btn_normalize = QPushButton("Normalize Excel")
-        self.btn_lights = QPushButton("Generate Lights Groups")
-        self.btn_general = QPushButton("Generate General Groups")
-        self.btn_floor = QPushButton("Generate Floor Groups")
-        self.btn_lovelace = QPushButton("Generate Lovelace Cards")
+        # 1. Проверка таблицы — первый шаг пайплайна.
+        self.btn_validate = QPushButton("1. Validate Excel")
+
+        # Строгий режим: предупреждения считаются ошибками.
+        # Влияет и на отдельный запуск Validate, и на его шаг в Build All.
+        self.strict_checkbox = QCheckBox("Strict (предупреждения = ошибки)")
+
+        self.btn_normalize = QPushButton("2. Normalize Excel")
+        self.btn_lights = QPushButton("3. Generate Lights Groups")
+        self.btn_general = QPushButton("4. Generate General Groups")
+        self.btn_floor = QPushButton("5. Generate Floor Groups")
+
+        # Не входит в Build All: генератор ещё не переехал на схему v2.
+        self.btn_lovelace = QPushButton("Generate Lovelace Cards ⚠")
+        self.btn_lovelace.setToolTip(
+            "Не переехал на новый формат таблицы (этап 5).\n"
+            "В Build All не входит; при запуске упадёт на отсутствующей колонке card_type."
+        )
+
         self.btn_build_all = QPushButton("Build All")
+        self.btn_open_output = QPushButton("Открыть папку с результатами")
         self.btn_clear_log = QPushButton("Clear Log")
 
+        layout.addWidget(self.btn_validate)
+        layout.addWidget(self.strict_checkbox)
+
+        layout.addSpacing(8)
         layout.addWidget(self.btn_normalize)
         layout.addWidget(self.btn_lights)
         layout.addWidget(self.btn_general)
         layout.addWidget(self.btn_floor)
+
+        layout.addSpacing(8)
         layout.addWidget(self.btn_lovelace)
 
         layout.addSpacing(12)
         layout.addWidget(self.btn_build_all)
+        layout.addWidget(self.btn_open_output)
         layout.addWidget(self.btn_clear_log)
 
         layout.addStretch(1)
@@ -328,10 +361,14 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         self.project_root_input.editingFinished.connect(self._save_current_config)
         self.excel_file_input.editingFinished.connect(self._save_current_config)
+        self.strict_checkbox.toggled.connect(self._save_current_config)
 
         # ------------------------------------------------------------
         # Кнопки операций pipeline
         # ------------------------------------------------------------
+        self.btn_validate.clicked.connect(
+            lambda: self._run_single_operation("validate")
+        )
         self.btn_normalize.clicked.connect(
             lambda: self._run_single_operation("normalize")
         )
@@ -350,9 +387,39 @@ class LauncherWindow(QMainWindow):
         self.btn_build_all.clicked.connect(self._run_build_all)
 
         # ------------------------------------------------------------
-        # Кнопка очистки лога
+        # Открыть папку с результатами и очистить лог
         # ------------------------------------------------------------
+        self.btn_open_output.clicked.connect(self._open_output_folder)
         self.btn_clear_log.clicked.connect(self._clear_log)
+
+    # ------------------------------------------------------------
+    # Открыть папку с готовым YAML
+    # ------------------------------------------------------------
+    def _open_output_folder(self) -> None:
+        """
+        Открывает data/light_groups в проводнике.
+
+        Наладчику надо забрать готовый YAML, а не искать его руками.
+        """
+        project_root = self.project_root_input.text().strip()
+
+        if not project_root:
+            QMessageBox.warning(self, "Launcher", "Заполни поле Project Root.")
+            return
+
+        output_dir = Path(project_root) / "data" / "light_groups"
+
+        if not output_dir.exists():
+            self.append_log(f"Папки с результатами ещё нет: {output_dir}")
+            QMessageBox.information(
+                self,
+                "Launcher",
+                "Папка с результатами ещё не создана.\nСначала запусти Build All.",
+            )
+            return
+
+        self.append_log(f"Открываю папку: {output_dir}")
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(output_dir)))
 
     # ------------------------------------------------------------
     # Очистка окна логов
@@ -419,12 +486,15 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         # Кнопки запуска операций
         # ------------------------------------------------------------
+        self.btn_validate.setEnabled(not is_running)
+        self.strict_checkbox.setEnabled(not is_running)
         self.btn_normalize.setEnabled(not is_running)
         self.btn_lights.setEnabled(not is_running)
         self.btn_general.setEnabled(not is_running)
         self.btn_floor.setEnabled(not is_running)
         self.btn_lovelace.setEnabled(not is_running)
         self.btn_build_all.setEnabled(not is_running)
+        self.btn_open_output.setEnabled(not is_running)
 
         # ------------------------------------------------------------
         # Clear Log тоже блокируем на время выполнения,
@@ -448,6 +518,8 @@ class LauncherWindow(QMainWindow):
 
         project_root = str(saved_config.get("project_root", "")).strip()
         excel_file = str(saved_config.get("excel_file", "")).strip()
+
+        self.strict_checkbox.setChecked(bool(saved_config.get("strict", False)))
 
         loaded_from_saved = False
 
@@ -477,6 +549,7 @@ class LauncherWindow(QMainWindow):
         data = {
             "project_root": self.project_root_input.text().strip(),
             "excel_file": self.excel_file_input.text().strip(),
+            "strict": self.strict_checkbox.isChecked(),
         }
 
         self.config_store.save(data)
@@ -630,6 +703,7 @@ class LauncherWindow(QMainWindow):
         return {
             "project_root": project_root,
             "excel_file": excel_file,
+            "strict": self.strict_checkbox.isChecked(),
             "python_interpreter": self._resolve_python_interpreter(project_root),
         }
 
@@ -659,19 +733,26 @@ class LauncherWindow(QMainWindow):
         """
         Возвращает список CLI-аргументов для запуска конкретной операции.
 
-        Логика шага 9:
-            - только normalize умеет получать --excel из UI
-            - если Excel File Path пустой, аргумент не передаём
-              и normalize_excel.py использует свой DEFAULT_EXCEL_PATH
+        Excel читают два шага — validate и normalize. Остальные работают
+        с нормализованным слоем и про Excel ничего не знают.
+
+        Если Excel File Path пустой, аргумент не передаём: скрипт возьмёт
+        свой DEFAULT_EXCEL_PATH.
+
+        Фильтры генераторов (--spaces, --exclude-floors и прочие) в GUI
+        намеренно не выведены: они нужны редко и при отладке. Кому надо —
+        запускает скрипт из командной строки.
         """
 
         script_args: list[str] = []
+        excel_file = config["excel_file"].strip()
 
-        if operation_key == "normalize":
-            excel_file = config["excel_file"].strip()
-
+        if operation_key in ("validate", "normalize"):
             if excel_file:
                 script_args.extend(["--excel", excel_file])
+
+        if operation_key == "validate" and config.get("strict"):
+            script_args.append("--strict")
 
         return script_args
 
