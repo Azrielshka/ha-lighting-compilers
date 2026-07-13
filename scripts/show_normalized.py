@@ -25,6 +25,8 @@ from typing import List, Optional
 
 import pandas as pd
 
+from scripts._lib.normalized import NormalizedLayerError, load_normalized
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = PROJECT_ROOT / "data" / "normalized"
 
@@ -191,16 +193,13 @@ def main() -> int:
 
     path = Path(args.dir)
 
-    missing = [n for n in ("devices", "groups", "spaces")
-               if not (path / f"{n}.parquet").exists()]
-    if missing:
-        print(f"❌ В {path} нет файлов: {', '.join(missing)}")
-        print("   Сначала запустите normalize_excel.py")
+    try:
+        layer = load_normalized(path)
+    except NormalizedLayerError as exc:
+        print(f"❌ {exc}")
         return 2
 
-    devices = pd.read_parquet(path / "devices.parquet")
-    groups = pd.read_parquet(path / "groups.parquet")
-    spaces = pd.read_parquet(path / "spaces.parquet")
+    devices, groups, spaces = layer.devices, layer.groups, layer.spaces
 
     print()
 

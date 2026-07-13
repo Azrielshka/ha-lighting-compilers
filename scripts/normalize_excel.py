@@ -50,6 +50,7 @@ from scripts._lib.canon import (
 )
 from scripts._lib.excel_schema import COLUMNS, DEVICE_COLUMNS, REQUIRED_COLUMNS, SHEET_NAME
 from scripts._lib.naming import slugify_room
+from scripts._lib.schemas import SCHEMAS
 
 __version__ = "3.0.0"
 
@@ -328,8 +329,12 @@ def normalize(
         "spaces": output_dir / "spaces.parquet",
     }
 
+    # Пишем СТРОГО по объявленной схеме, а не выводим её из данных.
+    # Иначе на объекте без единой панели panels_by_group получил бы тип
+    # list<list<null>> вместо list<list<string>> — и генератор сломался бы
+    # не у нас, а у наладчика. Подробности: scripts/_lib/schemas.py
     for name, frame in (("devices", devices), ("groups", groups), ("spaces", spaces)):
-        table = pa.Table.from_pandas(frame, preserve_index=False)
+        table = pa.Table.from_pandas(frame, schema=SCHEMAS[name], preserve_index=False)
         pq.write_table(table, paths[name])
 
     # Схема v1 писала device_rows.parquet. Если он остался от прошлого запуска,
