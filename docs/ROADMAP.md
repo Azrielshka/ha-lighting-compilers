@@ -89,15 +89,20 @@
 - [x] флаг `--strict` превращает предупреждения в ошибки
 - [x] тесты на синтетических таблицах: по одному кейсу на правило (`tests/`, 69 тестов)
 
-## Этап 3 — `scripts/normalize_excel.py` v2
+## Этап 3 — `scripts/normalize_excel.py` v2 ✅
 
-- [ ] читать лист по имени
-- [ ] построчная привязка устройств к группе (см. модель данных, §2)
-- [ ] `devices.parquet` (длинный формат), `groups.parquet`, `spaces.parquet`
-- [ ] `device_rows.parquet` **удаляется**
-- [ ] `normalized_meta.json` со `schema_version = 2`
-- [ ] тест: на `object_example.xlsx` получаем 75 ламп, 11 датчиков, 5 панелей,
-      6 помещений, 12 групп
+- [x] читать лист по имени, `keep_default_na=False`
+- [x] построчная привязка устройств к группе (см. модель данных, §2)
+- [x] `devices.parquet` (длинный формат), `groups.parquet`, `spaces.parquet`
+- [x] `device_rows.parquet` **удаляется** (в т.ч. подчищается от прошлых запусков)
+- [x] `normalized_meta.json` со `schema_version = 2`
+- [x] тест: на `object_example.xlsx` получаем 75 ламп, 11 датчиков, 5 панелей,
+      6 помещений, 12 групп, 91 устройство
+
+**Решение по ходу:** normalize отказывается работать на таблице с блокирующими
+ошибками (зовёт ту же `validate()`), обход — флаг `--force`. Иначе возвращаемся
+к исходной проблеме: пайплайн не падает, а тихо врёт. Шаги при этом остаются
+независимыми — `validate_excel.py` по-прежнему запускается отдельно.
 
 ---
 
@@ -108,10 +113,16 @@
 
 ## Этап 4 — генераторы групп света
 
-- [ ] `generate_lights_groups.py` → `groups.parquet`
+Четыре генератора всё ещё читают `device_rows.parquet` схемы v1 — то есть
+**на ветке `feat/table-v2` пайплайн сейчас разорван после normalize**.
+Это ожидаемо и чинится здесь.
+
+- [ ] `generate_lights_groups.py` → `groups.parquet` (было `device_rows`)
 - [ ] `generate_general_groups.py` → `spaces.parquet`
 - [ ] `generate_floor_groups.py` → `spaces.parquet`, `floor` из колонки «Этаж»
 - [ ] решить судьбу `tex_floor_<n>` и `TECHNICAL_SPACE_TYPES` **(открытый вопрос)**
+- [ ] удалить legacy-имена из `canon.py` / `excel_schema.py` (`COLUMNS_V1`,
+      `normalize_lamp_id_to_entity`, `TECHNICAL_CARD_TYPES`, `ALLOWED_CARD_TYPES`)
 
 ## Этап 5 — Lovelace-карточки
 

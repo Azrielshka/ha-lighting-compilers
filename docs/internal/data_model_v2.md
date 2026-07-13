@@ -195,6 +195,9 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 `lamps` (list[str] entity_id), `sensors_ms`, `sensors_il`, `panels` (list[str]),
 `lamp_count`, `sensor_count`, `panel_count`.
 
+Порядок групп и устройств внутри — как в таблице. Наладчик сверяет отчёты и
+YAML со своим Excel, и переупорядочивание сделало бы это невозможным.
+
 ## `spaces.parquet`
 
 `space`, `room_slug`, `floor`, `space_type`, `has_valid_type` (bool),
@@ -202,6 +205,18 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 `general_light_entity`, `zone_light_entities`,
 `sensors_by_group` (list[list[str]]), `panels_by_group` (list[list[str]]),
 `sensors_unique`, `warnings`.
+
+**`sensors_by_group[i]` относится к `groups[i]`.** Вложенный список пуст, если
+у группы нет датчиков — это норма для `zal`, а не пропуск. Именно здесь v1
+ломалась: она хранила один датчик на группу и второй молча теряла.
+
+Пример (`105_Актовый зал`):
+
+```
+groups           = ["105_1", "105_2"]
+sensors_by_group = [[], []]
+panels_by_group  = [["event.kp_1_2_1"], ["event.kp_1_2_2"]]
+```
 
 ## `normalized_meta.json`
 
