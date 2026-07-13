@@ -255,14 +255,14 @@ def test_unknown_type_is_flagged(tmp_path):
 # ЗАПИСЬ НА ДИСК
 # ============================================================
 
-def test_normalize_writes_three_parquets(tmp_path, valid_xlsx):
+def test_normalize_writes_all_parquets(tmp_path, valid_xlsx):
     out = tmp_path / "normalized"
     meta = N.normalize(valid_xlsx, out)
 
-    for name in ("devices", "groups", "spaces"):
+    for name in ("devices", "groups", "spaces", "units"):
         assert (out / f"{name}.parquet").exists()
 
-    assert meta["schema_version"] == 2
+    assert meta["schema_version"] == 3
     assert meta["stats"]["lamps"] == 2
 
 
@@ -306,6 +306,11 @@ def test_object_example(tmp_path, object_example):
         "groups": 12,
         "spaces": 6,
         "spaces_without_valid_type": 0,
+        # hl_1 (2 тамбура, special) + 103_vestibiul + ladder_1 (оба default).
+        # class и zal не автоматизируются.
+        "units": 3,
+        "scripts": 8,        # special=2, default=3+3
+        "automations": 6,    # ON + OFF на каждую единицу
     }
 
 

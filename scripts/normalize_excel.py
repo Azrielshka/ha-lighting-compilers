@@ -36,7 +36,11 @@ import pyarrow.parquet as pq
 
 from scripts._lib.canon import (
     ALLOWED_SPACE_TYPES,
+    BLUEPRINTS_BY_FAMILY,
+    MAX_SENSORS_PER_UNIT,
     NORMALIZED_SCHEMA_VERSION,
+    SCRIPTS_BY_FAMILY,
+    family_for_space_type,
     general_light_entity,
     is_blank,
     is_none_token,
@@ -44,6 +48,7 @@ from scripts._lib.canon import (
     normalize_space_type,
     panel_entity,
     parse_addr,
+    script_entity,
     sensor_illuminance_entity,
     sensor_motion_entity,
     zone_light_entity,
@@ -130,15 +135,18 @@ def build_devices(df: pd.DataFrame) -> pd.DataFrame:
 
     current_space = ""
     current_type: Optional[str] = None
+    current_block: Optional[str] = None
 
     for idx, row in df.iterrows():
         excel_row = int(idx) + FIRST_DATA_ROW
 
-        # Помещение и тип объявляются на первой строке помещения и тянутся вниз.
+        # Помещение, тип и блок объявляются на первой строке помещения
+        # и тянутся вниз.
         space_cell = _cell(row.get(COLUMNS.space))
         if space_cell:
             current_space = space_cell
             current_type = normalize_space_type(row.get(COLUMNS.space_type))
+            current_block = _cell(row.get(COLUMNS.block)) or None
 
         if not current_space:
             continue  # строка до первого помещения — валидатор про неё уже сказал
@@ -185,13 +193,14 @@ def build_devices(df: pd.DataFrame) -> pd.DataFrame:
                 "room_slug": room_slug,
                 "floor": floor,
                 "space_type": current_type,
+                "block": current_block,
                 "dali_bus": dali_bus or None,
             })
 
     devices = pd.DataFrame.from_records(records, columns=[
         "row_id", "kind", "addr", "addr_floor", "addr_bus", "addr_num",
         "entity_id", "entity_id_2", "group_id", "space", "room_slug",
-        "floor", "space_type", "dali_bus",
+        "floor", "space_type", "block", "dali_bus",
     ])
 
     for col in ("row_id", "addr_floor", "addr_bus", "addr_num", "floor"):
@@ -267,6 +276,12 @@ def build_spaces(devices: pd.DataFrame, groups: pd.DataFrame) -> pd.DataFrame:
         space_type = first["space_type"]
         room_slug = first["room_slug"]
 
+        # Осторожно: пустой блок приходит из pandas как NaN, а NaN истинный
+        # (bool(float('nan')) is True). Без явной проверки unit_id стал бы NaN.
+        block = first["block"]
+        if pd.isna(block) or not str(block).strip():
+            block = None
+
         gdf = groups[groups["space"] == space]
 
         warnings_: List[str] = []
@@ -274,6 +289,9 @@ def build_spaces(devices: pd.DataFrame, groups: pd.DataFrame) -> pd.DataFrame:
             warnings_.append("missing_space_type")
         elif space_type not in ALLOWED_SPACE_TYPES:
             warnings_.append(f"unknown_space_type:{space_type}")
+
+        # Единица обслуживания: блок, если задан, иначе само помещение.
+        unit_id = block if block else room_slug
 
         records.append({
             "space": str(space),
@@ -290,19 +308,99 @@ def build_spaces(devices: pd.DataFrame, groups: pd.DataFrame) -> pd.DataFrame:
             "sensors_by_group": [list(x) for x in gdf["sensors_ms"]],
             "panels_by_group": [list(x) for x in gdf["panels"]],
             "sensors_unique": sorted({s for lst in gdf["sensors_ms"] for s in lst}),
+            "block": block,
+            "unit_id": unit_id,
+            "family": family_for_space_type(space_type),
             "warnings": warnings_,
         })
 
     spaces = pd.DataFrame.from_records(records, columns=[
         "space", "room_slug", "floor", "space_type", "has_valid_type",
         "groups", "groups_count", "general_light_entity", "zone_light_entities",
-        "sensors_by_group", "panels_by_group", "sensors_unique", "warnings",
+        "sensors_by_group", "panels_by_group", "sensors_unique",
+        "block", "unit_id", "family", "warnings",
     ])
 
     spaces["floor"] = spaces["floor"].astype("Int64")
     spaces["groups_count"] = spaces["groups_count"].astype("int64")
 
     return spaces
+
+
+# ============================================================
+# UNITS — ЕДИНИЦЫ ОБСЛУЖИВАНИЯ
+# ============================================================
+
+def build_units(devices: pd.DataFrame, spaces: pd.DataFrame) -> pd.DataFrame:
+    """
+    Собрать единицы обслуживания: то, на что клонируется набор скриптов.
+
+    Один экземпляр скрипта в HA = одна очередь. При тысяче датчиков вызовы
+    копятся и свет отстаёт от человека, поэтому у каждой единицы свой набор
+    скриптов — они друг друга не ждут.
+
+    Единица = помещение, если «Блок» пуст; иначе все помещения одного «Блока».
+
+    Помещения без семейства (class, zal) сюда НЕ попадают: автоматизаций
+    у них нет. class управляется панелью и поддержанием освещённости — это
+    вне нашей области; zal — только панелями.
+    """
+    records: List[Dict] = []
+
+    # Только те, кому нужны автоматизации.
+    automated = spaces[spaces["family"].notna()]
+
+    for unit_id, udf in automated.groupby("unit_id", sort=False):
+        first = udf.iloc[0]
+        family = first["space_type"] and family_for_space_type(first["space_type"])
+
+        unit_spaces = udf["space"].tolist()
+
+        # Датчики единицы — из devices, чтобы сохранить порядок таблицы.
+        udev = devices[
+            (devices["space"].isin(unit_spaces)) & (devices["kind"] == "sensor")
+        ]
+        sensors = udev["entity_id"].tolist()
+
+        zone_lights = [z for lst in udf["zone_light_entities"] for z in lst]
+
+        roles = SCRIPTS_BY_FAMILY.get(family, {})
+        scripts = [script_entity(str(unit_id), role) for role in roles]
+
+        blueprints = BLUEPRINTS_BY_FAMILY.get(family, {})
+
+        warnings_: List[str] = []
+        if len(sensors) > MAX_SENSORS_PER_UNIT:
+            # Предел зашит в сами blueprint'ы: при большем числе датчиков
+            # автоматизация останавливается и пишет warning в лог HA.
+            warnings_.append(f"sensors_over_limit:{len(sensors)}")
+
+        floors = sorted({int(f) for f in udf["floor"] if not pd.isna(f)})
+
+        records.append({
+            "unit_id": str(unit_id),
+            "family": family,
+            "spaces": unit_spaces,
+            "space_type": first["space_type"],
+            "floors": floors,
+            "sensors_ms": sensors,
+            "sensor_count": len(sensors),
+            "zone_lights": zone_lights,
+            "scripts": scripts,
+            "blueprint_on": blueprints.get("on"),
+            "blueprint_off": blueprints.get("off"),
+            "warnings": warnings_,
+        })
+
+    units = pd.DataFrame.from_records(records, columns=[
+        "unit_id", "family", "spaces", "space_type", "floors",
+        "sensors_ms", "sensor_count", "zone_lights", "scripts",
+        "blueprint_on", "blueprint_off", "warnings",
+    ])
+
+    units["sensor_count"] = units["sensor_count"].astype("int64")
+
+    return units
 
 
 # ============================================================
@@ -320,6 +418,7 @@ def normalize(
     devices = build_devices(df)
     groups = build_groups(devices)
     spaces = build_spaces(devices, groups)
+    units = build_units(devices, spaces)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -327,13 +426,15 @@ def normalize(
         "devices": output_dir / "devices.parquet",
         "groups": output_dir / "groups.parquet",
         "spaces": output_dir / "spaces.parquet",
+        "units": output_dir / "units.parquet",
     }
 
     # Пишем СТРОГО по объявленной схеме, а не выводим её из данных.
     # Иначе на объекте без единой панели panels_by_group получил бы тип
     # list<list<null>> вместо list<list<string>> — и генератор сломался бы
     # не у нас, а у наладчика. Подробности: scripts/_lib/schemas.py
-    for name, frame in (("devices", devices), ("groups", groups), ("spaces", spaces)):
+    frames = (("devices", devices), ("groups", groups), ("spaces", spaces), ("units", units))
+    for name, frame in frames:
         table = pa.Table.from_pandas(frame, schema=SCHEMAS[name], preserve_index=False)
         pq.write_table(table, paths[name])
 
@@ -361,11 +462,15 @@ def normalize(
             "groups": int(len(groups)),
             "spaces": int(len(spaces)),
             "spaces_without_valid_type": int((~spaces["has_valid_type"]).sum()),
+            "units": int(len(units)),
+            "scripts": int(sum(len(s) for s in units["scripts"])),
+            "automations": int(len(units) * 2),  # ON + OFF на единицу
         },
         "columns": {
             "devices": list(devices.columns),
             "groups": list(groups.columns),
             "spaces": list(spaces.columns),
+            "units": list(units.columns),
         },
         "notes": {
             "device_binding": "устройство принадлежит группе из своей строки Excel",
@@ -392,6 +497,10 @@ def _print_stats(meta: Dict, output_dir: Path) -> None:
     print(f"    панели:      {s['panels']}")
     print(f"  Групп:         {s['groups']}")
     print(f"  Помещений:     {s['spaces']}")
+    print()
+    print(f"  Единиц обслуживания: {s['units']}")
+    print(f"    скриптов клонируется: {s['scripts']}")
+    print(f"    автоматизаций:        {s['automations']}")
 
     if s["spaces_without_valid_type"]:
         print(f"\n⚠ Помещений без корректного типа: {s['spaces_without_valid_type']}")

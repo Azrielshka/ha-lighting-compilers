@@ -39,7 +39,10 @@ def build(tmp_path: Path, rows, **kw) -> Path:
 def test_valid_table_has_no_findings(valid_xlsx):
     findings, stats = run(valid_xlsx)
     assert findings == []
-    assert stats == {"rows": 2, "spaces": 1, "groups": 1, "lamps": 2, "sensors": 1, "panels": 0}
+    assert stats == {
+        "rows": 2, "spaces": 1, "groups": 1,
+        "lamps": 2, "sensors": 1, "panels": 0, "units": 1,
+    }
 
 
 def test_object_example_passes(object_example):
@@ -47,7 +50,12 @@ def test_object_example_passes(object_example):
     findings, stats = run(object_example)
 
     assert errors(findings) == [], [f.message for f in errors(findings)]
-    assert stats == {"rows": 75, "spaces": 6, "groups": 12, "lamps": 75, "sensors": 11, "panels": 5}
+    assert stats == {
+        "rows": 75, "spaces": 6, "groups": 12,
+        "lamps": 75, "sensors": 11, "panels": 5,
+        # hl_1 (два тамбура), 103_vestibiul (сам по себе), ladder_1
+        "units": 3,
+    }
 
 
 @pytest.mark.parametrize("token", ["None", "нет", "-", "none"])

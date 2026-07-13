@@ -32,7 +32,9 @@ import pandas as pd
 
 from scripts._lib.canon import (
     ALLOWED_SPACE_TYPES,
+    MAX_SENSORS_PER_UNIT,
     Addr,
+    family_for_space_type,
     is_blank,
     is_none_token,
     normalize_space_type,
@@ -105,6 +107,10 @@ RULE_TITLES: Dict[str, str] = {
     "W04": "шина в адресе не совпадает с колонкой «Шина DALI»",
     "W05": "группа без датчиков",
     "W06": "пустая строка внутри листа",
+    "W07": "в единице обслуживания больше 12 датчиков",
+    "W08": "помещение с автоматизациями, но без датчиков",
+    "E15": "блок смешивает разные семейства",
+    "E16": "блок задан у помещения, которое не автоматизируется",
 }
 
 
@@ -127,8 +133,10 @@ class SpaceAcc:
     name: str
     rows: List[int] = field(default_factory=list)
     space_type: Optional[str] = None
+    block: Optional[str] = None
     groups: List[str] = field(default_factory=list)
     lamp_count: int = 0
+    sensor_count: int = 0
     # Правило "либо датчик, либо None" проверяется на уровне помещения:
     # достаточно одной непустой ячейки на всё помещение.
     sensor_declared: bool = False
@@ -260,6 +268,7 @@ def validate(excel_path: Path, sheet_name: str = SHEET_NAME) -> Tuple[List[Findi
 
     current_space: Optional[str] = None
     current_type: Optional[str] = None
+    current_block: Optional[str] = None
 
     # Пустые строки в хвосте листа — это не проблема, а вот дырка в середине — да.
     # Поэтому сначала находим последнюю содержательную строку.
@@ -283,11 +292,12 @@ def validate(excel_path: Path, sheet_name: str = SHEET_NAME) -> Tuple[List[Findi
 
         n_rows += 1
 
-        # --- помещение и тип: протягиваем вниз ---
+        # --- помещение, тип и блок: протягиваем вниз ---
         space_cell = _cell(row.get(COLUMNS.space))
         if space_cell:
             current_space = space_cell
             current_type = normalize_space_type(row.get(COLUMNS.space_type))
+            current_block = _cell(row.get(COLUMNS.block)) or None
 
         space = current_space
         space_type = current_type
@@ -302,6 +312,7 @@ def validate(excel_path: Path, sheet_name: str = SHEET_NAME) -> Tuple[List[Findi
         acc = spaces.setdefault(space, SpaceAcc(name=space))
         if space_cell:
             acc.space_type = space_type
+            acc.block = current_block
         acc.rows.append(excel_row)
 
         # --- группа ---
@@ -379,6 +390,7 @@ def validate(excel_path: Path, sheet_name: str = SHEET_NAME) -> Tuple[List[Findi
                     gacc.lamp_count += 1
             elif dev.kind == "sensor":
                 acc.sensor_declared = True
+                acc.sensor_count += 1
                 sensor_addrs[addr_key].append((excel_row, group_id or ""))
                 if gacc:
                     gacc.sensor_count += 1
@@ -495,6 +507,67 @@ def validate(excel_path: Path, sheet_name: str = SHEET_NAME) -> Tuple[List[Findi
                 space=space,
             ))
 
+    # ========================================================
+    # ЕДИНИЦЫ ОБСЛУЖИВАНИЯ (колонка «Блок»)
+    # ========================================================
+    #
+    # Единица = помещение, если блок пуст; иначе все помещения одного блока.
+    # На каждую единицу клонируется свой набор скриптов: один экземпляр
+    # скрипта в HA — это одна очередь, и при тысяче датчиков свет отстал бы
+    # от человека.
+
+    units: Dict[str, List[SpaceAcc]] = defaultdict(list)
+
+    for space, acc in spaces.items():
+        family = family_for_space_type(acc.space_type)
+
+        if family is None:
+            # class и zal не автоматизируются — блок им не нужен.
+            if acc.block:
+                findings.append(Finding(
+                    "E16", "error",
+                    f"у помещения «{space}» (тип {acc.space_type}) задан блок "
+                    f"{acc.block!r}, но для этого типа скрипты не создаются",
+                    space=space,
+                ))
+            continue
+
+        if acc.sensor_count == 0:
+            findings.append(Finding(
+                "W08", "warning",
+                f"у помещения «{space}» (тип {acc.space_type}) нет датчиков — "
+                f"автоматизации по движению работать не будут",
+                space=space,
+            ))
+
+        unit_id = acc.block or space
+        units[unit_id].append(acc)
+
+    for unit_id, members in units.items():
+        families = {family_for_space_type(m.space_type) for m in members}
+
+        # Блок из помещений разных семейств: им нужны разные blueprint'ы
+        # и разные скрипты — одной единицей они быть не могут.
+        if len(families) > 1:
+            names = ", ".join(f"{m.name} ({m.space_type})" for m in members)
+            findings.append(Finding(
+                "E15", "error",
+                f"блок {unit_id!r} смешивает разные семейства: {names}",
+            ))
+
+        total_sensors = sum(m.sensor_count for m in members)
+
+        # Предел зашит в сами blueprint'ы: при большем числе датчиков
+        # автоматизация в HA останавливается и пишет warning в лог.
+        if total_sensors > MAX_SENSORS_PER_UNIT:
+            names = ", ".join(m.name for m in members)
+            findings.append(Finding(
+                "W07", "warning",
+                f"в единице {unit_id!r} {total_sensors} датчиков "
+                f"(предел {MAX_SENSORS_PER_UNIT}): {names}. "
+                f"Разделите на два блока в колонке «{COLUMNS.block}»",
+            ))
+
     stats = {
         "rows": n_rows,
         "spaces": len(spaces),
@@ -502,6 +575,7 @@ def validate(excel_path: Path, sheet_name: str = SHEET_NAME) -> Tuple[List[Findi
         "lamps": sum(len(v) for v in lamp_addrs.values()),
         "sensors": sum(len(v) for v in sensor_addrs.values()),
         "panels": sum(len(v) for v in panel_addrs.values()),
+        "units": len(units),
     }
 
     return findings, stats
@@ -531,6 +605,7 @@ def _print_report(findings: List[Finding], stats: Dict, strict: bool) -> None:
         print(f"  Ламп:          {stats['lamps']}")
         print(f"  Датчиков:      {stats['sensors']}")
         print(f"  Панелей:       {stats['panels']}")
+        print(f"  Единиц обсл.:  {stats['units']}")
         print()
 
     for title, bucket in (("❌ Ошибки", errors), ("⚠ Предупреждения", warnings)):

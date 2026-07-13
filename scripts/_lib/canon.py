@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional, Set
+from typing import Dict, Optional, Set
 
 
-# Версия схемы нормализованных данных (для normalized_meta.json)
-NORMALIZED_SCHEMA_VERSION: int = 2
+# Версия схемы нормализованных данных (для normalized_meta.json).
+# v3: колонка «Блок», тип hall, датасет units (единицы обслуживания).
+NORMALIZED_SCHEMA_VERSION: int = 3
 
 
 # ============================================================
@@ -48,6 +49,7 @@ ALLOWED_SPACE_TYPES: Set[str] = {
     "recreation",
     "zal",
     "special",
+    "hall",
 }
 
 # Типы, которые считаем "техническими" для отдельных групп на этаж (tex_floor_<n>).
@@ -238,3 +240,87 @@ def floor_icon(floor: int) -> str:
     if 1 <= n <= 3:
         return f"mdi:home-floor-{n}"
     return "mdi:home-floor-a"
+
+
+# ============================================================
+# ЕДИНИЦЫ ОБСЛУЖИВАНИЯ, СЕМЕЙСТВА, СКРИПТЫ
+# ============================================================
+#
+# Один экземпляр скрипта в Home Assistant — это одна очередь. При тысяче
+# датчиков вызовы копятся, и свет отстаёт от человека. Поэтому шаблонные
+# скрипты КЛОНИРУЮТСЯ: у каждой единицы обслуживания свой набор, и они
+# друг друга не ждут.
+#
+# Единица обслуживания:
+#   - «Блок» пуст     -> помещение обслуживается само по себе
+#   - «Блок» заполнен -> все помещения с этим значением обслуживаются вместе
+#
+# Что склеивать в блок, решает проектировщик, глядя на план: лестничный стояк,
+# соседние санузлы, длинный коридор пополам. Вывести это из таблицы нельзя —
+# номер помещения не говорит, какая лестница над какой.
+
+# Семейство определяет, какие blueprint'ы и скрипты нужны единице.
+# class и zal не автоматизируются: класс управляется панелью и поддержанием
+# освещённости (вне нашей области), зал — только панелями.
+FAMILY_BY_SPACE_TYPE: Dict[str, Optional[str]] = {
+    "korridor": "default",
+    "recreation": "default",
+    "hall": "hall",
+    "special": "special",
+    "class": None,
+    "zal": None,
+}
+
+# Какие скрипты клонируются для каждого семейства.
+# Ключ — роль скрипта, значение — файл шаблона.
+SCRIPTS_BY_FAMILY: Dict[str, Dict[str, str]] = {
+    "default": {
+        "on": "motion_on.yaml",
+        "off": "motion_off.yaml",
+        "near_off": "motion_near_off_json.yaml",
+    },
+    "hall": {
+        "on": "motion_on.yaml",
+        "off": "motion_off.yaml",
+        "hall_near": "hall_near_off.yaml",
+    },
+    "special": {
+        "on": "special_on.yaml",
+        "off": "special_off.yaml",
+    },
+}
+
+# Blueprint'ы семейства: (ON, OFF).
+BLUEPRINTS_BY_FAMILY: Dict[str, Dict[str, str]] = {
+    "default": {"on": "zm_default_on.yaml", "off": "zm_default_off.yaml"},
+    "hall": {"on": "zm_hall_on.yaml", "off": "zm_hall_off.yaml"},
+    "special": {"on": "zm_special_on.yaml", "off": "zm_special_off.yaml"},
+}
+
+# Предел зашит в сами blueprint'ы: при большем числе датчиков автоматизация
+# останавливается и пишет warning в лог HA. Валидатор предупреждает заранее.
+MAX_SENSORS_PER_UNIT: int = 12
+
+
+def family_for_space_type(space_type: Optional[str]) -> Optional[str]:
+    """Семейство по типу помещения. None — автоматизации не нужны."""
+    if not space_type:
+        return None
+    return FAMILY_BY_SPACE_TYPE.get(space_type)
+
+
+def script_entity(unit_id: str, role: str) -> str:
+    """
+    Имя клонированного скрипта.
+
+        ("103_vestibiul", "on")  -> script.103_vestibiul_on
+        ("ladder_1", "near_off") -> script.ladder_1_near_off
+
+    unit_id — это «Блок» из таблицы либо room_slug помещения, если блок пуст.
+    """
+    return f"script.{str(unit_id).strip()}_{role}"
+
+
+def script_object_id(unit_id: str, role: str) -> str:
+    """Корневой ключ в scripts.yaml — то же имя, но без домена."""
+    return f"{str(unit_id).strip()}_{role}"

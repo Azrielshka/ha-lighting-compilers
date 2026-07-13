@@ -28,6 +28,12 @@ class ExcelColumnsV2:
     floor: str = "Этаж"                      # заполнена в каждой строке
     space: str = "Название помещения"        # только первая строка помещения
     space_type: str = "Тип помещения"        # только первая строка помещения
+
+    # Единица обслуживания: помещения с одинаковым «Блоком» обслуживаются
+    # одним набором скриптов. Пусто — помещение само по себе.
+    # Заполняется только на первой строке помещения, как и тип.
+    block: str = "Блок"
+
     dali_bus: str = "Шина DALI"              # справочно, истина — в адресе
     group: str = "Группа"                    # заполнена в каждой строке
     lamp: str = "Лампа"
@@ -43,6 +49,7 @@ REQUIRED_COLUMNS: Tuple[str, ...] = (
     COLUMNS.floor,
     COLUMNS.space,
     COLUMNS.space_type,
+    COLUMNS.block,
     COLUMNS.dali_bus,
     COLUMNS.group,
     COLUMNS.lamp,
@@ -56,7 +63,7 @@ IGNORED_COLUMNS: Tuple[str, ...] = ("Addr L", "Addr MS", "Addr KP")
 
 # Колонки, которые протягиваются вниз внутри помещения.
 # "Группа" сюда НЕ входит: в v2 она заполнена в каждой строке.
-FFILL_COLUMNS: Tuple[str, ...] = (COLUMNS.space, COLUMNS.space_type)
+FFILL_COLUMNS: Tuple[str, ...] = (COLUMNS.space, COLUMNS.space_type, COLUMNS.block)
 
 # Колонки устройств: kind -> колонка. Порядок задаёт порядок в отчётах.
 DEVICE_COLUMNS = {

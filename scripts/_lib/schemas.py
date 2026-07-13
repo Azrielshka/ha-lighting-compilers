@@ -68,6 +68,9 @@ DEVICES_SCHEMA = pa.schema([
     # null, если тип помещения не указан.
     ("space_type",  pa.string()),
 
+    # «Блок» из таблицы; null, если помещение обслуживается само по себе.
+    ("block",       pa.string()),
+
     # Справочно, в генерации не участвует.
     ("dali_bus",    pa.string()),
 ])
@@ -132,8 +135,61 @@ SPACES_SCHEMA = pa.schema([
 
     ("sensors_unique",       _ENTITY_LIST),
 
+    # «Блок» из таблицы; null — помещение обслуживается само по себе.
+    ("block",                pa.string()),
+
+    # Единица обслуживания, к которой относится помещение:
+    # это либо block, либо room_slug.
+    ("unit_id",              pa.string()),
+
+    # default | hall | special | null (class и zal не автоматизируются)
+    ("family",               pa.string()),
+
     # missing_space_type | unknown_space_type:<что было в таблице>
     ("warnings",             _ENTITY_LIST),
+])
+
+
+# ============================================================
+# units.parquet — строка = единица обслуживания
+# ============================================================
+#
+# Один экземпляр скрипта в HA = одна очередь. При тысяче датчиков вызовы
+# копятся и свет отстаёт от человека, поэтому шаблонные скрипты клонируются:
+# у каждой единицы свой набор, они друг друга не ждут.
+#
+# Единица = помещение (если «Блок» пуст) либо все помещения одного «Блока».
+
+UNITS_SCHEMA = pa.schema([
+    # Имя единицы: «Блок» из таблицы либо room_slug помещения.
+    # Из него строятся имена скриптов: script.<unit_id>_on
+    ("unit_id",       pa.string()),
+
+    # default | hall | special
+    ("family",        pa.string()),
+
+    # Помещения единицы. Обычно одно; несколько — если задан «Блок».
+    ("spaces",        _ENTITY_LIST),
+    ("space_type",    pa.string()),
+    ("floors",        pa.list_(pa.int64())),
+
+    # Датчики движения единицы — попадут в автоматизацию как triggers.
+    ("sensors_ms",    _ENTITY_LIST),
+    ("sensor_count",  pa.int64()),
+
+    # Группы света единицы (для отчётов и проверок).
+    ("zone_lights",   _ENTITY_LIST),
+
+    # Клонированные скрипты: script.<unit_id>_<role>.
+    # Состав ролей зависит от семейства (см. canon.SCRIPTS_BY_FAMILY).
+    ("scripts",       _ENTITY_LIST),
+
+    # Файлы blueprint'ов семейства.
+    ("blueprint_on",  pa.string()),
+    ("blueprint_off", pa.string()),
+
+    # sensors_over_limit — датчиков больше MAX_SENSORS_PER_UNIT
+    ("warnings",      _ENTITY_LIST),
 ])
 
 
@@ -142,6 +198,7 @@ SCHEMAS: Dict[str, pa.Schema] = {
     "devices": DEVICES_SCHEMA,
     "groups": GROUPS_SCHEMA,
     "spaces": SPACES_SCHEMA,
+    "units": UNITS_SCHEMA,
 }
 
 DATASET_NAMES = tuple(SCHEMAS)
