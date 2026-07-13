@@ -237,15 +237,68 @@ def test_tech_groups_off_by_default(layer):
 
 
 def test_tech_groups_on(layer):
-    """Заглушка TECHNICAL_SPACE_TYPES = {korridor}; состав ещё не согласован."""
     doc = _run(FLOOR, layer, tech_groups=True)
     by_id = {g["unique_id"]: g for g in _groups(doc, "lights_floor_group")}
 
     assert "tex_floor_1" in by_id
     assert by_id["tex_floor_1"]["entities"] == ["light.101_koridor_obshchii"]
 
-    # На 2-м этаже технических помещений нет — блок не выводим.
+    # На 2-м этаже только zal и помещение без типа — технических нет,
+    # блок не выводим (пустая группа в HA бесполезна).
     assert "tex_floor_2" not in by_id
+
+
+def test_tech_types_composition(tmp_path):
+    """
+    Технические = проходные пространства: korridor, special, recreation.
+    За рамками: class (люди сидят за партами) и zal (только с панелей).
+    Согласовано с владельцем 2026-07-13.
+    """
+    rows = []
+    for i, (name, stype) in enumerate([
+        ("101_Коридор", "Korridor"),
+        ("102_Тамбур", "Special"),
+        ("103_Рекреация", "Recreation"),
+        ("104_Класс", "Class"),
+        ("105_Зал", "Zal"),
+    ], start=1):
+        rows.append({
+            "Этаж": 1, "Название помещения": name, "Тип помещения": stype,
+            "Шина DALI": 1, "Группа": f"10{i}_1", "Лампа": f"1.1.{i}",
+            "Датчик": "None", "Панель": "None",
+        })
+
+    out = tmp_path / "normalized"
+    N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
+
+    doc = _run(FLOOR, out, tech_groups=True)
+    by_id = {g["unique_id"]: g for g in _groups(doc, "lights_floor_group")}
+
+    assert by_id["tex_floor_1"]["entities"] == [
+        "light.101_koridor_obshchii",
+        "light.102_tambur_obshchii",
+        "light.103_rekreatsiia_obshchii",
+    ]
+
+    # А вот в группу всего этажа попадают все пять.
+    assert len(by_id["floor_1_all"]["entities"]) == 5
+
+
+def test_tech_group_references_existing_entities(tmp_path):
+    """Тех.группа ссылается на общие группы — они должны быть созданы."""
+    rows = [{
+        "Этаж": 1, "Название помещения": "101_Коридор", "Тип помещения": "Korridor",
+        "Шина DALI": 1, "Группа": "101_1", "Лампа": "1.1.1",
+        "Датчик": "None", "Панель": "None",
+    }]
+
+    out = tmp_path / "normalized"
+    N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
+
+    general = _run(GENERAL, out)
+    floor = _run(FLOOR, out, tech_groups=True)
+
+    assert _referenced(floor, "lights_floor_group") <= _created(general, "lights_general_group")
 
 
 # ============================================================

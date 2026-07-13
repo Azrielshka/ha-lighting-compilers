@@ -50,10 +50,12 @@ ALLOWED_SPACE_TYPES: Set[str] = {
     "special",
 }
 
-# Типы, которые считаем "техническими" для отдельных групп на этаж.
-# ЗАГЛУШКА: в таксономии v2 su/lestnitsa исчезли, лестница стала korridor.
-# Состав уточняется при переезде generate_floor_groups.py (см. docs/ROADMAP.md).
-TECHNICAL_SPACE_TYPES: Set[str] = {"korridor"}
+# Типы, которые считаем "техническими" для отдельных групп на этаж (tex_floor_<n>).
+# Проходные пространства, где никто не находится постоянно.
+# Согласовано с владельцем 2026-07-13.
+#
+# За рамками: class (парты, люди сидят) и zal (управляется только с панелей).
+TECHNICAL_SPACE_TYPES: Set[str] = {"korridor", "special", "recreation"}
 
 
 def normalize_space_type(raw: object) -> Optional[str]:

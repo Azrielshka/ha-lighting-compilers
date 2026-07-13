@@ -154,10 +154,16 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 
 ## Технические помещения
 
-`TECHNICAL_SPACE_TYPES` в новой таксономии не определён: `su` и `lestnitsa`
-исчезли как типы, лестница стала `Korridor`. До переезда
-`generate_floor_groups.py` держим `GENERATE_TECH_GROUPS = 0` и заглушку
-`{"korridor"}`. Открытый вопрос — см. ROADMAP.
+```python
+TECHNICAL_SPACE_TYPES = {"korridor", "special", "recreation"}
+```
+
+Проходные пространства, где никто не находится постоянно. Из них
+`generate_floor_groups.py` собирает `tex_floor_<n>` — по флагу
+`--generate-tech-groups`, по умолчанию выключено.
+
+За рамками: `class` (люди сидят за партами) и `zal` (управляется только
+с панелей). Согласовано с владельцем 2026-07-13.
 
 ---
 
