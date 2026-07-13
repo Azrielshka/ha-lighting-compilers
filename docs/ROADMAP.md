@@ -5,7 +5,13 @@
 Цель: адаптировать пайплайн под новый формат таблицы, затем добавить генераторы
 автоматизаций, скриптов и шаг деплоя на Home Assistant.
 
-Модель данных и канон нейминга: `docs/internal/data_model_v2.md`.
+Документация:
+
+| Файл | О чём |
+|---|---|
+| `docs/internal/data_model_v2.md` | правила модели: привязка устройств, `None`, адреса, канон нейминга |
+| `docs/internal/parquet_reference.md` | что лежит в каждой колонке parquet, с примерами |
+| `scripts/_lib/schemas.py` | машиночитаемая схема; при расхождении с документами верна она |
 
 ---
 
@@ -139,7 +145,9 @@
 - [ ] `generate_lights_groups.py` → `groups.parquet` (было `device_rows`)
 - [ ] `generate_general_groups.py` → `spaces.parquet`
 - [ ] `generate_floor_groups.py` → `spaces.parquet`, `floor` из колонки «Этаж»
-- [ ] решить судьбу `tex_floor_<n>` и `TECHNICAL_SPACE_TYPES` **(открытый вопрос)**
+- [ ] решить судьбу `tex_floor_<n>` и `TECHNICAL_SPACE_TYPES` — **решаем при работе
+      с `generate_floor_groups.py`** (владелец, 2026-07-13). До тех пор в `canon.py`
+      живёт заглушка `TECHNICAL_SPACE_TYPES = {"korridor"}`, `GENERATE_TECH_GROUPS = 0`
 - [ ] удалить legacy-имена из `canon.py` / `excel_schema.py` (`COLUMNS_V1`,
       `normalize_lamp_id_to_entity`, `TECHNICAL_CARD_TYPES`, `ALLOWED_CARD_TYPES`)
 
@@ -194,7 +202,7 @@
 
 | # | Вопрос | Блокирует |
 |---|---|---|
-| 1 | Что считать техническим помещением после исчезновения `su` / `lestnitsa` | Этап 4 |
+| 1 | Что считать техническим помещением после исчезновения `su` / `lestnitsa` — решаем внутри этапа 4, не блокирует его начало | Этап 4 |
 | 2 | Монолитные шаблоны карточек или сборка из блоков | Этап 5 |
 | 3 | Как подставлять датчики в карточку, когда их число ≠ числу зон | Этап 5 |
 | 4 | Blueprint'ы: состав, inputs, единица генерации | Этап 6 |
