@@ -192,20 +192,3 @@ GENERAL_LIGHT_RULE = GeneralLightNamingRule()
 def general_light_entity(room_slug: str) -> str:
     """104_metodicheskii_kabinet -> light.104_metodicheskii_kabinet_obshchii"""
     return GENERAL_LIGHT_RULE.build(room_slug)
-
-
-# ============================================================
-# LEGACY (схема v1) — удаляется вместе с переездом генераторов
-# ============================================================
-# Оставлено, чтобы старые генераторы импортировались до своего переезда
-# (см. docs/ROADMAP.md, этап 4). Новый код этим не пользуется.
-
-ALLOWED_CARD_TYPES = {"cabinet", "corridor", "su", "lestnitsa", "generic"}
-TECHNICAL_CARD_TYPES = {"corridor", "su", "lestnitsa"}
-
-
-def normalize_lamp_id_to_entity(raw: str) -> str:
-    """LEGACY: 1.20.15 -> light.l_1_20_15 (без валидации формата)."""
-    s = "" if raw is None else str(raw).strip()
-    code = s.replace(".", "_").replace("-", "_")
-    return f"{HA_LIGHT_DOMAIN}.{LAMP_PREFIX}_{code}"

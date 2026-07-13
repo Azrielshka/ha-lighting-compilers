@@ -66,28 +66,7 @@ DEVICE_COLUMNS = {
 }
 
 
-# ============================================================
-# LEGACY (схема v1) — таблица data/example.xlsx
-# ============================================================
-# Исторический артефакт. Пайплайн v2 её не читает.
-
-@dataclass(frozen=True)
-class ExcelColumnsV1:
-    floor_raw: str = "Этаж"
-    space_raw: str = "Помещение"
-    dali_bus_raw: str = "Шина DALI"
-    group_raw: str = "Группа"
-    lamp_raw: str = "Лампа"
-    sensor_raw: str = "Датчик"
-    button_raw: str = "Кнопка"
-    card_type: str = "card_type"
-
-    floor_auto: str = "Этаж (авто)"
-    space_auto: str = "Помещение (авто)"
-    dali_bus_auto: str = "Шина DALI (авто)"
-    group_auto: str = "Группа (авто)"
-    sensor_auto: str = "Датчик (авто)"
-    button_auto: str = "Кнопка (авто)"
-
-
-COLUMNS_V1 = ExcelColumnsV1()
+# Схема v1 (таблица data/example.xlsx с колонками «(авто)» и card_type)
+# удалена вместе с переездом генераторов. Сам файл остаётся в репозитории
+# как исторический артефакт, но пайплайн его не читает — валидатор скажет
+# «нет листа "Проектная БД"», и это ожидаемое поведение.

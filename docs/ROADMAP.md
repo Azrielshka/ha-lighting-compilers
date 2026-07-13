@@ -136,20 +136,48 @@
 
 ---
 
-## Этап 4 — генераторы групп света
+## Этап 4 — генераторы групп света ✅
 
-Четыре генератора всё ещё читают `device_rows.parquet` схемы v1 — то есть
-**на ветке `feat/table-v2` пайплайн сейчас разорван после normalize**.
-Это ожидаемо и чинится здесь.
+- [x] `generate_lights_groups.py` → `groups.parquet` (было `device_rows`)
+- [x] `generate_general_groups.py` → `spaces.parquet`
+- [x] `generate_floor_groups.py` → `spaces.parquet`, `floor` из колонки «Этаж»
+- [x] удалён legacy из `canon.py` / `excel_schema.py`
+- [ ] **состав `TECHNICAL_SPACE_TYPES` не согласован** — сейчас заглушка
+      `{"korridor"}`, флаг `--generate-tech-groups` выключен по умолчанию
 
-- [ ] `generate_lights_groups.py` → `groups.parquet` (было `device_rows`)
-- [ ] `generate_general_groups.py` → `spaces.parquet`
-- [ ] `generate_floor_groups.py` → `spaces.parquet`, `floor` из колонки «Этаж»
-- [ ] решить судьбу `tex_floor_<n>` и `TECHNICAL_SPACE_TYPES` — **решаем при работе
-      с `generate_floor_groups.py`** (владелец, 2026-07-13). До тех пор в `canon.py`
-      живёт заглушка `TECHNICAL_SPACE_TYPES = {"korridor"}`, `GENERATE_TECH_GROUPS = 0`
-- [ ] удалить legacy-имена из `canon.py` / `excel_schema.py` (`COLUMNS_V1`,
-      `normalize_lamp_id_to_entity`, `TECHNICAL_CARD_TYPES`, `ALLOWED_CARD_TYPES`)
+### Что сделано сверх переноса
+
+**Фильтры переехали в CLI** (`scripts/_lib/filters.py`). Раньше они были
+константами в исходнике: чтобы исключить этаж, наладчику пришлось бы править
+код, а лаунчер передать их не мог вообще.
+
+```
+--spaces 103_vestibiul 104_metodicheskii_kabinet   # или русским именем
+--floors 1 2                                       # только floor
+--exclude-floors 4
+--exclude-space-contains sklad server
+--generate-tech-groups                             # только floor
+```
+
+`--spaces` и `--exclude-space-contains` понимают и транслит, и русское имя:
+наладчику неочевидно, что в фильтр надо писать `103_vestibiul`.
+
+**Исправлен дефект v1: висячие сущности.** У `generate_general_groups.py`
+стояло `EXCLUDE_SPACE_CONTAINS = ["koridor"]` — артефакт отладки перед ПНР.
+Коридоры не получали общую группу, но `generate_floor_groups.py` всё равно
+тянул их `general_light_entity` в группу этажа: в HA появлялась группа,
+ссылающаяся на несуществующую сущность. Теперь общую группу получают все
+помещения; тест `test_no_dangling_entities` проверяет, что каждая ссылка
+ведёт на реально созданную сущность.
+
+**Общий рендер YAML** (`scripts/_lib/yaml_render.py`): три генератора писали
+один и тот же блок `platform: group` тремя копиями кода.
+
+**Порядок — как в таблице** во всех трёх (раньше `floor` сортировал entity_id
+по алфавиту). Наладчик сверяет YAML со своим Excel.
+
+**Помещение без типа** попадает во все три генератора: лампы в нём физически
+существуют. Отсекается оно только на карточках.
 
 ## Этап 5 — Lovelace-карточки
 
