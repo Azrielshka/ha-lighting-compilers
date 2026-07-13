@@ -1,0 +1,113 @@
+blueprint:
+  name: Zone Manager — SPECIAL. Выключение зоны (OFF)
+  description: >
+    SPECIAL-зона: выключение, когда ВСЕ датчики находятся в 'vacant' непрерывно N секунд.
+    N берётся из выбранного input_number. Конфиг зоны берётся через zone_manager.get_sensor_config
+    по anchor_sensor (первый датчик списка). Есть защита: до 12 датчиков, без дублей.
+  domain: automation
+
+  input:
+    automation_label:
+      name: Имя автоматизации (для логов)
+      default: "SPECIAL OFF"
+      selector:
+        text: {}
+
+    vacancy_sensors:
+      name: Датчики
+      description: >
+        Список датчиков (до 12). Условие: все должны быть 'vacant' заданное время.
+        Дубли запрещены.
+      selector:
+        entity:
+          domain: sensor
+          multiple: true
+
+    vacant_delay_input:
+      name: Время перехода в vacant
+      description: input_number (секунды) для for:seconds.
+      selector:
+        entity:
+          domain: input_number
+
+    off_script:
+      name: Скрипт
+      description: >
+        Скрипт выключения (строго 1). Получит:
+        trigger_sensor (anchor), light_group.
+      selector:
+        entity:
+          domain: script
+
+mode: single
+
+trigger_variables:
+  sensors_raw: !input vacancy_sensors
+  sensors_unique: "{{ sensors_raw | unique | list }}"
+  anchor_sensor: "{{ sensors_unique[0] if (sensors_unique | length > 0) else '' }}"
+  vacant_delay_entity: !input vacant_delay_input
+
+trigger:
+  - platform: template
+    value_template: >-
+      {% set s = sensors_unique %}
+      {{ s | length > 0 and (s | select('is_state', 'vacant') | list | length == (s | length)) }}
+    for:
+      seconds: "{{ states(vacant_delay_entity) | float(0) }}"
+
+condition: []
+
+action:
+  # Валидация входных данных
+  - variables:
+      automation_label: !input automation_label
+      sensors_count: "{{ sensors_raw | length }}"
+      unique_count: "{{ sensors_unique | length }}"
+      duplicates_ok: "{{ sensors_count == unique_count }}"
+      limit_ok: "{{ sensors_count > 0 and sensors_count <= 12 }}"
+      anchor_ok: "{{ anchor_sensor != '' }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ not (duplicates_ok and limit_ok and anchor_ok) }}"
+        sequence:
+          - service: system_log.write
+            data:
+              level: warning
+              message: >-
+                zone_manager special_off blueprint input invalid ({{ automation_label }}):
+                sensors_count={{ sensors_count }},
+                unique_count={{ unique_count }},
+                duplicates_ok={{ duplicates_ok }},
+                limit_ok={{ limit_ok }},
+                anchor_sensor={{ anchor_sensor }},
+                sensors={{ sensors_raw }}
+          - stop: "Blueprint input invalid"
+    default: []
+
+  # Основная логика OFF
+  - action: zone_manager.get_sensor_config
+    data:
+      entity_id: "{{ anchor_sensor }}"
+      reload: false
+    response_variable: zm
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ zm.found }}"
+        sequence:
+          - service: script.turn_on
+            target:
+              entity_id: !input off_script
+            data:
+              variables:
+                trigger_sensor: "{{ anchor_sensor }}"
+                light_group: "{{ zm.light_group }}"
+    default:
+      - service: system_log.write
+        data:
+          level: warning
+          message: >-
+            zone_manager: config not found for {{ anchor_sensor }} ({{ automation_label }})

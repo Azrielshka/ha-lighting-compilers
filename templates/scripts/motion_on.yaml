@@ -1,0 +1,86 @@
+# Скрипты на включение зон по движению
+
+#Шаблон общего скрипта включения Коридор/Рекреация/Лестница/Холл
+shablon_script_on:
+  alias: Шаблон скрипта на включение
+  description: >-
+    Обработчик включения света по датчикам движения (100% в триггерной, 30% у
+    соседей)
+  mode: queued
+  max: 4
+  fields:
+    trigger_sensor:
+      description: Сработавший датчик движения
+      required: true
+      example: sensor.ms_5_1_5
+    light_group:
+      description: Основная группа(ы) светильников (100%)
+      required: true
+      example: light.510_1
+    neighbor_light_groups:
+      description: Список соседних групп светильников (30%)
+      required: true
+      example: light.510_0, light.510_2
+  variables:
+    step_delay_ms: 200
+    light_group_list: |
+      {% if light_group is string %}
+        {{ light_group.split(',') | map('trim') | list }}
+      {% else %}
+        {{ light_group }}
+      {% endif %}
+    neighbor_groups_list: |
+      {% if neighbor_light_groups is string %}
+        {{ neighbor_light_groups.split(',') | map('trim') | list }}
+      {% else %}
+        {{ neighbor_light_groups }}
+      {% endif %}
+  sequence:
+    - repeat:
+        count: "{{ light_group_list | length }}"
+        sequence:
+          - variables:
+              group: "{{ light_group_list[repeat.index-1] }}"
+              st: "{{ states(group) }}"
+              b: "{{ state_attr(group, 'brightness') | int(0) }}"
+              pct: "{{ ((b | float) / 255.0 * 100.0) | round(0) }}"
+              need_100: "{{ st != 'on' or (pct | int) < 100 }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ need_100 }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ group }}"
+                    data:
+                      brightness_pct: 100
+    - repeat:
+        count: "{{ neighbor_groups_list | length }}"
+        sequence:
+          - variables:
+              nb_group: "{{ neighbor_groups_list[repeat.index-1] }}"
+              nb_st: "{{ states(nb_group) }}"
+              nb_b: "{{ state_attr(nb_group, 'brightness') | int(0) }}"
+              nb_pct: "{{ ((nb_b | float) / 255.0 * 100.0) | round(0) }}"
+              need_30: "{{ nb_st != 'on' or (nb_pct | int) < 30 }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ need_30 }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ nb_group }}"
+                    data:
+                      brightness_pct: 30
+    - action: notify.persistent_notification
+      data:
+        title: Включение по датчику
+        message: |
+          Датчик: {{ trigger_sensor }}
+          Основная группа(ы): {{ light_group_list }} → 100%
+          Соседние группы: {{ neighbor_groups_list }} → 30%
+      enabled: false
+    - delay:
+        milliseconds: "{{ step_delay_ms | int }}"

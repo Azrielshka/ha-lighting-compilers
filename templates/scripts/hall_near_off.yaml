@@ -1,0 +1,184 @@
+# ЛОГИКА СКРИПТА (Hall / соседние зоны, единая группа света)
+# 1. Скрипт обрабатывает ПОТЕРЮ движения в соседних зонах холла.
+# 2. Для каждой логической пары датчиков:
+#    - ближний датчик (neighbors)
+#    - дальний датчик (far_neighbors)
+#    вычисляется первичное решение:
+#    • если ближний = motion → решение "skip" (группу света не трогаем)
+#    • если ближний ≠ motion и дальний = motion → решение 30%
+#    • если ближний ≠ motion и дальний ≠ motion → решение 0%
+# 3. Если ХОТЯ БЫ В ОДНОЙ паре присутствует решение 30%,
+#    выполняется короткая пауза (recheck_delay_ms) для перепроверки
+#    состояний датчиков (защита от задержек обновления).
+# 4. После перепроверки формируется ОДНО итоговое решение
+#    для всей группы света холла:
+#    • 30% — если движение подтверждено хотя бы в одной паре
+#    • 0%  — если движения нет ни в одной паре
+#    • skip — если все пары были заблокированы ближним движением
+# 5. Управляется ТОЛЬКО ОДНА группа света (первая из списка neighbor_light_groups).
+# 6. При выключении используется DALI-friendly логика:
+#    • команда turn_off
+#    • пауза (step_delay_ms)
+#    • ожидание подтверждения состояния off
+#    • при необходимости повторная команда turn_off
+# 7. Движение в самой зоне холла считается уже отфильтрованным автоматизацией
+#    (через trigger с for: vacant).
+# 8. Все тайминги заданы в миллисекундах для стабильности и единообразия.
+
+shablon_script_hall_near:
+  alias: Шаблон скрипта на выключение соседней зоны для холлов
+  description: Обработчик соседних зон холла этажей (DALI-friendly)
+  mode: queued
+  max: 6
+
+  fields:
+    trigger_sensor:
+      description: Сработавший датчик движения
+      required: true
+    neighbors:
+      description: Список ближних соседей (через запятую)
+      required: true
+    far_neighbors:
+      description: Список дальних соседей (через запятую)
+      required: true
+    neighbor_light_groups:
+      description: Список групп светильников соседей (через запятую)
+      required: true
+
+  variables:
+    recheck_delay_ms: 400
+    step_delay_ms: 100
+    wait_off_timeout_ms: 500
+
+    neighbors_list: |
+      {% if neighbors is string %}
+        {{ neighbors.split(',') | map('trim') | list }}
+      {% else %}
+        {{ neighbors }}
+      {% endif %}
+
+    far_neighbors_list: |
+      {% if far_neighbors is string %}
+        {{ far_neighbors.split(',') | map('trim') | list }}
+      {% else %}
+        {{ far_neighbors }}
+      {% endif %}
+
+    neighbor_groups_list: |
+      {% if neighbor_light_groups is string %}
+        {{ neighbor_light_groups.split(',') | map('trim') | list }}
+      {% else %}
+        {{ neighbor_light_groups }}
+      {% endif %}
+
+    eff_len: >
+      {% set m = neighbors_list | length %}
+      {{ m }}
+
+    decisions_initial: |
+      {% set ns = namespace(lst=[]) %}
+      {% for i in range(eff_len | int) %}
+        {% set near = states(neighbors_list[i]) | default('') | lower %}
+        {% if near == 'motion' %}
+          {% set ns.lst = ns.lst + ['skip'] %}
+        {% else %}
+          {% set far = states(far_neighbors_list[i]) | default('') | lower %}
+          {% if far == 'motion' %}
+            {% set ns.lst = ns.lst + [30] %}
+          {% else %}
+            {% set ns.lst = ns.lst + [0] %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.lst | tojson }}
+
+  sequence:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: >-
+                {% set di = decisions_initial if decisions_initial is not string else (decisions_initial | rom_json(default=[])) %}
+                {{ 30 in di }}
+          sequence:
+            - delay:
+                milliseconds: "{{ recheck_delay_ms | int }}"
+
+    - variables:
+        decisions_final: |
+          {% set di = decisions_initial if decisions_initial is not string else (decisions_initial | from_json(default=[])) %}
+          {% set ns = namespace(result='skip') %}
+          {% for i in range(eff_len | int) %}
+            {% set d = di[i] %}
+            {% if d == 30 %}
+              {% set near = states(neighbors_list[i]) | default('') | lower %}
+              {% set far  = states(far_neighbors_list[i]) | default('') | lower %}
+              {% if near != 'motion' and far != 'motion' %}
+                {% set ns.result = 0 %}
+              {% else %}
+                {% set ns.result = 30 %}
+              {% endif %}
+            {% elif d == 0 %}
+              {% set ns.result = 0 %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.result }}
+
+    - variables:
+        target_group: "{{ neighbor_groups_list[0] }}"
+        act: "{{ decisions_final }}"
+
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ act == 30 }}"
+          sequence:
+            - action: light.turn_on
+              target:
+                entity_id: "{{ target_group }}"
+              data:
+                brightness_pct: 30
+
+        - conditions:
+            - condition: template
+              value_template: "{{ act == 0 }}"
+          sequence:
+            - action: light.turn_off
+              target:
+                entity_id: "{{ target_group }}"
+              data: {}
+            - delay:
+                milliseconds: "{{ step_delay_ms | int }}"
+            - wait_template: |
+                {{ is_state(target_group, 'off') }}
+              timeout: >
+                00:00:{{ '%06.3f' | format((wait_off_timeout_ms | int) / 1000) }}
+              continue_on_timeout: true
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ not is_state(target_group, 'off') }}"
+                  sequence:
+                    - action: light.turn_off
+                      target:
+                        entity_id: "{{ target_group }}"
+                      data: {}
+
+        - conditions:
+            - condition: template
+              value_template: "{{ act == 'skip' }}"
+          sequence: []
+
+    - delay:
+        milliseconds: "{{ step_delay_ms | int }}"
+
+    - action: notify.persistent_notification
+      data:
+        title: OFF соседние (DALI)
+        message: |
+          Триггер: {{ trigger_sensor }}
+          Ближние: {{ neighbors_list }}
+          Дальние: {{ far_neighbors_list }}
+          Группа: {{ neighbor_groups_list[0] }}
+          Решения (перв.): {{ decisions_initial if decisions_initial is not string else (decisions_initial | from_json(default=[])) }}
+          Решение (финал): {{ decisions_final }}
+      enabled: true

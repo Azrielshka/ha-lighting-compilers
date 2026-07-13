@@ -1,0 +1,139 @@
+blueprint:
+  name: Zone Manager — Выключение зон по датчикам (OFF)
+  description: >
+    Выключение зоны по событию vacant от датчиков с задержкой (input_number).
+    Конфиг зоны берётся через zone_manager.get_sensor_config по trigger.entity_id и передаётся
+    в два выбранных скрипта (своя зона + соседние зоны).
+    Есть защита от дублей датчиков и лимит до 12 датчиков.
+  domain: automation
+  input:
+    automation_label:
+      name: Имя автоматизации (для логов)
+      description: >
+        Используется только в сообщениях в system_log. Реальное имя автоматизации
+        задаётся в HA при создании автоматизации из blueprint.
+      default: "Zone Manager OFF"
+      selector:
+        text: {}
+    vacancy_sensors:
+      name: Датчики
+      description: >
+        Список датчиков (до 12). Используются в triggers. Дубли запрещены.
+      selector:
+        entity:
+          domain: sensor
+          multiple: true
+
+    vacant_delay_input:
+      name: Время перехода в vacant
+      description: >
+        input_number, из которого берётся задержка (секунды) для for:seconds на каждом триггере.
+        Пример: input_number.corridor_time_delay
+      selector:
+        entity:
+          domain: input_number
+
+    off_script_1:
+      name: Скрипт 1 (выключение своей зоны)
+      description: >
+        Скрипт выключения своей зоны. Получит:
+        trigger_sensor, neighbors, light_group (используется light_group_single).
+      selector:
+        entity:
+          domain: script
+
+    off_script_2:
+      name: Скрипт 2 (выключение соседних зон)
+      description: >
+        Скрипт выключения соседних зон. Получит:
+        trigger_sensor, neighbors, far_neighbors, neighbor_light_groups.
+      selector:
+        entity:
+          domain: script
+
+mode: single
+
+trigger_variables:
+  vacant_delay_entity: !input vacant_delay_input
+
+trigger:
+  - platform: state
+    entity_id: !input vacancy_sensors
+    to: "vacant"
+    for:
+      seconds: "{{ states(vacant_delay_entity) | float(0) }}"
+
+condition: []
+
+action:
+  # ----------------------------
+  # Валидация входных данных blueprint
+  # ----------------------------
+  - variables:
+      automation_label: !input automation_label
+      sensors: !input vacancy_sensors
+      sensors_unique: "{{ sensors | unique | list }}"
+      sensors_count: "{{ sensors | length }}"
+      duplicates_ok: "{{ (sensors_unique | length) == sensors_count }}"
+      limit_ok: "{{ sensors_count > 0 and sensors_count <= 12 }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ not (duplicates_ok and limit_ok) }}"
+        sequence:
+          - service: system_log.write
+            data:
+              level: warning
+              message: >-
+                zone_manager blueprint input invalid ({{ automation_label }}):
+                sensors_count={{ sensors_count }},
+                duplicates_ok={{ duplicates_ok }},
+                limit_ok={{ limit_ok }},
+                sensors={{ sensors }}
+          - stop: "Blueprint input invalid: duplicates or sensors limit exceeded"
+    default: []
+
+  # ----------------------------
+  # Основная логика OFF
+  # ----------------------------
+  - variables:
+      trigger_sensor: "{{ trigger.entity_id }}"
+
+  - action: zone_manager.get_sensor_config
+    data:
+      entity_id: "{{ trigger_sensor }}"
+      reload: false
+    response_variable: zm
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ zm.found }}"
+        sequence:
+          # Скрипт 1 — выключение своей зоны
+          - service: script.turn_on
+            target:
+              entity_id: !input off_script_1
+            data:
+              variables:
+                trigger_sensor: "{{ trigger_sensor }}"
+                neighbors: "{{ zm.neighbors }}"
+                light_group: "{{ zm.light_group_single }}"
+
+          # Скрипт 2 — выключение соседних зон
+          - service: script.turn_on
+            target:
+              entity_id: !input off_script_2
+            data:
+              variables:
+                trigger_sensor: "{{ trigger_sensor }}"
+                neighbors: "{{ zm.neighbors }}"
+                far_neighbors: "{{ zm.far_neighbors }}"
+                neighbor_light_groups: "{{ zm.neighbor_groups }}"
+    default:
+      - service: system_log.write
+        data:
+          level: warning
+          message: >-
+            zone_manager: config not found for {{ trigger_sensor }} ({{ automation_label }})

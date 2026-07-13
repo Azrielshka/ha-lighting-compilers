@@ -121,6 +121,7 @@ class LauncherWindow(QMainWindow):
             "general": "scripts/generate_general_groups.py",
             "floor": "scripts/generate_floor_groups.py",
             "areas": "scripts/generate_areas.py",
+            "scripts": "scripts/generate_scripts.py",
             "lovelace": "scripts/generate_lovelace_cards_v2.py",
         }
 
@@ -146,6 +147,7 @@ class LauncherWindow(QMainWindow):
             "general",
             "floor",
             "areas",
+            "scripts",
         ]
 
         # ------------------------------------------------------------
@@ -199,7 +201,7 @@ class LauncherWindow(QMainWindow):
         # Стартовые строки в лог
         # ------------------------------------------------------------
         self.append_log("Launcher готов")
-        self.append_log("Pipeline: validate → normalize → lights → general → floor → areas")
+        self.append_log("Pipeline: validate → normalize → lights → general → floor → areas → scripts")
         self.append_log("Build All работает офлайн: в Home Assistant ничего не пишет")
         self.append_log("Build All останавливается, если таблица не прошла проверку")
         self.append_log("Lovelace не переехал на новый формат (этап 5) — в Build All не входит")
@@ -297,6 +299,13 @@ class LauncherWindow(QMainWindow):
             "К HA не подключается: создание — на шаге деплоя."
         )
 
+        # Клоны шаблонных скриптов: свой набор на каждую единицу обслуживания.
+        self.btn_scripts = QPushButton("7. Generate Scripts")
+        self.btn_scripts.setToolTip(
+            "Клонирует шаблоны из templates/scripts/ по единицам обслуживания.\n"
+            "Один экземпляр скрипта в HA — одна очередь, поэтому у каждой единицы свой набор."
+        )
+
         # Не входит в Build All: генератор ещё не переехал на схему v2.
         self.btn_lovelace = QPushButton("Generate Lovelace Cards ⚠")
         self.btn_lovelace.setToolTip(
@@ -317,6 +326,7 @@ class LauncherWindow(QMainWindow):
         layout.addWidget(self.btn_general)
         layout.addWidget(self.btn_floor)
         layout.addWidget(self.btn_areas)
+        layout.addWidget(self.btn_scripts)
 
         layout.addSpacing(8)
         layout.addWidget(self.btn_lovelace)
@@ -398,6 +408,9 @@ class LauncherWindow(QMainWindow):
         )
         self.btn_areas.clicked.connect(
             lambda: self._run_single_operation("areas")
+        )
+        self.btn_scripts.clicked.connect(
+            lambda: self._run_single_operation("scripts")
         )
         self.btn_lovelace.clicked.connect(
             lambda: self._run_single_operation("lovelace")
@@ -513,6 +526,7 @@ class LauncherWindow(QMainWindow):
         self.btn_general.setEnabled(not is_running)
         self.btn_floor.setEnabled(not is_running)
         self.btn_areas.setEnabled(not is_running)
+        self.btn_scripts.setEnabled(not is_running)
         self.btn_lovelace.setEnabled(not is_running)
         self.btn_build_all.setEnabled(not is_running)
         self.btn_open_output.setEnabled(not is_running)

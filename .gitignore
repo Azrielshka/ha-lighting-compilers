@@ -40,6 +40,7 @@ data/lovelace_cards_generated.txt
 data/lovelace_cards_report.json
 data/validation_report.json
 data/areas/
+data/scripts/
 
 # =========================
 # Секреты (доступ к Home Assistant)

@@ -1,0 +1,96 @@
+blueprint:
+  name: Zone Manager — SPECIAL. Включение зоны (ON)
+  description: >
+    SPECIAL-зона: если любой из датчиков стал motion, включаем всю зону.
+    Конфиг зоны берётся через zone_manager.get_sensor_config по trigger.entity_id.
+    Есть защита: до 12 датчиков, без дублей, скрипт строго один.
+  domain: automation
+
+  input:
+    automation_label:
+      name: Имя автоматизации (для логов)
+      default: "SPECIAL ON"
+      selector:
+        text: {}
+
+    motion_sensors:
+      name: Датчики
+      description: Список датчиков (до 12). Дубли запрещены.
+      selector:
+        entity:
+          domain: sensor
+          multiple: true
+
+    on_script:
+      name: Скрипт
+      description: >
+        Скрипт включения (строго 1). Получит:
+        trigger_sensor, light_group.
+      selector:
+        entity:
+          domain: script
+
+mode: single
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensors
+    to: "motion"
+
+condition: []
+
+action:
+  # Валидация входных данных
+  - variables:
+      automation_label: !input automation_label
+      sensors: !input motion_sensors
+      sensors_unique: "{{ sensors | unique | list }}"
+      sensors_count: "{{ sensors | length }}"
+      duplicates_ok: "{{ (sensors_unique | length) == sensors_count }}"
+      limit_ok: "{{ sensors_count > 0 and sensors_count <= 12 }}"
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ not (duplicates_ok and limit_ok) }}"
+        sequence:
+          - service: system_log.write
+            data:
+              level: warning
+              message: >-
+                zone_manager special_on blueprint input invalid ({{ automation_label }}):
+                sensors_count={{ sensors_count }},
+                duplicates_ok={{ duplicates_ok }},
+                limit_ok={{ limit_ok }},
+                sensors={{ sensors }}
+          - stop: "Blueprint input invalid"
+    default: []
+
+  # Основная логика ON
+  - variables:
+      trigger_sensor: "{{ trigger.entity_id }}"
+
+  - action: zone_manager.get_sensor_config
+    data:
+      entity_id: "{{ trigger_sensor }}"
+      reload: false
+    response_variable: zm
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ zm.found }}"
+        sequence:
+          - service: script.turn_on
+            target:
+              entity_id: !input on_script
+            data:
+              variables:
+                trigger_sensor: "{{ trigger_sensor }}"
+                light_group: "{{ zm.light_group }}"
+    default:
+      - service: system_log.write
+        data:
+          level: warning
+          message: >-
+            zone_manager: config not found for {{ trigger_sensor }} ({{ automation_label }})

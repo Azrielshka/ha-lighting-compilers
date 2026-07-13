@@ -47,8 +47,8 @@ __version__ = "2.0.0"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_SPACES_PARQUET = PROJECT_ROOT / "data" / "normalized" / "spaces.parquet"
-DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "templates" / "manifest.yaml"
-DEFAULT_TEMPLATES_DIR = PROJECT_ROOT / "templates"
+DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "templates" / "lovelace" / "manifest.yaml"
+DEFAULT_TEMPLATES_DIR = PROJECT_ROOT / "templates" / "lovelace"
 
 DEFAULT_OUTPUT_TXT = PROJECT_ROOT / "data" / "lovelace_cards_generated.txt"
 DEFAULT_REPORT_JSON = PROJECT_ROOT / "data" / "lovelace_cards_report.json"
