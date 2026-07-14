@@ -58,7 +58,8 @@ def automations(tmp_path: Path, rows: List[Dict], filters: Filters = None) -> Li
     text = AUTO.build_yaml(units, filters or Filters(), AUTO.BLUEPRINT_DIR)
     doc = yaml.safe_load(text)
 
-    return doc[AUTO.ROOT_KEY]["automation"] if doc else []
+    # Файл — голый список: !include_dir_merge_list ждёт именно его.
+    return doc if doc else []
 
 
 def test_unit_without_sensors_yields_comment_not_empty_list(tmp_path):
@@ -102,6 +103,39 @@ BlueprintLoader.add_constructor(
 
 def load_blueprint(filename: str) -> dict:
     return yaml.load((BLUEPRINTS / filename).read_text(encoding="utf-8"), BlueprintLoader)
+
+
+# ============================================================
+# ФОРМАТ ФАЙЛА
+# ============================================================
+
+def test_file_is_a_bare_list(object_layer):
+    """
+    Файл кладётся в includes/automations/, подключённую через
+    !include_dir_merge_list — она ждёт СПИСОК. Домен automation: в Home
+    Assistant списком и является.
+
+    Обёртка вида `zm_automations:` / `automation:` здесь недопустима:
+    с ней HA файл не подхватит.
+    """
+    units = load_dataset(object_layer, "units")
+    doc = yaml.safe_load(AUTO.build_yaml(units, Filters(), AUTO.BLUEPRINT_DIR))
+
+    assert isinstance(doc, list)
+    assert all("id" in a and "use_blueprint" in a for a in doc)
+
+
+def test_scripts_file_is_a_mapping(object_layer):
+    """
+    Зеркальная проверка: scripts.yaml идёт в includes/scripts/ через
+    !include_dir_merge_named — там, наоборот, нужен СЛОВАРЬ
+    `object_id -> скрипт`. Перепутать эти два формата — значит получить
+    конфигурацию, которую HA не загрузит.
+    """
+    units = load_dataset(object_layer, "units")
+    doc = yaml.safe_load(SCRIPTS.build_yaml(units, SCRIPT_TEMPLATES, Filters()))
+
+    assert isinstance(doc, dict)
 
 
 # ============================================================
@@ -265,7 +299,7 @@ def test_no_dangling_script_references(object_layer):
 
     referenced = {
         value
-        for a in auto_doc[AUTO.ROOT_KEY]["automation"]
+        for a in auto_doc
         for value in inputs_of(a).values()
         if isinstance(value, str) and value.startswith("script.")
     }
@@ -278,7 +312,7 @@ def test_blueprint_paths_point_at_real_files(object_layer):
     units = load_dataset(object_layer, "units")
     doc = yaml.safe_load(AUTO.build_yaml(units, Filters(), AUTO.BLUEPRINT_DIR))
 
-    for a in doc[AUTO.ROOT_KEY]["automation"]:
+    for a in doc:
         filename = a["use_blueprint"]["path"].split("/")[-1]
         assert (BLUEPRINTS / filename).exists()
 
@@ -287,7 +321,7 @@ def test_sensors_match_units_parquet(object_layer):
     units = load_dataset(object_layer, "units")
     doc = yaml.safe_load(AUTO.build_yaml(units, Filters(), AUTO.BLUEPRINT_DIR))
 
-    by_id = {a["id"]: a for a in doc[AUTO.ROOT_KEY]["automation"]}
+    by_id = {a["id"]: a for a in doc}
 
     for _, unit in units.iterrows():
         on = by_id[f"zm_{unit['unit_id']}_on"]
@@ -298,7 +332,7 @@ def test_ids_are_unique(object_layer):
     units = load_dataset(object_layer, "units")
     doc = yaml.safe_load(AUTO.build_yaml(units, Filters(), AUTO.BLUEPRINT_DIR))
 
-    ids = [a["id"] for a in doc[AUTO.ROOT_KEY]["automation"]]
+    ids = [a["id"] for a in doc]
     assert len(ids) == len(set(ids))
 
 
@@ -306,7 +340,7 @@ def test_object_example(object_layer):
     units = load_dataset(object_layer, "units")
     doc = yaml.safe_load(AUTO.build_yaml(units, Filters(), AUTO.BLUEPRINT_DIR))
 
-    ids = {a["id"] for a in doc[AUTO.ROOT_KEY]["automation"]}
+    ids = {a["id"] for a in doc}
     assert ids == {
         "zm_hl_1_on", "zm_hl_1_off",
         "zm_103_vestibiul_on", "zm_103_vestibiul_off",
@@ -351,7 +385,7 @@ def test_filter_keeps_whole_block(object_layer):
     text = AUTO.build_yaml(units, Filters(spaces=["101_Тамбур"]), AUTO.BLUEPRINT_DIR)
     doc = yaml.safe_load(text)
 
-    ids = {a["id"] for a in doc[AUTO.ROOT_KEY]["automation"]}
+    ids = {a["id"] for a in doc}
     assert ids == {"zm_hl_1_on", "zm_hl_1_off"}
 
 
@@ -367,7 +401,7 @@ def test_custom_blueprint_dir(object_layer):
     units = load_dataset(object_layer, "units")
     doc = yaml.safe_load(AUTO.build_yaml(units, Filters(), "my_dir"))
 
-    paths = {a["use_blueprint"]["path"] for a in doc[AUTO.ROOT_KEY]["automation"]}
+    paths = {a["use_blueprint"]["path"] for a in doc}
     assert all(p.startswith("my_dir/") for p in paths)
 
 
@@ -386,7 +420,7 @@ def test_cli(monkeypatch, tmp_path, object_layer):
     assert AUTO.main() == 0
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert len(doc[AUTO.ROOT_KEY]["automation"]) == 6
+    assert len(doc) == 6
     assert (bp_out / "zm_default_on.yaml").exists()
 
 

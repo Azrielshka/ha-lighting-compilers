@@ -230,7 +230,33 @@ SFTP не работает → нужен `scp -O`; обязательны `Ciph
 `MACs=hmac-sha2-256-etm@openssh.com`, иначе `Corrupted MAC on input`;
 порт и юзер свои на каждом объекте → поля в лаунчере, не константы.
 
-- [ ] **куда именно на HA ложатся пакеты и как включены в `configuration.yaml`** ⬅ вопрос владельцу
+### Раскладка на HA (согласована 2026-07-14)
+
+```yaml
+# configuration.yaml — у владельца уже так, менять НЕ надо
+homeassistant:
+  packages: !include_dir_merge_named includes/packages/
+
+automation manual: !include_dir_merge_list  includes/automations/
+script manual:     !include_dir_merge_named includes/scripts/
+```
+
+| Наш артефакт | Куда на HA | Формат файла |
+|---|---|---|
+| 3 файла групп света | `includes/packages/zm_*.yaml` | пакет (маппинг) |
+| `scripts.yaml` | `includes/scripts/zm_scripts.yaml` | **словарь** `object_id → скрипт` |
+| `automations.yaml` | `includes/automations/zm_automations.yaml` | **голый список** |
+| 6 blueprint'ов | `blueprints/automation/zone_manager/` | как есть |
+| Areas, Floors | реестры HA | WebSocket, файла нет |
+
+⚠ Форматы не взаимозаменяемы: `merge_list` ждёт список, `merge_named` — словарь.
+Домен `automation:` в HA — список, `script:` — словарь. Перепутать = конфигурация
+не загрузится. Тесты `test_file_is_a_bare_list` и `test_scripts_file_is_a_mapping`
+это стерегут.
+
+Префикс `zm_` в именах файлов — чтобы деплой перезаписывал только своё и
+никогда не трогал файлы наладчика.
+
 - [ ] `deploy.py`: читает локальные артефакты, шлёт выбранное
 - [ ] dry-run по умолчанию, `--live` для записи; идемпотентность
 - [ ] URL/токен/SSH — поля в лаунчере (в конфиг, не в git) + `.env` для CLI
@@ -281,5 +307,4 @@ JSON Zone Manager — собирается вручную; для автомат
 |---|---|---|
 | 1 | Монолитные шаблоны карточек или сборка из блоков | Lovelace |
 | 2 | Как подставлять датчики в карточку, когда их число ≠ числу зон | Lovelace |
-| 3 | Куда на HA ложатся пакеты и как включены в `configuration.yaml` | Деплой |
-| 4 | Что деплой должен уметь отправлять (список галочек) | Деплой |
+| 3 | Что деплой должен уметь отправлять (список галочек) | Деплой |

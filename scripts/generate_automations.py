@@ -12,10 +12,21 @@ Blueprint — диспетчер: он ловит событие, спрашив
 Zone Manager и передаёт её в клонированный скрипт. Логики управления светом
 в нём нет.
 
-Почему отдельный файл, а не automations.yaml
---------------------------------------------
-В automations.yaml Home Assistant пишет автоматизации, созданные через UI.
-Перезаписав его, мы стёрли бы ручную работу наладчика. Поэтому пакет.
+Формат файла: ГОЛЫЙ СПИСОК
+--------------------------
+Файл кладётся в includes/automations/, которая подключена так:
+
+    automation manual: !include_dir_merge_list includes/automations/
+
+Директива merge_list ждёт в каждом файле СПИСОК, а домен `automation:` в
+Home Assistant списком и является. Обёртки вида `zm_automations:` /
+`automation:` здесь быть НЕ должно — с ней HA файл не подхватит.
+
+(Для сравнения: scripts.yaml идёт в includes/scripts/ с merge_named — там,
+наоборот, нужен словарь `object_id -> скрипт`, и он там есть.)
+
+Почему не automations.yaml в корне: туда Home Assistant пишет автоматизации,
+созданные через UI. Перезаписав его, мы стёрли бы ручную работу наладчика.
 
 ⚠ Известный долг
 ----------------
@@ -66,9 +77,6 @@ DEFAULT_TEMPLATES_DIR = PROJECT_ROOT / "templates" / "blueprints"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "automations" / "automations.yaml"
 DEFAULT_BLUEPRINTS_OUT = PROJECT_ROOT / "data" / "blueprints"
 
-# Корневой ключ пакета — как у групп света (lights_group, lights_floor_group).
-ROOT_KEY = "zm_automations"
-
 ROLE_TITLES = {"on": "ON", "off": "OFF"}
 
 
@@ -97,25 +105,27 @@ def build_automation(unit, role: str, directory: str) -> List[str]:
     label = _spaces_label(unit)
     sensors = list(unit["sensors_ms"])
 
+    # Элемент списка верхнего уровня: файл целиком — голый список,
+    # его подхватывает !include_dir_merge_list.
     lines: List[str] = [
-        f"    - id: {automation_id(unit_id, role)}",
-        f'      alias: "{label} — {ROLE_TITLES[role]}"',
-        "      use_blueprint:",
-        f"        path: {blueprint_path(bp_file, directory)}",
-        "        input:",
-        f'          automation_label: "{label} {ROLE_TITLES[role]}"',
+        f"- id: {automation_id(unit_id, role)}",
+        f'  alias: "{label} — {ROLE_TITLES[role]}"',
+        "  use_blueprint:",
+        f"    path: {blueprint_path(bp_file, directory)}",
+        "    input:",
+        f'      automation_label: "{label} {ROLE_TITLES[role]}"',
     ]
 
     for input_name, source in inputs.items():
         if source == "sensors":
-            lines.append(f"          {input_name}:")
+            lines.append(f"      {input_name}:")
             for sensor in sensors:
-                lines.append(f"            - {sensor}")
+                lines.append(f"        - {sensor}")
         elif source == "vacant_delay":
-            lines.append(f"          {input_name}: {VACANT_DELAY_ENTITY}")
+            lines.append(f"      {input_name}: {VACANT_DELAY_ENTITY}")
         else:
             # source — роль скрипта: on / off / near_off / hall_near
-            lines.append(f"          {input_name}: {script_entity(unit_id, source)}")
+            lines.append(f"      {input_name}: {script_entity(unit_id, source)}")
 
     lines.append("")
     return lines
@@ -147,16 +157,18 @@ def build_yaml(units_df: pd.DataFrame, filters: Filters, directory: str) -> str:
         "# Blueprint — диспетчер: ловит событие, берёт конфигурацию зоны у",
         "# Zone Manager и передаёт её в клонированный скрипт.",
         "#",
-        "# Пакет, а не automations.yaml: туда Home Assistant пишет автоматизации,",
-        "# созданные через UI, и перезапись стёрла бы ручную работу наладчика.",
+        "# Файл — ГОЛЫЙ СПИСОК, без обёртки: он кладётся в includes/automations/,",
+        "# подключённую через !include_dir_merge_list. Домен automation: в Home",
+        "# Assistant списком и является.",
+        "#",
+        "# Не automations.yaml в корне: туда HA пишет автоматизации, созданные",
+        "# через UI, и перезапись стёрла бы ручную работу наладчика.",
         "#",
         f"# ⚠ {VACANT_DELAY_ENTITY} пайплайн не создаёт — заведите его на объекте,",
         "#   иначе OFF-триггер не сработает и свет не будет гаснуть.",
         "#",
         "# Файл собран автоматически — правки будут затёрты.",
         "",
-        f"{ROOT_KEY}:",
-        "  automation:",
     ]
 
     by_family: Dict[str, int] = {}
@@ -168,7 +180,7 @@ def build_yaml(units_df: pd.DataFrame, filters: Filters, directory: str) -> str:
             no_sensors.append(str(unit["unit_id"]))
             continue
 
-        lines.append(f"    # ── {unit['unit_id']}  ({unit['family']}, "
+        lines.append(f"# ── {unit['unit_id']}  ({unit['family']}, "
                      f"{unit['sensor_count']} датч.)")
 
         for role in ("on", "off"):
@@ -187,8 +199,6 @@ def build_yaml(units_df: pd.DataFrame, filters: Filters, directory: str) -> str:
         print(f"\n  ⚠ Без датчиков — автоматизации не созданы: {', '.join(no_sensors)}")
 
     if made == 0:
-        # Пустой `automation:` без списка YAML разберёт как None, и HA
-        # споткнётся о пакет. Лучше честный комментарий.
         return "# Ни одна единица обслуживания не имеет датчиков — автоматизации не созданы\n"
 
     while lines and lines[-1] == "":
