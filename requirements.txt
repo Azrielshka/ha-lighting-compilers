@@ -2,6 +2,9 @@ pandas>=2.0
 pyarrow>=15.0
 openpyxl>=3.1
 PyYAML>=6.0
+
+# Деплой на Home Assistant
+paramiko>=3.4      # SFTP: файлы в /config через add-on «Advanced SSH & Web Terminal»
 # GUI launcher
 PySide6>=6.8
 

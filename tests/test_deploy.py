@@ -15,7 +15,7 @@ import pytest
 import yaml
 
 import deploy as DEPLOY
-from scripts._lib.ha_ssh import HASSHClient, SSHConfig, SSHTransportNotImplemented
+from scripts._lib.ha_ssh import HASSHClient, SSHConfig, SSHTransportError
 from scripts._lib.ha_targets import (
     TARGET_TITLES,
     TARGETS,
@@ -294,17 +294,17 @@ def test_ws_token_is_not_printed_in_full():
 # ТРАНСПОРТ — ЗАГОТОВКА, ОТКАЗЫВАЕТСЯ ЧЕСТНО
 # ============================================================
 
-def test_ssh_transport_refuses_honestly(tmp_path):
+def test_ssh_transport_is_real(tmp_path):
     """
-    Заготовка не должна делать вид, что залила. Молчаливая заглушка хуже
-    отказа: наладчик решил бы, что всё уехало.
+    SFTP-транспорт реализован и проверен на живом HA. Недоступный хост даёт
+    внятную ошибку, а не молчаливый успех.
     """
     key = tmp_path / "k"
     key.write_text("x", encoding="utf-8")
 
-    client = HASSHClient(SSHConfig(host="ha", key_path=str(key)))
+    client = HASSHClient(SSHConfig(host="127.0.0.1", port=1, key_path=str(key)))
 
-    with pytest.raises(SSHTransportNotImplemented):
+    with pytest.raises(SSHTransportError, match="не могу подключиться"):
         client.connect()
 
 
@@ -370,10 +370,10 @@ def test_live_without_params_fails(monkeypatch, data_dir, capsys):
     assert "Проверьте параметры SSH" in capsys.readouterr().out
 
 
-def test_live_refuses_because_transport_is_stub(monkeypatch, data_dir, tmp_path, capsys):
+def test_live_reports_unreachable_host(monkeypatch, data_dir, tmp_path, capsys):
     """
-    С валидными параметрами --live всё равно откажется: транспорт заготовка.
-    Это и требуется — сделать вид, что залил, было бы хуже всего.
+    Транспорт настоящий: до недоступного хоста он честно не достучится и
+    посоветует залить вручную.
     """
     key = tmp_path / "k"
     key.write_text("x", encoding="utf-8")
@@ -381,13 +381,13 @@ def test_live_refuses_because_transport_is_stub(monkeypatch, data_dir, tmp_path,
     code = _main(
         monkeypatch,
         "--data", str(data_dir), "--live",
-        "--host", "ha.local", "--key", str(key),
+        "--host", "127.0.0.1", "--port", "1", "--key", str(key),
         "--url", "http://ha:8123", "--token", "t",
     )
 
     assert code == 3
     out = capsys.readouterr().out
-    assert "не подключён" in out
+    assert "не могу подключиться" in out
     assert "вручную" in out
 
 

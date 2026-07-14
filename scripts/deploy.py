@@ -3,10 +3,11 @@
 deploy.py
 Доставка сгенерированной конфигурации на Home Assistant.
 
-⚠ СЕГОДНЯ РАБОТАЕТ ТОЛЬКО DRY-RUN.
-Транспорт (SSH и WebSocket) — заготовки: `--live` честно откажется работать,
-а не сделает вид, что залил. Пока это так, dry-run печатает полный список
-«файл → путь на HA», чтобы наладчик мог залить руками.
+Файлы едут по SFTP (add-on «Advanced SSH & Web Terminal») — транспорт проверен
+на живом HA. Пространства пока не едут: WebSocket-клиент ещё заготовка, и он
+честно откажется работать, а не сделает вид, что создал.
+
+Dry-run по умолчанию: показывает, что и куда поедет. `--live` отправляет.
 
 Что и куда
 ----------
@@ -37,7 +38,12 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from scripts._lib.ha_ssh import HASSHClient, SSHConfig, SSHTransportNotImplemented
+from scripts._lib.ha_ssh import (
+    HASSHClient,
+    SSHConfig,
+    SSHNotConfigured,
+    SSHTransportError,
+)
 from scripts._lib.ha_targets import (
     HA_CONFIG_ROOT,
     TARGET_TITLES,
@@ -181,23 +187,60 @@ def print_restart_reminder() -> None:
 # ЖИВОЙ ДЕПЛОЙ — пока не подключён
 # ============================================================
 
+def deploy_files(plan: Plan, ssh: SSHConfig) -> int:
+    """
+    Залить файлы по SFTP. Возвращает число неудач.
+
+    При отказе на одном файле остальные доливаем: половина конфигурации на HA
+    хуже, чем «почти вся, кроме одного, вот он» (решение владельца).
+
+    Порядок из plan.ready: blueprint'ы -> скрипты -> автоматизации. Если
+    оборвётся посередине, HA не увидит автоматизаций, ссылающихся на
+    несуществующие скрипты.
+    """
+    if not plan.ready:
+        print("  Файлов к отправке нет.\n")
+        return 0
+
+    errors = 0
+
+    with HASSHClient(ssh) as client:
+        print("  ✅ SSH подключён, SFTP работает\n")
+
+        # На свежем объекте папок может не быть вовсе.
+        for remote_dir in plan.remote_dirs:
+            if client.ensure_dir(remote_dir):
+                print(f"  + создана папка {remote_dir}")
+
+        for f in plan.ready:
+            try:
+                written = client.put(f.local, f.remote)
+                print(f"  ✓ {f.remote}  ({_human_size(written)})")
+            except SSHTransportError as exc:
+                print(f"  ❌ {f.remote}: {exc}")
+                errors += 1
+
+    print()
+    return errors
+
+
 def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig]) -> int:
     """
     Отправить конфигурацию на Home Assistant.
 
-    ⚠ Транспорт не реализован: и SSH, и WebSocket — заготовки.
-    Отказываемся честно, а не делаем вид, что залили.
+    Файлы — по SFTP, пространства — по WebSocket. Это два разных транспорта:
+    WebSocket пишет реестры, но не кладёт файлы в /config.
     """
     print("🚀 Живой деплой\n")
 
-    problems = ssh.validate()
-    if problems:
-        print("❌ Проверьте параметры SSH:")
-        for p in problems:
-            print(f"   • {p}")
-        return 2
-
-    print(f"  SSH: {ssh.describe()}")
+    if plan.ready:
+        problems = ssh.validate()
+        if problems:
+            print("❌ Проверьте параметры SSH:")
+            for p in problems:
+                print(f"   • {p}")
+            return 2
+        print(f"  SSH: {ssh.describe()}")
 
     if ws is not None:
         ws_problems = ws.validate()
@@ -210,16 +253,31 @@ def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig]) -> int:
 
     print()
 
-    try:
-        HASSHClient(ssh).connect()
-    except SSHTransportNotImplemented as exc:
-        print(f"❌ {exc}\n")
-        print("   Пока транспорт не подключён, залейте файлы вручную:")
-        print("   запустите deploy.py без --live — он покажет, что и куда.")
-        return 3
+    errors = 0
 
-    # Сюда дойдём, когда транспорт будет готов.
-    raise AssertionError("недостижимо, пока транспорт — заготовка")
+    if plan.ready:
+        try:
+            errors += deploy_files(plan, ssh)
+        except (SSHNotConfigured, SSHTransportError) as exc:
+            print(f"❌ {exc}\n")
+            print("   Файлы можно залить вручную — запустите deploy.py без --live.")
+            return 3
+
+    # Пространства: WebSocket-клиент пока заготовка.
+    if ws is not None and plan.areas_file is not None and plan.areas_file.exists():
+        print("🏢 Пространства и этажи\n")
+        try:
+            HAWebSocketClient(ws).connect()
+        except WSTransportNotImplemented as exc:
+            print(f"⚠ {exc}\n")
+            print("   Файлы уехали, пространства — нет.")
+            errors += 1
+
+    if errors:
+        print(f"⚠ Завершено с ошибками: {errors}")
+        return 1
+
+    return 0
 
 
 # ============================================================
@@ -240,7 +298,7 @@ def main() -> int:
     parser.add_argument("--config-root", default=HA_CONFIG_ROOT,
                         help="Корень конфигурации на HA")
     parser.add_argument("--live", action="store_true",
-                        help="Реально отправить (сейчас откажется: транспорт не готов)")
+                        help="Реально отправить на Home Assistant")
 
     ssh_group = parser.add_argument_group("SSH (файлы)")
     ssh_group.add_argument("--host", default=os.environ.get("HA_SSH_HOST", ""))
@@ -274,7 +332,7 @@ def main() -> int:
 
     if not args.live:
         print("\nЭто dry-run — ничего не отправлено.")
-        print("Транспорт пока не подключён: файлы можно залить вручную по путям выше.")
+        print("Чтобы отправить файлы: тот же запуск с флагом --live.")
         return 0
 
     ssh = SSHConfig(
