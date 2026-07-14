@@ -2,7 +2,7 @@
 """
 Нормализация Excel -> parquet.
 
-Модель: docs/internal/data_model_v2.md
+Модель: docs/internal/data_model.md
 """
 
 from __future__ import annotations

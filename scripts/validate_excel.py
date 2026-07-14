@@ -10,7 +10,7 @@ validate_excel.py
 "одна лампа в двух группах" обнаружится уже в Home Assistant.
 
 Правила и их коды: docs/ROADMAP.md, этап 2.
-Модель данных: docs/internal/data_model_v2.md.
+Модель данных: docs/internal/data_model.md.
 """
 
 from __future__ import annotations

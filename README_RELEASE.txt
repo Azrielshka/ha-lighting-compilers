@@ -1,8 +1,8 @@
-# HA College Lighting — инструкция запуска (Release)
+# HA Lighting Compilers — инструкция запуска (Release)
 
 ## 📦 Что внутри архива
 
-После скачивания `ha-college-lighting.zip` у тебя есть:
+После скачивания `ha-lighting-compilers.zip` у тебя есть:
 
 - `launcher.exe` — графический интерфейс для запуска пайплайна
 - `scripts/` — Python-скрипты генерации (ОБЯЗАТЕЛЬНЫ)
@@ -30,10 +30,10 @@ py --version
 
 ### 1. Распаковать архив
 
-Распакуй `ha-college-lighting.zip` в удобную папку, например:
+Распакуй `ha-lighting-compilers.zip` в удобную папку, например:
 
 ```
-C:\Projects\ha-college-lighting
+C:\Projects\ha-lighting-compilers
 ```
 
 ---
@@ -100,7 +100,7 @@ launcher.exe
 ### 1. Укажи пути:
 
 - **Project Root** → путь к папке проекта
-  (пример: `C:\Projects\ha-college-lighting`)
+  (пример: `C:\Projects\ha-lighting-compilers`)
 
 - **Excel File Path** → путь к Excel
   (пример: `...\data\example.xlsx`)
@@ -243,7 +243,7 @@ py -m venv .venv
 
 Готово 🚀
 
-ha-college-lighting — инструкция запуска
+ha-lighting-compilers — инструкция запуска
 
 1. Установить Python 3.10+
 https://www.python.org/downloads/

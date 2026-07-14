@@ -5,7 +5,7 @@
 Этот документ — для человека. **Машиночитаемый источник правды —
 `scripts/_lib/schemas.py`**; при расхождении верен код.
 
-- Правила модели: `docs/internal/data_model_v2.md`
+- Правила модели: `docs/internal/data_model.md`
 - Чтение из генераторов: `scripts/_lib/normalized.py`
 - Посмотреть глазами: `python scripts/show_normalized.py`
 

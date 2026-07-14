@@ -8,7 +8,7 @@
 > | Что нужно | Где смотреть |
 > |---|---|
 > | Обзор пайплайна, статус, что осталось | `docs/ROADMAP.md` |
-> | Правила модели, канон имён, единицы обслуживания | `docs/internal/data_model_v2.md` |
+> | Правила модели, канон имён, единицы обслуживания | `docs/internal/data_model.md` |
 > | Что в колонках parquet | `docs/internal/parquet_reference.md` |
 > | Машиночитаемая схема (истина) | `scripts/_lib/schemas.py` |
 >

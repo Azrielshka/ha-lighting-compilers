@@ -9,7 +9,7 @@
 
 | Файл | О чём |
 |---|---|
-| `docs/internal/data_model_v2.md` | правила модели: привязка устройств, `None`, адреса, канон нейминга, единицы обслуживания |
+| `docs/internal/data_model.md` | правила модели: привязка устройств, `None`, адреса, канон нейминга, единицы обслуживания |
 | `docs/internal/parquet_reference.md` | что лежит в каждой колонке parquet, с примерами |
 | `scripts/_lib/schemas.py` | машиночитаемая схема; при расхождении с документами верна она |
 
@@ -307,8 +307,9 @@ script manual:     !include_dir_merge_named includes/scripts/
 - [x] README под v3
 - [x] `architecture_rules.md` и `project_context.md` — свёрнуты в архивные
       указатели на актуальные доки
-- [ ] имя проекта: внутри `ha-college-lighting`, репозиторий
-      `ha-lighting-compilers`
+- [x] имя проекта приведено к `ha-lighting-compilers` (заголовок окна, пути,
+      release-артефакт, doc `data_model_v2.md` → `data_model.md`); удалены
+      мёртвые `*_backupstep*.py`
 - [ ] мерж в `main` + тег `v3.0.0` (теги идут `v1.0.x`, CHANGELOG — `2.1.0`;
       нумерация синхронизируется на `v3.0.0`)
 

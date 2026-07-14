@@ -59,7 +59,7 @@ class ProcessRunner:
                 путь до python.exe / интерпретатора
 
             project_root:
-                корень проекта ha-college-lighting
+                корень проекта ha-lighting-compilers
 
             script_relative_path:
                 относительный путь до скрипта внутри проекта,

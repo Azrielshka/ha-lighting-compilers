@@ -79,7 +79,7 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         # Базовые настройки окна
         # ------------------------------------------------------------
-        self.setWindowTitle("HA College Lighting — Launcher v1")
+        self.setWindowTitle("HA Lighting Compilers — Launcher")
         self.resize(1100, 700)
 
         # ------------------------------------------------------------
@@ -239,7 +239,7 @@ class LauncherWindow(QMainWindow):
         project_root_label = QLabel("Project Root:")
         self.project_root_input = QLineEdit()
         self.project_root_input.setPlaceholderText(
-            "C:/Users/Andrey/PycharmProjects/ha-college-lighting"
+            "C:/Users/Andrey/PycharmProjects/ha-lighting-compilers"
         )
         self.project_root_browse_btn = QPushButton("Browse...")
 

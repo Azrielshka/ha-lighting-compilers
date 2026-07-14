@@ -60,12 +60,12 @@ jobs:
       # 6. Архивация
       - name: Create ZIP archive
         run: |
-          powershell Compress-Archive -Path release\* -DestinationPath ha-college-lighting.zip
+          powershell Compress-Archive -Path release\* -DestinationPath ha-lighting-compilers.zip
 
       # 7. Создание релиза
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ha-college-lighting.zip
+          files: ha-lighting-compilers.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

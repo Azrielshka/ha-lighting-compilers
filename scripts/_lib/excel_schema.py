@@ -7,7 +7,7 @@ excel_schema.py
 - входная таблица со временем меняется
 - все скрипты должны знать о ней из одного места
 
-Схема v2 покрывает "Проектную БД" (см. docs/internal/data_model_v2.md).
+Схема v2 покрывает "Проектную БД" (см. docs/internal/data_model.md).
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ canon.py
 - чтобы не копировать маппинги и константы в каждом скрипте
 - чтобы при изменении правила оно менялось в одном месте
 
-Модель данных v2 описана в docs/internal/data_model_v2.md.
+Модель данных v2 описана в docs/internal/data_model.md.
 """
 
 from __future__ import annotations
