@@ -57,6 +57,7 @@ from PySide6.QtWidgets import (
 # ------------------------------------------------------------
 from launcher.services.process_runner import ProcessRunner
 from launcher.services.config_store import ConfigStore
+from launcher.ui.deploy_dialog import DeployDialog
 
 
 # ------------------------------------------------------------
@@ -124,6 +125,7 @@ class LauncherWindow(QMainWindow):
             "scripts": "scripts/generate_scripts.py",
             "automations": "scripts/generate_automations.py",
             "lovelace": "scripts/generate_lovelace_cards_v2.py",
+            "deploy": "scripts/deploy.py",
         }
 
         # ------------------------------------------------------------
@@ -324,6 +326,16 @@ class LauncherWindow(QMainWindow):
         )
 
         self.btn_build_all = QPushButton("Build All")
+
+        # Единственный шаг, который трогает живую систему на объекте.
+        # В Build All НЕ входит: только по явному действию наладчика.
+        self.btn_deploy = QPushButton("Deploy → Home Assistant")
+        self.btn_deploy.setToolTip(
+            "Доставка конфигурации на Home Assistant.\n"
+            "Dry-run показывает план; LIVE отправляет.\n\n"
+            "⚠ Рестарт HA деплой не делает — перезапустите вручную."
+        )
+
         self.btn_open_output = QPushButton("Открыть папку с результатами")
         self.btn_clear_log = QPushButton("Clear Log")
 
@@ -344,6 +356,11 @@ class LauncherWindow(QMainWindow):
 
         layout.addSpacing(12)
         layout.addWidget(self.btn_build_all)
+
+        layout.addSpacing(8)
+        layout.addWidget(self.btn_deploy)
+
+        layout.addSpacing(8)
         layout.addWidget(self.btn_open_output)
         layout.addWidget(self.btn_clear_log)
 
@@ -430,12 +447,60 @@ class LauncherWindow(QMainWindow):
             lambda: self._run_single_operation("lovelace")
         )
         self.btn_build_all.clicked.connect(self._run_build_all)
+        self.btn_deploy.clicked.connect(self._open_deploy_dialog)
 
         # ------------------------------------------------------------
         # Открыть папку с результатами и очистить лог
         # ------------------------------------------------------------
         self.btn_open_output.clicked.connect(self._open_output_folder)
         self.btn_clear_log.clicked.connect(self._clear_log)
+
+    # ------------------------------------------------------------
+    # Деплой на Home Assistant
+    # ------------------------------------------------------------
+    def _open_deploy_dialog(self) -> None:
+        """
+        Собрать параметры деплоя и запустить scripts/deploy.py.
+
+        Деплой — единственный шаг, который трогает живую систему на объекте,
+        поэтому он отдельным окном и не входит в Build All.
+        """
+        if self.is_running:
+            self.append_log("Launcher занят — дождитесь окончания операции.")
+            self._flush_ui_updates()
+            return
+
+        config = self._validate_runtime_config()
+        if config is None:
+            return
+
+        saved = self.config_store.load()
+        dialog = DeployDialog(self, saved)
+
+        if dialog.exec() != DeployDialog.Accepted:
+            self.append_log("Deploy отменён")
+            self._flush_ui_updates()
+            return
+
+        # Параметры деплоя сохраняем между запусками (в конфиг лаунчера, не в git).
+        saved.update(dialog.result_config())
+        self.config_store.save(saved)
+
+        mode = "LIVE" if dialog.live else "dry-run"
+        self.append_log(f"Deploy ({mode}): {', '.join(dialog.accepted_targets)}")
+        self._flush_ui_updates()
+
+        self._set_running_state(True)
+        try:
+            self._execute_script(
+                config=config,
+                operation_key="deploy",
+                script_relative_path=self.script_map["deploy"],
+                script_args=dialog.script_args(),
+            )
+        finally:
+            self._set_running_state(False)
+            self._flush_ui_updates()
 
     # ------------------------------------------------------------
     # Открыть папку с готовым YAML
@@ -544,6 +609,7 @@ class LauncherWindow(QMainWindow):
         self.btn_automations.setEnabled(not is_running)
         self.btn_lovelace.setEnabled(not is_running)
         self.btn_build_all.setEnabled(not is_running)
+        self.btn_deploy.setEnabled(not is_running)
         self.btn_open_output.setEnabled(not is_running)
 
         # ------------------------------------------------------------
