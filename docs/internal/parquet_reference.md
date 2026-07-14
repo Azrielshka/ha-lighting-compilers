@@ -14,14 +14,15 @@
 
 ---
 
-# Зачем три файла, а не один
+# Зачем четыре файла, а не один
 
 ```
 Excel (лист «Проектная БД»)
       ↓  normalize_excel.py
-devices.parquet   строка = одно устройство        (91)
-groups.parquet    строка = группа света / зона    (12)
-spaces.parquet    строка = помещение              (6)
+devices.parquet   строка = одно устройство            (91)
+groups.parquet    строка = группа света / зона        (12)
+spaces.parquet    строка = помещение                  (6)
+units.parquet     строка = единица обслуживания       (3)
 ```
 
 Один и тот же факт нужен генераторам в разной нарезке:
@@ -31,10 +32,12 @@ spaces.parquet    строка = помещение              (6)
 | `generate_lights_groups` | `groups` | нужен список ламп на зону |
 | `generate_general_groups` | `spaces` | нужен список зон на помещение |
 | `generate_floor_groups` | `spaces` | нужны помещения на этаж |
+| `generate_areas` | `spaces` | пространства и этажи HA |
+| `generate_scripts` | `units` | клоны скриптов по единицам |
+| `generate_automations` | `units` | автоматизации по единицам |
 | `generate_lovelace_cards` | `spaces` | нужны зоны и датчики на карточку |
-| автоматизации (этап 6) | `groups` + `devices` | нужны датчики и панели поимённо |
 
-`devices` — нижний слой, из которого собраны два остальных. Он же нужен, когда
+`devices` — нижний слой, из которого собраны остальные. Он же нужен, когда
 надо ответить на вопрос «из какой строки Excel это взялось».
 
 ---
@@ -58,7 +61,8 @@ spaces.parquet    строка = помещение              (6)
 | `space` | string | Русское имя помещения |
 | `room_slug` | string | Транслит для entity_id |
 | `floor` | int64 | Из колонки «Этаж». Именно она идёт в `floor_<n>_all` |
-| `space_type` | string | `class` / `korridor` / `recreation` / `zal` / `special`; `null` если не указан |
+| `space_type` | string | `class` / `korridor` / `recreation` / `hall` / `zal` / `special`; `null` если не указан |
+| `block` | string | Колонка «Блок»; `null`, если помещение обслуживается само по себе |
 | `dali_bus` | string | Из колонки «Шина DALI». Справочно, в генерации не участвует |
 
 ## Живой пример
@@ -157,6 +161,9 @@ sensors_ms   ['sensor.ms_1_1_2', 'sensor.ms_1_1_3']
 | `sensors_by_group` | list\<list\<string\>\> | **`[i]` относится к `groups[i]`** |
 | `panels_by_group` | list\<list\<string\>\> | То же для панелей |
 | `sensors_unique` | list\<string\> | Плоский отсортированный набор датчиков помещения |
+| `block` | string | Колонка «Блок»; `null`, если помещение само по себе |
+| `unit_id` | string | Единица обслуживания: `block` либо `room_slug` |
+| `family` | string | `default` / `hall` / `special` / `null` (class и zal не автоматизируются) |
 | `warnings` | list\<string\> | `missing_space_type` / `unknown_space_type:<что было>` |
 
 ## `has_valid_type` — ворота для карточек
@@ -194,6 +201,44 @@ sensors_unique     []
 
 Старая схема выразить такое состояние не могла: она хранила один датчик на
 группу и подставляла в карточку `sensor.unavailable`, когда его не было.
+
+---
+
+# units.parquet
+
+**Строка = единица обслуживания** — то, на что клонируется набор скриптов.
+Единица = помещение (если «Блок» пуст) либо все помещения одного блока.
+Только автоматизируемые: `class` и `zal` сюда не попадают.
+
+| Колонка | Тип | Что это |
+|---|---|---|
+| `unit_id` | string | «Блок» либо `room_slug`. Из него имена скриптов |
+| `family` | string | `default` / `hall` / `special` |
+| `spaces` | list\<string\> | Помещения единицы. Обычно одно; несколько — если задан «Блок» |
+| `space_type` | string | Тип помещений единицы |
+| `floors` | list\<int\> | Этажи (у лестничного стояка их несколько) |
+| `sensors_ms` | list\<string\> | Датчики движения → станут `triggers` автоматизации |
+| `sensor_count` | int64 | Длина. `> 12` → предупреждение W07 |
+| `zone_lights` | list\<string\> | Группы света единицы |
+| `scripts` | list\<string\> | Клоны: `script.<unit_id>_<role>` |
+| `blueprint_on` | string | Файл blueprint'а ON |
+| `blueprint_off` | string | Файл blueprint'а OFF |
+| `warnings` | list\<string\> | `sensors_over_limit:<N>` |
+
+Пример (два тамбура в блоке `hl_1`):
+
+```
+unit_id       hl_1
+family        special
+spaces        ['101_Тамбур', '102_Тамбур']
+sensor_count  3
+scripts       ['script.hl_1_on', 'script.hl_1_off']
+blueprint_on  zm_special_on.yaml
+```
+
+Почему клонируем, а не один скрипт на всех: один экземпляр скрипта в HA — это
+одна очередь. При тысяче датчиков вызовы копятся, и свет отстаёт от человека.
+У каждой единицы свой набор — они друг друга не ждут.
 
 ---
 
@@ -268,7 +313,7 @@ pd.read_parquet('data/normalized/groups.parquet')
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "generator_version": "3.0.0",
   "generated_at": "2026-07-13T08:01:12+00:00",
   "source_file": ".../object_example.xlsx",
@@ -281,7 +326,10 @@ pd.read_parquet('data/normalized/groups.parquet')
     "panels": 5,
     "groups": 12,
     "spaces": 6,
-    "spaces_without_valid_type": 0
+    "spaces_without_valid_type": 0,
+    "units": 3,
+    "scripts": 8,
+    "automations": 6
   }
 }
 ```

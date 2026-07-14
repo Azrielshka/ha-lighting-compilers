@@ -1,7 +1,7 @@
-# Модель данных v2 — новая таблица «Проектная БД»
+# Модель данных v3 — таблица «Проектная БД»
 
 Документ фиксирует договорённости по новому формату входной таблицы
-(`data/object_example.xlsx`) и по нормализованному слою `schema_version = 2`.
+(`data/object_example.xlsx`) и по нормализованному слою `schema_version = 3`.
 
 Статус: согласовано, реализация в работе.
 Предыдущая модель (`schema_version = 1`, файл `data/example.xlsx`) больше не
@@ -234,7 +234,7 @@ TECHNICAL_SPACE_TYPES = {"korridor", "special", "recreation"}
 
 ---
 
-# 7. Нормализованный слой (`schema_version = 2`)
+# 7. Нормализованный слой (`schema_version = 3`)
 
 Длинный формат: **строка = одно устройство**. Старый `device_rows.parquet`
 (строка = лампа) упраздняется.
@@ -283,6 +283,7 @@ pa.Table.from_pandas(frame, schema=SCHEMAS[name], preserve_index=False)
 | `room_slug` | str | транслит `space` |
 | `floor` | Int64 | колонка «Этаж» |
 | `space_type` | str? | нормализованный ключ, `null` если не указан |
+| `block` | str? | колонка «Блок»; `null`, если помещение само по себе |
 | `dali_bus` | str? | колонка «Шина DALI», справочно |
 
 Строки с `None` в «Датчик»/«Панель» в `devices` **не попадают** — отсутствие
@@ -304,7 +305,13 @@ YAML со своим Excel, и переупорядочивание сделал
 `groups` (list[group_id]), `groups_count`,
 `general_light_entity`, `zone_light_entities`,
 `sensors_by_group` (list[list[str]]), `panels_by_group` (list[list[str]]),
-`sensors_unique`, `warnings`.
+`sensors_unique`,
+`block` (str?), `unit_id` (str), `family` (str?),
+`warnings`.
+
+`unit_id` — единица обслуживания: `block`, если задан, иначе `room_slug`.
+`family` — `default` \| `hall` \| `special` \| `null` (class и zal не
+автоматизируются). См. §6.1.
 
 **`sensors_by_group[i]` относится к `groups[i]`.** Вложенный список пуст, если
 у группы нет датчиков — это норма для `zal`, а не пропуск. Именно здесь v1
@@ -318,10 +325,22 @@ sensors_by_group = [[], []]
 panels_by_group  = [["event.kp_1_2_1"], ["event.kp_1_2_2"]]
 ```
 
+## `units.parquet`
+
+Единицы обслуживания — то, на что клонируется набор скриптов (см. §6.1).
+Только автоматизируемые помещения (class и zal сюда не попадают).
+
+`unit_id`, `family`, `spaces` (list[str]), `space_type`, `floors` (list[int]),
+`sensors_ms` (list[str]), `sensor_count`,
+`zone_lights` (list[str]),
+`scripts` (list[str] — `script.<unit_id>_<role>`),
+`blueprint_on`, `blueprint_off`, `warnings`.
+
 ## `normalized_meta.json`
 
-`schema_version = 2`, `generated_at`, `source_file`, `sheet_name`, `stats`,
-`columns`, `warnings_summary`, `notes`.
+`schema_version = 3`, `generated_at`, `source_file`, `sheet_name`, `stats`,
+`columns`, `notes`. В `stats`, помимо устройств и помещений: `units`,
+`scripts`, `automations`.
 
 ---
 
