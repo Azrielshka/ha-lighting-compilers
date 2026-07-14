@@ -304,9 +304,9 @@ script manual:     !include_dir_merge_named includes/scripts/
 
 ## Сопровождение
 
-- [ ] README под v3 (описывает пайплайн v1)
-- [ ] `architecture_rules.md` и `project_context.md` — описывают v1, вводят в
-      заблуждение
+- [x] README под v3
+- [x] `architecture_rules.md` и `project_context.md` — свёрнуты в архивные
+      указатели на актуальные доки
 - [ ] имя проекта: внутри `ha-college-lighting`, репозиторий
       `ha-lighting-compilers`
 - [ ] мерж в `main` + тег `v3.0.0` (теги идут `v1.0.x`, CHANGELOG — `2.1.0`;

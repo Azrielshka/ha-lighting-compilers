@@ -4,8 +4,9 @@
 (`data/object_example.xlsx`) и по нормализованному слою `schema_version = 2`.
 
 Статус: согласовано, реализация в работе.
-Предыдущая модель описана в `architecture_rules.md` и остаётся действительной
-для `schema_version = 1` (файл `data/example.xlsx`).
+Предыдущая модель (`schema_version = 1`, файл `data/example.xlsx`) больше не
+поддерживается; её описание — в архивных `architecture_rules.md` и
+`project_context.md` и в git до тега `v3.0.0`.
 
 ---
 
