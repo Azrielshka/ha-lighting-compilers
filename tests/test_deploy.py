@@ -25,7 +25,7 @@ from scripts._lib.ha_targets import (
 from scripts._lib.ha_ws import (
     HAWebSocketClient,
     WSConfig,
-    WSTransportNotImplemented,
+    WSTransportError,
     build_areas_plan,
     load_areas_file,
 )
@@ -308,11 +308,15 @@ def test_ssh_transport_is_real(tmp_path):
         client.connect()
 
 
-def test_ws_transport_refuses_honestly():
-    client = HAWebSocketClient(WSConfig("http://ha:8123", "t"))
+def test_ws_transport_is_real():
+    """
+    WebSocket-транспорт реализован (сеть проверяется на живом HA). До
+    недоступного хоста он честно не достучится.
+    """
+    client = HAWebSocketClient(WSConfig("http://127.0.0.1:1", "t"))
 
-    with pytest.raises(WSTransportNotImplemented):
-        client.connect()
+    with pytest.raises(WSTransportError, match="не могу подключиться"):
+        client.fetch_existing()
 
 
 # ============================================================

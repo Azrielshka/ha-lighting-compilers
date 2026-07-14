@@ -8,9 +8,8 @@ launcher/ui/deploy_dialog.py
       его стоит отделить визуально, чтобы не нажать случайно
     - параметров много (SSH + HA), в главном окне они бы всё загромоздили
 
-⚠ Транспорт пока заготовка: LIVE честно откажется работать. Dry-run при этом
-полностью рабочий — показывает, что и куда поедет, чтобы наладчик мог залить
-файлы вручную.
+Файлы едут по SFTP (проверено на живом HA), пространства — по WebSocket
+(проверяется на объекте). Dry-run показывает план; LIVE отправляет.
 
 ⚠ Рестарт Home Assistant деплой НЕ делает (решение владельца). Об этом
 напоминаем крупно.
@@ -159,6 +158,12 @@ class DeployDialog(QDialog):
         hint.setStyleSheet("color: gray;")
         layout.addWidget(hint, 2, 1)
 
+        # Для объектов с самоподписанным https (Traefik default cert).
+        # На локальном http:// не нужен и просто игнорируется.
+        self.ha_insecure = QCheckBox("Не проверять TLS-сертификат (самоподписанный https)")
+        self.ha_insecure.setChecked(bool(config.get("ha_insecure", False)))
+        layout.addWidget(self.ha_insecure, 3, 1)
+
         return group
 
     # ------------------------------------------------------------
@@ -253,6 +258,7 @@ class DeployDialog(QDialog):
             "ssh_key": self.ssh_key.text().strip(),
             "ha_url": self.ha_url.text().strip(),
             "ha_token": self.ha_token.text().strip(),
+            "ha_insecure": self.ha_insecure.isChecked(),
         }
 
     def script_args(self) -> List[str]:
@@ -271,6 +277,8 @@ class DeployDialog(QDialog):
             args += ["--url", self.ha_url.text().strip()]
         if self.ha_token.text().strip():
             args += ["--token", self.ha_token.text().strip()]
+        if self.ha_insecure.isChecked():
+            args.append("--insecure")
 
         if self.live:
             args.append("--live")

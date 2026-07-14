@@ -55,7 +55,8 @@ from scripts._lib.ha_targets import (
 from scripts._lib.ha_ws import (
     HAWebSocketClient,
     WSConfig,
-    WSTransportNotImplemented,
+    WSNotConfigured,
+    WSTransportError,
     build_areas_plan,
     load_areas_file,
 )
@@ -224,6 +225,38 @@ def deploy_files(plan: Plan, ssh: SSHConfig) -> int:
     return errors
 
 
+def deploy_areas(areas_file: Path, ws: WSConfig) -> int:
+    """Создать пространства и этажи по WebSocket. Возвращает число неудач."""
+    payload = load_areas_file(areas_file)
+
+    client = HAWebSocketClient(ws)
+
+    existing = client.fetch_existing()
+    print("  ✅ Home Assistant отвечает, токен принят")
+    print(f"     уже есть: {len(existing['floors'])} этажей, "
+          f"{len(existing['areas'])} пространств\n")
+
+    areas_plan = build_areas_plan(
+        payload,
+        existing_areas=existing["areas"],
+        existing_floors=existing["floors"],
+    )
+
+    if areas_plan.is_empty:
+        print("  Всё уже создано — пропускаем (идемпотентность).\n")
+        return 0
+
+    for name in areas_plan.floors_existing + areas_plan.areas_existing:
+        print(f"  = {name} — уже есть, пропущено")
+
+    stats = client.apply(areas_plan)
+
+    print(f"  + этажей создано:      {stats['floors_created']}")
+    print(f"  + пространств создано: {stats['areas_created']}\n")
+
+    return 0
+
+
 def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig]) -> int:
     """
     Отправить конфигурацию на Home Assistant.
@@ -263,14 +296,12 @@ def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig]) -> int:
             print("   Файлы можно залить вручную — запустите deploy.py без --live.")
             return 3
 
-    # Пространства: WebSocket-клиент пока заготовка.
     if ws is not None and plan.areas_file is not None and plan.areas_file.exists():
         print("🏢 Пространства и этажи\n")
         try:
-            HAWebSocketClient(ws).connect()
-        except WSTransportNotImplemented as exc:
-            print(f"⚠ {exc}\n")
-            print("   Файлы уехали, пространства — нет.")
+            errors += deploy_areas(plan.areas_file, ws)
+        except (WSNotConfigured, WSTransportError) as exc:
+            print(f"❌ {exc}\n")
             errors += 1
 
     if errors:
@@ -289,7 +320,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(
         description="Доставить сгенерированную конфигурацию на Home Assistant.",
-        epilog="Сегодня работает только dry-run: транспорт ещё не подключён.",
+        epilog="Dry-run по умолчанию. Файлы едут по SFTP, пространства — по WebSocket.",
     )
     parser.add_argument("--data", default=str(DEFAULT_DATA_DIR),
                         help="Папка с артефактами генераторов")
@@ -310,6 +341,8 @@ def main() -> int:
     ha_group = parser.add_argument_group("Home Assistant (пространства)")
     ha_group.add_argument("--url", default=os.environ.get("HA_BASE_URL", ""))
     ha_group.add_argument("--token", default=os.environ.get("HA_TOKEN", ""))
+    ha_group.add_argument("--insecure", action="store_true",
+                          help="Не проверять TLS-сертификат (для самоподписанного https)")
 
     args = parser.parse_args()
 
@@ -339,7 +372,10 @@ def main() -> int:
         host=args.host, port=args.port, user=args.user,
         key_path=args.key or None,
     )
-    ws = WSConfig(base_url=args.url, token=args.token) if "areas" in args.targets else None
+    ws = (
+        WSConfig(base_url=args.url, token=args.token, insecure=args.insecure)
+        if "areas" in args.targets else None
+    )
 
     code = deploy_live(plan, ssh, ws)
 
