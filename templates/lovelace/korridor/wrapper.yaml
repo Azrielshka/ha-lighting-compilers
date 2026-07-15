@@ -1,0 +1,32 @@
+# korridor — коридоры/вестибюли/лестницы. Пары «свет | датчик», разбивка по 3 зоны.
+#
+# Маркеры:
+#   [[HEADING]]        — имя помещения
+#   [[GENERAL_LIGHT]]  — общий свет на всё пространство
+#   [[ZONES]]          — блок зон (разворачивает генератор, см. ниже)
+#
+# Как генератор разворачивает [[ZONES]]:
+#   • зоны бьются по 3;
+#   • каждая тройка → type: grid, columns: 2, square: false, дети идут
+#     ЧЕРЕДУЯСЬ: свет_1, датчик_1, свет_2, датчик_2, свет_3, датчик_3
+#     (+ первая строка грида — заголовки «Группы» / «Датчики»);
+#   • несколько троек кладутся рядом в horizontal-stack.
+#   Плитки: _blocks/light_tile.yaml и _blocks/sensor_tile.yaml.
+#   Зона без датчика → на его место пустая ячейка (пары не сбиваются).
+type: grid
+columns: 1
+square: false
+grid_options:
+  columns: 12
+  rows: auto
+cards:
+  - type: heading
+    heading: "[[HEADING]]"
+    heading_style: title
+  - type: tile
+    entity: [[GENERAL_LIGHT]]
+    features:
+      - type: toggle
+      - type: light-brightness
+    features_position: bottom
+  [[ZONES]]

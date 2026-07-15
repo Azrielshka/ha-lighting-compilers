@@ -1,0 +1,34 @@
+# recreation — рекреации. Общий свет + узкие группы (mushroom-light-card) +
+# датчики движения в 2 колонки. Селектора режима НЕТ (убран). Сущностей
+# освещённости НЕТ. Требует HACS-карту mushroom (считаем установленной).
+#
+# Маркеры:
+#   [[HEADING]], [[GENERAL_LIGHT]]
+#   [[ZONE_GROUPS]]  — на каждую зону mushroom-light-card (_blocks/recreation_group.yaml)
+#   [[SENSORS_2COL]] — датчики движения плитками, лягут в грид columns: 2 ниже
+type: grid
+columns: 1
+square: false
+grid_options:
+  columns: 12
+  rows: auto
+cards:
+  - type: heading
+    heading: "[[HEADING]]"
+    heading_style: title
+  - type: tile
+    entity: [[GENERAL_LIGHT]]
+    name: "[[HEADING]]"
+    features:
+      - type: toggle
+      - type: light-brightness
+    features_position: bottom
+    grid_options:
+      columns: 12
+      rows: 3
+  [[ZONE_GROUPS]]
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      [[SENSORS_2COL]]

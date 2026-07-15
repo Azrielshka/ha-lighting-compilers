@@ -1,0 +1,22 @@
+# Манифест карточек Lovelace (v3). Ключ выбора обёртки — space_type.
+# render:false → тип карточку не получает. Гейт has_valid_type действует и без
+# манифеста (помещение без валидного типа карточку не получает никогда, W01).
+#
+# У КАЖДОГО ТИПА СВОЯ РАСКЛАДКА (согласовано с владельцем 2026-07-15):
+#   korridor  — пары «свет|датчик», разбивка по 3 зоны в horizontal-stack
+#   hall      — = korridor (отдельный файл, чтобы можно было развести)
+#   special   — вертикальный список пар «свет|датчик», без разбивки
+#   class     — грид N колонок: ряд света / ряд датчиков / ряд подписей (заглушка)
+#   zal       — группы света + ХАРДКОД пресетов-сценариев (mushroom+card_mod)
+#   recreation— общий свет + узкие группы (mushroom) + датчики в 2 колонки
+#
+# Столбец «блоки» — какие _blocks/*.yaml разворачивает генератор для типа.
+version: 3
+
+card_types:
+  korridor:   { render: true, wrapper: korridor/wrapper.yaml,   blocks: [light_tile, sensor_tile] }
+  hall:       { render: true, wrapper: hall/wrapper.yaml,       blocks: [light_tile, sensor_tile] }
+  special:    { render: true, wrapper: special/wrapper.yaml,    blocks: [light_tile, sensor_tile] }
+  class:      { render: true, wrapper: class/wrapper.yaml,      blocks: [light_tile, sensor_tile, class_label] }
+  zal:        { render: true, wrapper: zal/wrapper.yaml,        blocks: [] }          # пресеты хардкод; группы — light_tile-стиль
+  recreation: { render: true, wrapper: recreation/wrapper.yaml, blocks: [recreation_group, sensor_tile] }

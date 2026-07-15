@@ -124,7 +124,7 @@ class LauncherWindow(QMainWindow):
             "areas": "scripts/generate_areas.py",
             "scripts": "scripts/generate_scripts.py",
             "automations": "scripts/generate_automations.py",
-            "lovelace": "scripts/generate_lovelace_cards_v2.py",
+            "lovelace": "scripts/generate_lovelace_cards.py",
             "deploy": "scripts/deploy.py",
         }
 
@@ -135,9 +135,10 @@ class LauncherWindow(QMainWindow):
         # и Build All останавливается ДО генерации. Иначе ошибки таблицы
         # всплыли бы уже в Home Assistant.
         #
-        # lovelace в pipeline НЕ входит: генератор карточек ещё не переехал
-        # на схему v2 (этап 5) и падает на отсутствующей колонке card_type.
-        # Кнопка остаётся — нажал и увидел, — но Build All на ней не спотыкается.
+        # lovelace в pipeline НЕ входит по решению владельца: карточки вставляются
+        # в дашборд вручную, а часть типов (zal/recreation) требует кастом-карт
+        # (mushroom/card_mod). Кнопка остаётся — нажал и собрал файл, — но
+        # Build All на ней не спотыкается.
         #
         # areas входит: шаг ОФЛАЙНОВЫЙ, он лишь готовит файл-задание.
         # Само создание пространств в Home Assistant — отдельный шаг деплоя,
@@ -208,7 +209,7 @@ class LauncherWindow(QMainWindow):
         self.append_log("Pipeline: validate → normalize → lights → general → floor → areas → scripts → automations")
         self.append_log("Build All работает офлайн: в Home Assistant ничего не пишет")
         self.append_log("Build All останавливается, если таблица не прошла проверку")
-        self.append_log("Lovelace не переехал на новый формат (этап 5) — в Build All не входит")
+        self.append_log("Lovelace собирает карточки в файл; в Build All не входит (вставка в дашборд вручную)")
         self.append_log("Python берётся из <Project Root>/.venv/Scripts/python.exe")
 
         # ------------------------------------------------------------
@@ -318,11 +319,12 @@ class LauncherWindow(QMainWindow):
             "⚠ input_number.vacant_delay пайплайн не создаёт — заведите его на объекте."
         )
 
-        # Не входит в Build All: генератор ещё не переехал на схему v2.
-        self.btn_lovelace = QPushButton("Generate Lovelace Cards ⚠")
+        # Не входит в Build All: карточки вставляются в дашборд вручную.
+        self.btn_lovelace = QPushButton("Generate Lovelace Cards")
         self.btn_lovelace.setToolTip(
-            "Не переехал на новый формат таблицы (этап 5).\n"
-            "В Build All не входит; при запуске упадёт на отсутствующей колонке card_type."
+            "Собирает карточки помещений в data/lovelace_cards_generated.txt.\n"
+            "В Build All не входит — вставка в дашборд вручную.\n"
+            "Типы zal/recreation требуют кастом-карт (mushroom/card_mod)."
         )
 
         self.btn_build_all = QPushButton("Build All")

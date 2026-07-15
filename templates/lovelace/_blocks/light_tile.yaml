@@ -1,0 +1,7 @@
+# Штатная плитка группы света (одна зона). Используют korridor/hall/special/class.
+# Плейсхолдер: [[ZONE_LIGHT]] — light.<группа>.
+- type: tile
+  entity: "[[ZONE_LIGHT]]"
+  features:
+    - type: light-brightness
+  features_position: bottom

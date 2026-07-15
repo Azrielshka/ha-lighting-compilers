@@ -1,0 +1,179 @@
+# zal — актовые/конференц-залы. Группы света + ХАРДКОД-блок пресетов-сценариев
+# (зал 1 на объект, пресеты — input_boolean, заведены владельцем вручную).
+# Требует HACS: mushroom-template-card + card_mod (считаем установленными).
+#
+# Маркеры (подставляет генератор):
+#   [[HEADING]]        — имя зала
+#   [[GENERAL_LIGHT]]  — общий свет
+#   [[ZONE_LIGHTS]]    — плитки групп света (свет+яркость, vertical) по зонам
+#
+# Блок «Сценарии» ниже — ЗАХАРДКОЖЕН. Если input_boolean-пресеты на объекте
+# другие — правьте entity/иконки/подписи прямо здесь, в этом файле.
+type: grid
+cards:
+  - type: heading
+    heading: "[[HEADING]]"
+    heading_style: title
+
+  - type: tile
+    entity: [[GENERAL_LIGHT]]
+    features:
+      - type: light-brightness
+      - type: toggle
+    features_position: bottom
+    vertical: true
+
+  [[ZONE_LIGHTS]]
+
+  - type: vertical-stack
+    cards:
+      - type: heading
+        icon: mdi:align-vertical-top
+        heading: Сценарии для актового зала
+        heading_style: subtitle
+        grid_options:
+          columns: 12
+          rows: auto
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Режим театра
+                icon: |-
+                  {% if is_state(entity, 'on') %}
+                    mdi:track-light
+                  {% else %}
+                    mdi:track-light-off
+                  {% endif %}
+                secondary: |-
+                  {% if is_state(entity, 'on') %}
+                    Включено
+                  {% else %}
+                    Выключено
+                  {% endif %}
+                layout: vertical
+                fill_container: false
+                multiline_secondary: false
+                tap_action:
+                  action: toggle
+                icon_color: |-
+                  {% if is_state(entity, 'on') %}
+                    yellow
+                  {% else %}
+                    red
+                  {% endif %}
+                entity: input_boolean.rezhim_tetra
+                card_mod:
+                  style: |
+                    ha-card {
+                    border-radius: 10px;
+                    padding: 10px;
+                    font-size: 1 em;
+                    text-align: center;
+                    #box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+              - type: custom:mushroom-template-card
+                primary: Максимальная яркость
+                icon: |-
+                  {% if is_state(entity, 'on') %}
+                    mdi:vanity-light
+                  {% else %}
+                    mdi:lightbulb-group-off-outline
+                  {% endif %}
+                secondary: |-
+                  {% if is_state(entity, 'on') %}
+                    Включено
+                  {% else %}
+                    Выключено
+                  {% endif %}
+                layout: vertical
+                fill_container: false
+                multiline_secondary: false
+                tap_action:
+                  action: toggle
+                icon_color: |-
+                  {% if is_state(entity, 'on') %}
+                    yellow
+                  {% else %}
+                    red
+                  {% endif %}
+                entity: input_boolean.polnaia_iarkost
+                card_mod:
+                  style: |
+                    ha-card {
+                    border-radius: 10px;
+                    padding: 10px;
+                    font-size: 1 em;
+                    text-align: center;
+                    #box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Приглушенный свет
+                icon: |-
+                  {% if is_state(entity, 'on') %}
+                    mdi:lightbulb-on-70
+                  {% else %}
+                    mdi:lightbulb-off
+                  {% endif %}
+                secondary: |-
+                  {% if is_state(entity, 'on') %}
+                    Включено
+                  {% else %}
+                    Выключено
+                  {% endif %}
+                layout: vertical
+                fill_container: false
+                multiline_secondary: false
+                tap_action:
+                  action: toggle
+                icon_color: |-
+                  {% if is_state(entity, 'on') %}
+                    yellow
+                  {% else %}
+                    red
+                  {% endif %}
+                entity: input_boolean.priglushennoe_osveshchenie
+                card_mod:
+                  style: |
+                    ha-card {
+                    border-radius: 10px;
+                    padding: 10px;
+                    font-size: 1 em;
+                    text-align: center;
+                    #box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+              - type: custom:mushroom-template-card
+                primary: Режим мероприятия
+                icon: |-
+                  {% if is_state(entity, 'on') %}
+                    mdi:led-strip-variant
+                  {% else %}
+                    mdi:led-strip-variant-off
+                  {% endif %}
+                secondary: |-
+                  {% if is_state(entity, 'on') %}
+                    Включено
+                  {% else %}
+                    Выключено
+                  {% endif %}
+                layout: vertical
+                fill_container: false
+                multiline_secondary: false
+                tap_action:
+                  action: toggle
+                icon_color: |-
+                  {% if is_state(entity, 'on') %}
+                    yellow
+                  {% else %}
+                    red
+                  {% endif %}
+                entity: input_boolean.rezhim_meropriiatiia
+                card_mod:
+                  style: |
+                    ha-card {
+                    border-radius: 10px;
+                    padding: 10px;
+                    font-size: 1 em;
+                    text-align: center;
+                    #box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+column_span: 2

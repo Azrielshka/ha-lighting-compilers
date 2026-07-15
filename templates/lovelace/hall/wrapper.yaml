@@ -1,0 +1,21 @@
+# hall — холлы. Раскладка идентична korridor (пары «свет | датчик», разбивка по 3).
+# Держим отдельным файлом, чтобы при желании развести вид; пока — копия korridor.
+#
+# Маркеры и правило разворота [[ZONES]] — см. korridor/wrapper.yaml.
+type: grid
+columns: 1
+square: false
+grid_options:
+  columns: 12
+  rows: auto
+cards:
+  - type: heading
+    heading: "[[HEADING]]"
+    heading_style: title
+  - type: tile
+    entity: [[GENERAL_LIGHT]]
+    features:
+      - type: toggle
+      - type: light-brightness
+    features_position: bottom
+  [[ZONES]]
