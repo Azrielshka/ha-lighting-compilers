@@ -25,15 +25,19 @@ cards:
     heading: "[[HEADING]]"
     heading_style: title
 
-  - type: tile
-    entity: [[GENERAL_LIGHT]]
-    features:
-      - type: light-brightness
-      - type: toggle
-    features_position: bottom
-    vertical: true
-
-  [[ZONE_LIGHTS]]
+  # Весь свет зала — одной строкой. По отдельности плитки были детьми внешнего
+  # грида (columns: 1) и растягивались на всю ширину, уводя карточку вниз.
+  # horizontal-stack делит строку поровну между общим светом и группами.
+  - type: horizontal-stack
+    cards:
+      - type: tile
+        entity: [[GENERAL_LIGHT]]
+        features:
+          - type: light-brightness
+          - type: toggle
+        features_position: bottom
+        vertical: true
+      [[ZONE_LIGHTS]]
 
   - type: vertical-stack
     cards:

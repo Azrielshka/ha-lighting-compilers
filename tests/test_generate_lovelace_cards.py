@@ -246,6 +246,20 @@ def test_space_subview_is_hidden_and_has_full_card(object_layer, tmp_path):
     assert len(sub["sections"][0]["cards"]) == 1     # ровно полная карточка
 
 
+def test_zal_lights_are_in_one_row(object_layer, tmp_path):
+    """Весь свет зала — одной строкой, а не столбиком во всю ширину."""
+    views = _generate(object_layer, tmp_path)
+    zal = views["zm-space-105_aktovyi_zal"]["sections"][0]["cards"][0]
+
+    row = next(c for c in zal["cards"] if c["type"] == "horizontal-stack")
+    entities = [c["entity"] for c in row["cards"]]
+
+    assert "light.105_aktovyi_zal_obshchii" in entities   # общий свет
+    assert "light.105_1" in entities and "light.105_2" in entities   # группы
+    # ни одна плитка света не осталась отдельным ребёнком внешнего грида
+    assert not [c for c in zal["cards"] if c["type"] == "tile"]
+
+
 def test_zal_presets_survive_generation(object_layer, tmp_path):
     """Хардкод-пресеты зала не теряются при сборке в view."""
     views = _generate(object_layer, tmp_path)
