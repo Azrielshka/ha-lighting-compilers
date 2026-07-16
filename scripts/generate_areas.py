@@ -32,7 +32,14 @@ from typing import Dict, List
 
 import pandas as pd
 
-from scripts._lib.canon import area_aliases, area_name, floor_icon, floor_name
+from scripts._lib.canon import (
+    area_aliases,
+    area_name,
+    floor_area_id,
+    floor_area_name,
+    floor_icon,
+    floor_name,
+)
 from scripts._lib.filters import (
     Filters,
     add_filter_args,
@@ -108,8 +115,27 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
 
     floors.sort(key=lambda f: f["level"])
 
+    # Area на каждый этаж — отдельно от комнатных и ПОСЛЕ них: порядок
+    # помещений должен остаться как в таблице, наладчик сверяет YAML с Excel.
+    #
+    # Зачем: карточка `type: area` на Главной умеет показывать только Area,
+    # карточки для Floor в HA нет. Комнатным Areas такая не конкурент —
+    # сущность принадлежит ровно одной Area, но групповые светильники этажа
+    # устройства не имеют, интеграция их никуда не разложит, и попадут они
+    # только сюда (руками владельца).
+    floor_areas = [
+        {
+            "name": floor_area_name(f["level"]),
+            "aliases": [floor_area_id(f["level"])],
+            "floor": f["level"],
+        }
+        for f in floors
+    ]
+    areas.extend(floor_areas)
+
     print(f"  Этажей:               {len(floors)}")
-    print(f"  Пространств:          {len(areas)}")
+    print(f"  Пространств:          {len(areas) - len(floor_areas)}")
+    print(f"  Areas этажей:         {len(floor_areas)}")
 
     return {"floors": floors, "areas": areas}
 

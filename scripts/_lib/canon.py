@@ -278,6 +278,31 @@ def tech_group_unique_id(floor: int) -> str:
     return f"tex_floor_{int(floor)}"
 
 
+# Area, представляющая этаж целиком. Нужна карточке `type: area` на Главной:
+# она умеет показывать только Area, карточки для Floor в HA нет.
+#
+# ⚠ На этаж приходятся ТРИ разные сущности с похожими именами — не путать:
+#   Floor «1 этаж»              — запись реестра этажей, группирует Areas;
+#   Area  «Весь 1 этаж»         — контейнер, куда владелец кладёт групповые
+#                                 светильники этажа (у них нет устройства,
+#                                 поэтому интеграция их никуда не разложит,
+#                                 и конкуренции с комнатными Areas нет);
+#   light «Весь 1-й этаж»       — сам выключатель этажа.
+
+def floor_area_name(floor: int) -> str:
+    """«Весь 1 этаж» — имя Area этажа."""
+    return f"Весь {int(floor)} этаж"
+
+
+def floor_area_id(floor: int) -> str:
+    """ves_1_etazh — area_id так, как его сделает HA из имени.
+
+    Тот же принцип, что у floor_light_entity: id генерируется из name через
+    slugify, задать его напрямую при создании нельзя.
+    """
+    return slugify_room(floor_area_name(floor))
+
+
 def floor_light_entity(floor: int) -> str:
     """light.ves_1_i_etazh — сущность группы «весь этаж» так, как её создаст HA.
 

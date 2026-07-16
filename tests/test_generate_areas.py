@@ -15,9 +15,23 @@ import yaml
 import generate_areas as AREAS
 import normalize_excel as N
 from conftest import base_rows, make_book
-from scripts._lib.canon import floor_icon, floor_name
+from scripts._lib.canon import floor_area_id, floor_area_name, floor_icon, floor_name
 from scripts._lib.filters import Filters
 from scripts._lib.normalized import load_dataset
+
+
+def is_floor_area(area: dict) -> bool:
+    """Area этажа или помещения. Отличаем по канону, а не по виду имени."""
+    return "floor" in area and area["name"] == floor_area_name(area["floor"])
+
+
+def rooms(areas: list) -> list:
+    """Только Areas помещений — Areas этажей идут отдельно, в конце."""
+    return [a for a in areas if not is_floor_area(a)]
+
+
+def floor_areas(areas: list) -> list:
+    return [a for a in areas if is_floor_area(a)]
 
 
 def _rows_two_floors():
@@ -73,7 +87,7 @@ def test_area_name_comes_straight_from_table(layer):
     помещения» — его и берём.
     """
     payload = _build(layer)
-    names = [a["name"] for a in payload["areas"]]
+    names = [a["name"] for a in rooms(payload["areas"])]
 
     assert names == ["103_Вестибюль", "205_Актовый зал"]
 
@@ -122,7 +136,11 @@ def test_floor_appears_once_per_level(object_layer):
     payload = _build(object_layer)
 
     assert [f["level"] for f in payload["floors"]] == [1, 2]
-    assert len(payload["areas"]) == 8
+    assert len(rooms(payload["areas"])) == 8
+    # на каждый этаж — своя Area, для карточки type: area на Главной
+    assert [a["name"] for a in floor_areas(payload["areas"])] == [
+        "Весь 1 этаж", "Весь 2 этаж",
+    ]
 
 
 def test_floors_sorted_by_level(tmp_path):
@@ -169,7 +187,8 @@ def test_floor_name():
 def test_yaml_is_parseable(object_layer):
     doc = _yaml(object_layer)
 
-    assert len(doc["areas"]) == 8
+    assert len(rooms(doc["areas"])) == 8
+    assert len(floor_areas(doc["areas"])) == 2
     assert len(doc["floors"]) == 2
     assert doc["areas"][0]["name"] == "101_Тамбур"
 
@@ -177,10 +196,14 @@ def test_yaml_is_parseable(object_layer):
 def test_yaml_keeps_table_order(object_layer):
     """Порядок пространств — как в таблице: наладчик сверяет YAML со своим Excel."""
     doc = _yaml(object_layer)
-    names = [a["name"] for a in doc["areas"]]
+    names = [a["name"] for a in rooms(doc["areas"])]
 
     assert names[0] == "101_Тамбур"
     assert names[-1] == "208_Входной тамбур"
+
+    # Areas этажей идут ПОСЛЕ помещений и порядок таблицы не сдвигают
+    all_names = [a["name"] for a in doc["areas"]]
+    assert all_names[-2:] == ["Весь 1 этаж", "Весь 2 этаж"]
 
 
 def test_empty_result_is_commented(object_layer):
@@ -200,7 +223,9 @@ def test_empty_result_is_commented(object_layer):
 def test_filters_apply(object_layer):
     doc = _yaml(object_layer, Filters(spaces=["102_Тамбур"]))
 
-    assert [a["name"] for a in doc["areas"]] == ["102_Тамбур"]
+    assert [a["name"] for a in rooms(doc["areas"])] == ["102_Тамбур"]
+    # этаж помещения остался в выборке — значит и Area этажа создаётся
+    assert [a["name"] for a in floor_areas(doc["areas"])] == ["Весь 1 этаж"]
 
 
 def test_space_without_type_still_becomes_area(tmp_path):
@@ -228,7 +253,7 @@ def test_cli_writes_yaml(monkeypatch, tmp_path, object_layer):
     assert AREAS.main() == 0
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert len(doc["areas"]) == 8
+    assert len(doc["areas"]) == 10   # 8 помещений + 2 Areas этажей
 
 
 def test_cli_without_normalized_layer(monkeypatch, tmp_path):
@@ -259,3 +284,52 @@ def test_generator_makes_no_network_calls(monkeypatch, tmp_path, object_layer):
     ])
 
     assert AREAS.main() == 0
+
+
+# ============================================================
+# AREA НА ЭТАЖ
+# ============================================================
+
+def test_floor_area_id_comes_from_name():
+    """area_id генерирует HA из имени — задать его напрямую нельзя.
+
+    Та же ловушка, что с группами света (unique_id ≠ entity_id): карточка
+    `type: area` на Главной ссылается на area_id, и если вычислять его иначе,
+    чем это сделает HA, карточка будет пустой.
+    """
+    from scripts._lib.naming import slugify_room
+
+    assert floor_area_name(1) == "Весь 1 этаж"
+    assert floor_area_id(1) == "ves_1_etazh"
+    for level in (1, 2, 3, 12):
+        assert floor_area_id(level) == slugify_room(floor_area_name(level))
+
+
+def test_floor_area_is_not_confused_with_floor_or_light_group():
+    """На этаж приходятся три разные сущности — их имена не должны совпадать."""
+    from scripts._lib.canon import floor_group_name, floor_light_entity
+
+    assert floor_area_name(1) != floor_name(1)              # Area ≠ Floor
+    assert floor_area_name(1) != floor_group_name(1)        # Area ≠ группа света
+    assert floor_area_id(1) not in floor_light_entity(1)    # ves_1_etazh ≠ ves_1_i_etazh
+
+
+def test_floor_area_bound_to_its_floor(object_layer):
+    payload = _build(object_layer)
+
+    for area in floor_areas(payload["areas"]):
+        assert area["name"] == floor_area_name(area["floor"])
+        assert area["aliases"] == [floor_area_id(area["floor"])]
+
+
+def test_no_floor_areas_without_floors(tmp_path):
+    """Нет этажей — нет и Areas этажей: пустышек не плодим."""
+    rows = base_rows()
+    del rows[0]["Этаж"]
+
+    out = tmp_path / "normalized"
+    N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
+
+    payload = _build(out)
+    assert payload["floors"] == []
+    assert floor_areas(payload["areas"]) == []
