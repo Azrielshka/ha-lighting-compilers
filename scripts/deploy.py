@@ -38,6 +38,10 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+import yaml
+
+from scripts._lib.ha_views import diff_summary, merge_views, order_views
+
 from scripts._lib.ha_ssh import (
     HASSHClient,
     SSHConfig,
@@ -107,6 +111,10 @@ def print_plan(plan: Plan, targets: List[str], data_dir: Path) -> None:
             _print_areas_plan(plan, title)
             continue
 
+        if target == "lovelace":
+            _print_lovelace_plan(plan, title)
+            continue
+
         files = by_target[target]
         if not files:
             continue
@@ -128,6 +136,26 @@ def print_plan(plan: Plan, targets: List[str], data_dir: Path) -> None:
 
     ready = len(plan.ready)
     print(f"  Файлов к отправке: {ready}, суммарно {_human_size(plan.total_size)}")
+
+
+def _print_lovelace_plan(plan: Plan, title: str) -> None:
+    """Карточки не файлы для /config: они пишутся в конфиг дашборда."""
+    if plan.lovelace_dir is None:
+        return
+
+    print(f"  {title}")
+    views = plan.lovelace_files
+    if not views:
+        print("    ✗ views не сгенерированы")
+        print()
+        return
+
+    floors = [v for v in views if v.name.startswith("zm-floor-")]
+    spaces = [v for v in views if v.name.startswith("zm-space-")]
+    print(f"    ✓ этажных views: {len(floors)}, subview пространств: {len(spaces)}")
+    print(f"      канал: WebSocket → конфиг дашборда (не файлы в /config)")
+    print(f"      свои views заменяются, ваши сохраняются; нужен АДМИН-токен")
+    print()
 
 
 def _print_areas_plan(plan: Plan, title: str) -> None:
@@ -257,7 +285,51 @@ def deploy_areas(areas_file: Path, ws: WSConfig) -> int:
     return 0
 
 
-def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig]) -> int:
+def load_views(lovelace_dir: Path) -> List[dict]:
+    """Прочитать views с диска (файл на view) и упорядочить детерминированно."""
+    views = []
+    for path in sorted(lovelace_dir.glob("zm-*.yaml")):
+        view = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if view:
+            views.append(view)
+    return order_views(views)
+
+
+def deploy_lovelace(lovelace_dir: Path, ws: WSConfig, dashboard: str) -> int:
+    """
+    Записать views в конфиг дашборда по WebSocket.
+
+    Команда save перезаписывает дашборд ЦЕЛИКОМ, поэтому порядок такой:
+    прочитать текущий конфиг → слить (свои views заменить, чужие сохранить)
+    → записать. Любая другая последовательность снесла бы ручные views
+    владельца (Главная, Энергомониторинг, Ошибки).
+    """
+    ours = load_views(lovelace_dir)
+    client = HAWebSocketClient(ws)
+
+    config = client.fetch_dashboard_config(dashboard)
+    existing = list(config.get("views", []))
+    print(f"  ✅ Дашборд «{dashboard}» прочитан: {len(existing)} views\n")
+
+    summary = diff_summary(existing, ours)
+    print(f"  = чужих views сохраняем: {summary['keep_foreign']}")
+    print(f"  ~ наших обновится:       {summary['replace']}")
+    print(f"  + наших добавится:       {summary['add']}")
+    if summary["remove"]:
+        print(f"  - наших удалится:        {summary['remove']} "
+              f"(помещение исчезло из таблицы)")
+
+    config["views"] = merge_views(existing, ours)
+    client.save_dashboard_config(dashboard, config)
+
+    print(f"\n  ✔ Записано: {len(ours)} наших views, "
+          f"дашборд теперь {len(config['views'])} views")
+    print("     Рестарт не нужен — конфиг дашборда применяется сразу.\n")
+    return 0
+
+
+def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig],
+                dashboard: str = "") -> int:
     """
     Отправить конфигурацию на Home Assistant.
 
@@ -304,6 +376,16 @@ def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig]) -> int:
             print(f"❌ {exc}\n")
             errors += 1
 
+    if ws is not None and plan.lovelace_files:
+        print("🗂 Карточки (views дашборда)\n")
+        try:
+            errors += deploy_lovelace(plan.lovelace_dir, ws, dashboard)
+        except (WSNotConfigured, WSTransportError) as exc:
+            print(f"❌ {exc}\n")
+            print("   Если отказ по правам: lovelace/config/save требует токен")
+            print("   АДМИНИСТРАТОРА — токен обычного пользователя не подойдёт.\n")
+            errors += 1
+
     if errors:
         print(f"⚠ Завершено с ошибками: {errors}")
         return 1
@@ -338,11 +420,15 @@ def main() -> int:
     ssh_group.add_argument("--user", default=os.environ.get("HA_SSH_USER", "root"))
     ssh_group.add_argument("--key", default=os.environ.get("HA_SSH_KEY", ""))
 
-    ha_group = parser.add_argument_group("Home Assistant (пространства)")
+    ha_group = parser.add_argument_group("Home Assistant (пространства, карточки)")
     ha_group.add_argument("--url", default=os.environ.get("HA_BASE_URL", ""))
-    ha_group.add_argument("--token", default=os.environ.get("HA_TOKEN", ""))
+    ha_group.add_argument("--token", default=os.environ.get("HA_TOKEN", ""),
+                          help="Long-lived token. Для карточек нужен АДМИНСКИЙ")
     ha_group.add_argument("--insecure", action="store_true",
                           help="Не проверять TLS-сертификат (для самоподписанного https)")
+    ha_group.add_argument("--dashboard",
+                          default=os.environ.get("HA_DASHBOARD", "dashboard-tets"),
+                          help="url_path дашборда, куда писать views карточек")
 
     args = parser.parse_args()
 
@@ -372,12 +458,13 @@ def main() -> int:
         host=args.host, port=args.port, user=args.user,
         key_path=args.key or None,
     )
+    # WebSocket нужен и пространствам, и карточкам — канал один.
     ws = (
         WSConfig(base_url=args.url, token=args.token, insecure=args.insecure)
-        if "areas" in args.targets else None
+        if ("areas" in args.targets or "lovelace" in args.targets) else None
     )
 
-    code = deploy_live(plan, ssh, ws)
+    code = deploy_live(plan, ssh, ws, dashboard=args.dashboard)
 
     if code == 0:
         print_restart_reminder()

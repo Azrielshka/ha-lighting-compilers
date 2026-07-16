@@ -872,6 +872,14 @@ class LauncherWindow(QMainWindow):
         if operation_key == "validate" and config.get("strict"):
             script_args.append("--strict")
 
+        # Карточкам нужен url_path дашборда: из него строятся navigate-пути
+        # «Подробнее» → subview. Берём тот же, что задан в диалоге Deploy,
+        # иначе ссылки на этажных карточках укажут не туда.
+        if operation_key == "lovelace":
+            dashboard = str(self.config_store.load().get("ha_dashboard", "")).strip()
+            if dashboard:
+                script_args.extend(["--dashboard", dashboard])
+
         return script_args
 
     # ------------------------------------------------------------

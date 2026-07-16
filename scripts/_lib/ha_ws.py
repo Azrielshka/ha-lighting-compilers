@@ -204,6 +204,20 @@ class HAWebSocketClient:
         """
         return asyncio.run(self._apply_async(plan))
 
+    def fetch_dashboard_config(self, url_path: str) -> Dict:
+        """Прочитать конфиг дашборда (storage-режим)."""
+        return asyncio.run(self._fetch_dashboard_async(url_path))
+
+    def save_dashboard_config(self, url_path: str, config: Dict) -> None:
+        """
+        Записать конфиг дашборда целиком.
+
+        Команда перезаписывает ВЕСЬ дашборд, поэтому config должен быть уже
+        слитым (свои views + чужие) — слияние делает ha_views.merge_views.
+        Требует прав администратора: токен обычного пользователя получит отказ.
+        """
+        asyncio.run(self._save_dashboard_async(url_path, config))
+
     # ------------------------------------------------------------
     # Асинхронная реализация
     # ------------------------------------------------------------
@@ -218,6 +232,25 @@ class HAWebSocketClient:
                 "areas": [a.get("name", "") for a in areas],
                 "floors": [f.get("name", "") for f in floors],
             }
+        finally:
+            await self._close()
+
+    async def _fetch_dashboard_async(self, url_path: str) -> Dict:
+        await self._connect()
+        try:
+            return await self._command(
+                {"type": "lovelace/config", "url_path": url_path}) or {}
+        finally:
+            await self._close()
+
+    async def _save_dashboard_async(self, url_path: str, config: Dict) -> None:
+        await self._connect()
+        try:
+            await self._command({
+                "type": "lovelace/config/save",
+                "url_path": url_path,
+                "config": config,
+            })
         finally:
             await self._close()
 

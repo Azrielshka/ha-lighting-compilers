@@ -60,7 +60,16 @@ class FileTarget:
 class Plan:
     """Что именно поедет на HA."""
     files: List[FileTarget]
-    areas_file: Optional[Path]   # None, если пространства не выбраны
+    areas_file: Optional[Path]     # None, если пространства не выбраны
+    # Папка с views дашборда (файл на view). Тоже не файлы для /config:
+    # views пишутся в конфиг дашборда по WebSocket. None — карточки не выбраны.
+    lovelace_dir: Optional[Path] = None
+
+    @property
+    def lovelace_files(self) -> List[Path]:
+        if self.lovelace_dir is None or not self.lovelace_dir.exists():
+            return []
+        return sorted(self.lovelace_dir.glob("zm-*.yaml"))
 
     @property
     def missing(self) -> List[FileTarget]:
@@ -88,6 +97,7 @@ TARGETS: Tuple[str, ...] = (
     "automations",
     "blueprints",
     "areas",
+    "lovelace",
 )
 
 TARGET_TITLES: Dict[str, str] = {
@@ -96,6 +106,7 @@ TARGET_TITLES: Dict[str, str] = {
     "automations": "Автоматизации",
     "blueprints": "Blueprint'ы",
     "areas": "Пространства и этажи",
+    "lovelace": "Карточки (views дашборда)",
 }
 
 # Группы света: локальное имя -> имя на HA.
@@ -178,7 +189,13 @@ def build_plan(
         # Areas и Floors — не файлы: они создаются в реестрах HA по WebSocket.
         areas_file = data_dir / "areas" / "areas.yaml"
 
-    return Plan(files=files, areas_file=areas_file)
+    lovelace_dir: Optional[Path] = None
+    if "lovelace" in targets:
+        # Views тоже не файлы для /config: они пишутся в конфиг дашборда
+        # по WebSocket. На диске лежат по файлу на view — для чтения глазами.
+        lovelace_dir = data_dir / "lovelace"
+
+    return Plan(files=files, areas_file=areas_file, lovelace_dir=lovelace_dir)
 
 
 def missing_pipeline_steps(plan: Plan) -> List[str]:
@@ -193,12 +210,16 @@ def missing_pipeline_steps(plan: Plan) -> List[str]:
         "automations": "generate_automations.py",
         "blueprints": "generate_automations.py",
         "areas": "generate_areas.py",
+        "lovelace": "generate_lovelace_cards.py",
     }
 
     needed = {f.target for f in plan.missing}
 
     if plan.areas_file is not None and not plan.areas_file.exists():
         needed.add("areas")
+
+    if plan.lovelace_dir is not None and not plan.lovelace_files:
+        needed.add("lovelace")
 
     ordered = [steps[t] for t in TARGETS if t in needed]
 

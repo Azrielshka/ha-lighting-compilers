@@ -43,6 +43,7 @@ TARGETS: List[tuple] = [
     ("automations", "Автоматизации", "includes/automations/zm_automations.yaml"),
     ("blueprints", "Blueprint'ы", "blueprints/automation/zone_manager/"),
     ("areas", "Пространства и этажи", "реестры HA (WebSocket)"),
+    ("lovelace", "Карточки (views дашборда)", "конфиг дашборда (WebSocket)"),
 ]
 
 
@@ -136,7 +137,7 @@ class DeployDialog(QDialog):
     # HA — пространства
     # ------------------------------------------------------------
     def _build_ha_group(self, config: Dict) -> QGroupBox:
-        group = QGroupBox("Home Assistant — пространства и этажи (WebSocket)")
+        group = QGroupBox("Home Assistant — пространства и карточки (WebSocket)")
         layout = QGridLayout()
         layout.setHorizontalSpacing(10)
         group.setLayout(layout)
@@ -153,16 +154,29 @@ class DeployDialog(QDialog):
         layout.addWidget(self.ha_token, 1, 1)
 
         hint = QLabel(
-            "Профиль в HA → Security → Long-lived access tokens → Create token"
+            "Профиль в HA → Security → Long-lived access tokens → Create token.\n"
+            "Для карточек нужен токен АДМИНИСТРАТОРА: запись конфига дашборда "
+            "обычному пользователю запрещена."
         )
         hint.setStyleSheet("color: gray;")
         layout.addWidget(hint, 2, 1)
+
+        # url_path дашборда: нужен и для записи views, и для navigate-путей
+        # в компактных карточках. На каждом объекте свой.
+        layout.addWidget(QLabel("Дашборд:"), 3, 0)
+        self.ha_dashboard = QLineEdit(config.get("ha_dashboard", "dashboard-tets"))
+        self.ha_dashboard.setPlaceholderText("dashboard-tets")
+        self.ha_dashboard.setToolTip(
+            "url_path дашборда, куда писать views карточек.\n"
+            "Обязан содержать дефис (требование Home Assistant)."
+        )
+        layout.addWidget(self.ha_dashboard, 3, 1)
 
         # Для объектов с самоподписанным https (Traefik default cert).
         # На локальном http:// не нужен и просто игнорируется.
         self.ha_insecure = QCheckBox("Не проверять TLS-сертификат (самоподписанный https)")
         self.ha_insecure.setChecked(bool(config.get("ha_insecure", False)))
-        layout.addWidget(self.ha_insecure, 3, 1)
+        layout.addWidget(self.ha_insecure, 4, 1)
 
         return group
 
@@ -258,6 +272,7 @@ class DeployDialog(QDialog):
             "ssh_key": self.ssh_key.text().strip(),
             "ha_url": self.ha_url.text().strip(),
             "ha_token": self.ha_token.text().strip(),
+            "ha_dashboard": self.ha_dashboard.text().strip(),
             "ha_insecure": self.ha_insecure.isChecked(),
         }
 
@@ -277,6 +292,8 @@ class DeployDialog(QDialog):
             args += ["--url", self.ha_url.text().strip()]
         if self.ha_token.text().strip():
             args += ["--token", self.ha_token.text().strip()]
+        if self.ha_dashboard.text().strip():
+            args += ["--dashboard", self.ha_dashboard.text().strip()]
         if self.ha_insecure.isChecked():
             args.append("--insecure")
 

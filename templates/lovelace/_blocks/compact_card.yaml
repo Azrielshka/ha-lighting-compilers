@@ -1,0 +1,27 @@
+# Компактная карточка помещения — идёт на ЭТАЖНЫЙ view (сводка).
+# Полная карточка помещения живёт в его subview; сюда — только общий свет
+# и кнопка перехода.
+#
+# Плейсхолдеры:
+#   [[HEADING]]        — имя помещения
+#   [[GENERAL_LIGHT]]  — общий свет помещения
+#   [[SUBVIEW_PATH]]   — /<дашборд>/zm-space-<room_slug>, куда ведёт «Подробнее»
+- type: grid
+  columns: 1
+  square: false
+  cards:
+    - type: heading
+      heading: "[[HEADING]]"
+      heading_style: subtitle
+    - type: tile
+      entity: "[[GENERAL_LIGHT]]"
+      features:
+        - type: toggle
+        - type: light-brightness
+      features_position: bottom
+    - type: button
+      name: Подробнее
+      icon: mdi:arrow-right-circle
+      tap_action:
+        action: navigate
+        navigation_path: "[[SUBVIEW_PATH]]"

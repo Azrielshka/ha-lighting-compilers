@@ -36,7 +36,7 @@ dist/
 data/normalized/
 data/light_groups/
 data/old group/
-data/lovelace_cards_generated.txt
+data/lovelace/
 data/lovelace_cards_report.json
 data/validation_report.json
 data/areas/

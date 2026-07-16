@@ -68,6 +68,14 @@ def data_dir(tmp_path) -> Path:
         encoding="utf-8",
     )
 
+    # Views дашборда: файл на view, как их кладёт generate_lovelace_cards.py.
+    (root / "lovelace").mkdir()
+    (root / "lovelace" / "zm-floor-1.yaml").write_text(
+        "title: Этаж 1\npath: zm-floor-1\ntype: sections\n", encoding="utf-8")
+    (root / "lovelace" / "zm-space-103_vestibiul.yaml").write_text(
+        "title: 103 Вестибюль\npath: zm-space-103_vestibiul\nsubview: true\n",
+        encoding="utf-8")
+
     return root
 
 

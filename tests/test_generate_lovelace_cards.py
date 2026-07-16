@@ -157,36 +157,70 @@ def object_layer(tmp_path, object_example) -> Path:
     return out
 
 
-def _generate(object_layer, tmp_path) -> str:
-    txt = tmp_path / "cards.txt"
+DASHBOARD = "dash-test"
+
+
+def _generate(object_layer, tmp_path) -> dict:
+    """Сгенерировать views в файлы; вернуть {path: view}."""
+    out_dir = tmp_path / "lovelace"
     G.generate_cards(
         spaces_parquet=object_layer / "spaces.parquet",
         templates_dir=G.DEFAULT_TEMPLATES_DIR,
-        output_txt=txt,
+        out_dir=out_dir,
         report_json=tmp_path / "report.json",
         filters=Filters(),
+        dashboard=DASHBOARD,
     )
-    return txt.read_text(encoding="utf-8")
+    views = {}
+    for f in sorted(out_dir.glob("*.yaml")):
+        v = yaml.safe_load(f.read_text(encoding="utf-8"))
+        views[v["path"]] = v
+    return views
 
 
-def test_all_cards_are_valid_yaml(object_layer, tmp_path):
-    text = _generate(object_layer, tmp_path)
-    blocks = text.split("# ─── ")[1:]
-    assert blocks, "ни одной карточки не собрано"
-    for b in blocks:
-        body = b.split("\n", 1)[1]
-        yaml.safe_load(body)          # упадёт, если YAML битый
+def test_every_view_is_valid_and_sectioned(object_layer, tmp_path):
+    """Каждый view — валидный YAML типа sections (наши карточки иначе не лягут)."""
+    views = _generate(object_layer, tmp_path)
+    assert views, "ни одного view не собрано"
+    for view in views.values():
+        assert view["type"] == "sections"
+        assert view["sections"][0]["type"] == "grid"
+
+
+def test_floor_view_holds_compact_cards_with_navigation(object_layer, tmp_path):
+    """На этажном view — компактные карточки, каждая ведёт в свой subview."""
+    views = _generate(object_layer, tmp_path)
+    floor = views["zm-floor-1"]
+    cards = floor["sections"][0]["cards"]
+    assert cards, "этажный view пуст"
+
+    for card in cards:
+        button = card["cards"][-1]
+        assert button["type"] == "button"
+        path = button["tap_action"]["navigation_path"]
+        assert path.startswith(f"/{DASHBOARD}/zm-space-")
+        # ссылка ведёт на реально существующий subview
+        assert path.rsplit("/", 1)[1] in views
+
+
+def test_space_subview_is_hidden_and_has_full_card(object_layer, tmp_path):
+    views = _generate(object_layer, tmp_path)
+    sub = views["zm-space-103_vestibiul"]
+    assert sub["subview"] is True
+    assert sub["title"] == "103 Вестибюль"
+    assert len(sub["sections"][0]["cards"]) == 1     # ровно полная карточка
 
 
 def test_zal_presets_survive_generation(object_layer, tmp_path):
-    """Хардкод-пресеты зала не теряются при сборке."""
-    text = _generate(object_layer, tmp_path)
-    assert "input_boolean.rezhim_tetra" in text
-    assert "custom:mushroom-template-card" in text
+    """Хардкод-пресеты зала не теряются при сборке в view."""
+    views = _generate(object_layer, tmp_path)
+    dumped = yaml.safe_dump(views["zm-space-105_aktovyi_zal"], allow_unicode=True)
+    assert "input_boolean.rezhim_tetra" in dumped
+    assert "custom:mushroom-template-card" in dumped
 
 
 def test_space_without_valid_type_skipped(tmp_path):
-    """Помещение без валидного типа карточку не получает (W01)."""
+    """Помещение без валидного типа не даёт ни subview, ни карточки на этаже."""
     rows = [
         {"Этаж": 1, "Название помещения": "201_Никакой", "Тип помещения": "None",
          "Шина DALI": 1, "Группа": "201_1", "Лампа": "1.1.1",
@@ -194,5 +228,15 @@ def test_space_without_valid_type_skipped(tmp_path):
     ]
     out = tmp_path / "normalized"
     N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
-    text = _generate(out, tmp_path)
-    assert text.strip() == ""          # карточек нет
+    assert _generate(out, tmp_path) == {}
+
+
+def test_regeneration_removes_stale_views(object_layer, tmp_path):
+    """Исчезнувшее помещение не оставляет за собой файл view."""
+    out_dir = tmp_path / "lovelace"
+    _generate(object_layer, tmp_path)
+    stale = out_dir / "zm-space-999_prizrak.yaml"
+    stale.write_text("path: zm-space-999_prizrak\n", encoding="utf-8")
+
+    _generate(object_layer, tmp_path)
+    assert not stale.exists()

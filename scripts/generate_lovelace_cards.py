@@ -37,14 +37,19 @@ from typing import Dict, List
 import pandas as pd
 import yaml
 
+from scripts._lib import ha_views as V
 from scripts._lib.filters import add_filter_args, apply_filters, filters_from_args
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_SPACES_PARQUET = PROJECT_ROOT / "data" / "normalized" / "spaces.parquet"
 DEFAULT_TEMPLATES_DIR = PROJECT_ROOT / "templates" / "lovelace"
-DEFAULT_OUTPUT_TXT = PROJECT_ROOT / "data" / "lovelace_cards_generated.txt"
+DEFAULT_OUT_DIR = PROJECT_ROOT / "data" / "lovelace"
 DEFAULT_REPORT_JSON = PROJECT_ROOT / "data" / "lovelace_cards_report.json"
+
+# url_path дашборда на объекте. Нужен для navigate-путей в компактных
+# карточках, поэтому свой на каждом объекте — задаётся флагом/полем лаунчера.
+DEFAULT_DASHBOARD = "dashboard-tets"
 
 # Раскладка коридора (согласовано с владельцем 2026-07-15):
 ZONES_PER_GRID = 3   # зон в одной сетке-тройке
@@ -86,13 +91,24 @@ def _load_block(templates_dir: Path, name: str) -> dict:
     return raw[0]
 
 
+def _fill(node, mapping: Dict[str, str]):
+    """Рекурсивно подставить плейсхолдеры в структуре карточки.
+
+    Рекурсия нужна: компактная карточка вложенная (грид → плитки → tap_action),
+    и плейсхолдер лежит не на верхнем уровне.
+    """
+    if isinstance(node, dict):
+        return {k: _fill(v, mapping) for k, v in node.items()}
+    if isinstance(node, list):
+        return [_fill(v, mapping) for v in node]
+    if isinstance(node, str):
+        return mapping.get(node, node)
+    return node
+
+
 def _tile(block: dict, placeholder: str, value: str) -> dict:
     """Копия блок-плитки с подставленной сущностью."""
-    out = copy.deepcopy(block)
-    for k, v in out.items():
-        if v == placeholder:
-            out[k] = value
-    return out
+    return _fill(copy.deepcopy(block), {placeholder: value})
 
 
 def load_manifest(templates_dir: Path) -> Dict[str, str]:
@@ -212,6 +228,16 @@ def build_sensors_2col(sensor_block, sensors_flat) -> List[dict]:
     return [_tile(sensor_block, "[[SENSOR]]", s) for s in sensors_flat if s]
 
 
+def build_compact_card(block: dict, heading: str, general_light: str,
+                       subview_path: str) -> dict:
+    """Компактная карточка помещения для этажного view: свет + «Подробнее»."""
+    return _fill(block, {
+        "[[HEADING]]": heading,
+        "[[GENERAL_LIGHT]]": general_light,
+        "[[SUBVIEW_PATH]]": subview_path,
+    })
+
+
 def build_zal_lights(zone_lights) -> List[dict]:
     """[[ZONE_LIGHTS]] зала: плитки групп (свет+яркость, vertical), без блока."""
     return [
@@ -300,11 +326,17 @@ def build_heading(space: str) -> str:
 # Генерация по объекту
 # ============================================================
 
-BLOCK_NAMES = ("light_tile", "sensor_tile", "class_label", "recreation_group")
+BLOCK_NAMES = ("light_tile", "sensor_tile", "class_label", "recreation_group",
+               "compact_card")
 
 
-def generate_cards(spaces_parquet: Path, templates_dir: Path,
-                   output_txt: Path, report_json: Path, filters) -> None:
+def build_views(spaces_parquet: Path, templates_dir: Path, filters,
+                dashboard: str):
+    """Собрать views дашборда: этажные + subview пространств.
+
+    Возвращает (views, report, skipped, excluded). Чистая часть — без записи
+    на диск, чтобы её можно было проверить тестами.
+    """
     if not spaces_parquet.exists():
         raise FileNotFoundError(f"spaces.parquet не найден: {spaces_parquet}")
 
@@ -314,7 +346,8 @@ def generate_cards(spaces_parquet: Path, templates_dir: Path,
     spaces_df = pd.read_parquet(spaces_parquet)
     filtered, excluded = apply_filters(spaces_df, filters)
 
-    out_blocks: List[str] = []
+    floor_cards: Dict[int, List[dict]] = {}
+    subviews: List[dict] = []
     report: Dict[str, Dict] = {}
     skipped: List[Dict] = []
 
@@ -331,29 +364,65 @@ def generate_cards(spaces_parquet: Path, templates_dir: Path,
             continue
 
         wrapper = _strip_header_comments(_read(templates_dir / wrapper_file))
-        card = build_card(space_type, wrapper, blocks, row)
+        # Карточка собирается текстом (в обёртках есть хардкод вроде пресетов
+        # зала), а в view кладём уже структурой.
+        full_card = yaml.safe_load(build_card(space_type, wrapper, blocks, row))
 
-        header = f"# ─── {space}  ({space_type}) ───"
-        out_blocks.append(header + "\n" + card.rstrip() + "\n")
+        room_slug = str(row["room_slug"])
+        heading = build_heading(space)
+        subviews.append(V.build_space_subview(heading, room_slug, full_card))
+
+        compact = build_compact_card(
+            blocks["compact_card"],
+            heading=heading,
+            general_light=str(row["general_light_entity"]),
+            subview_path=f"/{dashboard}/{V.space_view_path(room_slug)}",
+        )
+        floor_cards.setdefault(int(row["floor"]), []).append(compact)
+
         report[space] = {
             "space_type": space_type,
             "wrapper": wrapper_file,
+            "floor": int(row["floor"]),
             "zones": len(list(row["zone_light_entities"])),
+            "subview": V.space_view_path(room_slug),
         }
 
-    output_txt.parent.mkdir(parents=True, exist_ok=True)
+    floor_views = [V.build_floor_view(f, floor_cards[f]) for f in sorted(floor_cards)]
+    return V.order_views(floor_views + subviews), report, skipped, excluded
+
+
+def generate_cards(spaces_parquet: Path, templates_dir: Path, out_dir: Path,
+                   report_json: Path, filters, dashboard: str) -> None:
+    views, report, skipped, excluded = build_views(
+        spaces_parquet, templates_dir, filters, dashboard)
+
+    # Файл на view: так глазами видно, что поедет, и диффы читаемы.
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for old in out_dir.glob(f"{V.VIEW_PREFIX}*.yaml"):
+        old.unlink()                       # чтобы удалённые помещения не оставались
+    for view in views:
+        path = out_dir / f"{view['path']}.yaml"
+        path.write_text(
+            yaml.safe_dump(view, sort_keys=False, allow_unicode=True,
+                           default_flow_style=False),
+            encoding="utf-8",
+        )
+
     report_json.parent.mkdir(parents=True, exist_ok=True)
-    output_txt.write_text("\n".join(out_blocks), encoding="utf-8")
     report_json.write_text(
-        json.dumps({"version": 3, "cards": len(report), "skipped": skipped,
-                    "excluded_by_filter": excluded, "report": report},
+        json.dumps({"version": 3, "dashboard": dashboard,
+                    "views": len(views), "cards": len(report),
+                    "skipped": skipped, "excluded_by_filter": excluded,
+                    "report": report},
                    ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
-    print("OK: карточки Lovelace собраны")
-    print(" - карточек:", len(report), "| пропущено:", len(skipped))
-    print(" - выход :", output_txt)
+    floors = len([v for v in views if v["path"].startswith(V.FLOOR_PREFIX)])
+    print("OK: views Lovelace собраны")
+    print(f" - этажей: {floors} | пространств: {len(report)} | пропущено: {len(skipped)}")
+    print(" - выход :", out_dir)
 
 
 def main() -> None:
@@ -362,17 +431,21 @@ def main() -> None:
     parser.add_argument("--spaces-parquet", dest="spaces_parquet",
                         default=str(DEFAULT_SPACES_PARQUET))
     parser.add_argument("--templates", default=str(DEFAULT_TEMPLATES_DIR))
-    parser.add_argument("--out", default=str(DEFAULT_OUTPUT_TXT))
+    parser.add_argument("--out", default=str(DEFAULT_OUT_DIR))
     parser.add_argument("--report", default=str(DEFAULT_REPORT_JSON))
+    parser.add_argument("--dashboard", default=DEFAULT_DASHBOARD,
+                        help="url_path дашборда на объекте (нужен для navigate-путей)")
     add_filter_args(parser, with_include_floors=True)
     args = parser.parse_args()
 
-    print("\n=== Generate Lovelace Cards (v3) ===")
+    print("\n=== Generate Lovelace Views (v3) ===")
+    print("Дашборд :", args.dashboard)
     try:
         generate_cards(
             spaces_parquet=Path(args.spaces_parquet),
             templates_dir=Path(args.templates),
-            output_txt=Path(args.out),
+            out_dir=Path(args.out),
+            dashboard=args.dashboard,
             report_json=Path(args.report),
             filters=filters_from_args(args),
         )
