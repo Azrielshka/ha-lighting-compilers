@@ -89,3 +89,33 @@ def test_blank_is_not_none_token(raw):
 
 def test_address_is_not_none_token():
     assert not is_none_token("1.1.1")
+
+
+# ============================================================
+# ГРУППЫ ЭТАЖА: unique_id — это НЕ entity_id
+# ============================================================
+
+def test_floor_light_entity_comes_from_name_not_unique_id():
+    """У YAML-группы света entity_id генерируется из `name`, а не из unique_id.
+
+    На этом уже обожглись: бейдж этажа ссылался на light.floor_1_all, которого
+    на объекте не существует — группа с name «Весь 1-й этаж» живёт как
+    light.ves_1_i_etazh. unique_id лишь регистрирует сущность в реестре.
+    """
+    from scripts._lib.canon import floor_group_unique_id, floor_light_entity
+
+    assert floor_light_entity(1) == "light.ves_1_i_etazh"
+    assert floor_light_entity(2) == "light.ves_2_i_etazh"
+
+    # именно то, что перепутали: unique_id живёт своей жизнью
+    assert floor_group_unique_id(1) == "floor_1_all"
+    assert floor_light_entity(1) != f"light.{floor_group_unique_id(1)}"
+
+
+def test_floor_light_entity_follows_group_name():
+    """Ссылка выводится из имени, поэтому переименование группы её не ломает."""
+    from scripts._lib.canon import floor_group_name, floor_light_entity
+    from scripts._lib.naming import slugify_room
+
+    for floor in (1, 2, 3, 11):
+        assert floor_light_entity(floor) == f"light.{slugify_room(floor_group_name(floor))}"

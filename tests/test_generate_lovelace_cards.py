@@ -299,26 +299,48 @@ def test_floor_header_and_badges(object_layer, tmp_path):
     assert floor["header"]["badges_position"] == "top"
 
     badges = {b["entity"]: b for b in floor["badges"]}
-    # свет этажа — НАША группа, а не заведённая руками сущность
-    assert "light.floor_1_all" in badges
-    assert badges["light.floor_1_all"]["name"] == "Управление светом 1-го этажа"
+    # свет этажа — наша группа. Имя сущности идёт от `name` группы через
+    # slugify, а не от её unique_id: light.ves_1_i_etazh, не light.floor_1_all.
+    assert "light.ves_1_i_etazh" in badges
+    assert badges["light.ves_1_i_etazh"]["name"] == "Управление светом 1-го этажа"
     # помощники владельца — по конвенции от номера этажа
     assert "input_boolean.regim_auto_1" in badges
     assert "input_button.but_back" in badges
 
 
-def test_floor_badge_light_matches_generated_floor_group(object_layer, tmp_path):
-    """Бейдж ссылается ровно на ту группу, которую создаёт generate_floor_groups.
+def test_floor_badge_points_at_really_existing_entity(object_layer, tmp_path):
+    """Бейдж ссылается на сущность, которую HA реально создаст из нашей группы.
 
-    Имя берётся из canon обоими генераторами — если конвенция разъедется,
-    бейдж будет ссылаться в пустоту, и поймать это на объекте трудно.
+    Ловит ошибку, которая уже случилась: unique_id — это НЕ entity_id.
+    У YAML-платформы `light: - platform: group` идентификатор генерируется из
+    `name` через slugify, поэтому группа с name «Весь 1-й этаж» и
+    unique_id «floor_1_all» живёт как light.ves_1_i_etazh, а light.floor_1_all
+    не существует вовсе. Бейдж с ним висел бы в пустоте, и на объекте это
+    выглядит как «сущность недоступна» без всяких подсказок почему.
+
+    Проверяем не через canon (это была бы тавтология), а через фактический
+    YAML соседнего генератора: имя группы → slugify → entity_id бейджа.
     """
-    from scripts._lib.canon import floor_light_entity
+    import generate_floor_groups as FLOOR
+    from scripts._lib.filters import Filters
+    from scripts._lib.naming import slugify_room
+    from scripts._lib.normalized import load_dataset
+
+    spaces = load_dataset(object_layer, "spaces")
+    floor_yaml = yaml.safe_load(FLOOR.build_yaml(spaces, Filters()))
+    groups = floor_yaml[FLOOR.ROOT_KEY]["light"]
+
+    # entity_id так, как его сделает HA: из name, а не из unique_id
+    real = {slugify_room(g["name"]): g["unique_id"] for g in groups}
 
     views = _generate(object_layer, tmp_path)
     for floor in (1, 2):
         badges = [b.get("entity") for b in views[f"zm-floor-{floor}"]["badges"]]
-        assert floor_light_entity(floor) in badges
+        light = next(b for b in badges if str(b).startswith("light."))
+        assert light[len("light."):] in real, (
+            f"бейдж {light} не соответствует ни одной созданной группе: "
+            f"есть только {sorted(real)}"
+        )
 
 
 def test_back_badge_leads_to_dashboard_root(object_layer, tmp_path):

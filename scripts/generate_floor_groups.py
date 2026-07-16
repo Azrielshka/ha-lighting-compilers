@@ -39,7 +39,9 @@ import pandas as pd
 
 from scripts._lib.canon import (
     TECHNICAL_SPACE_TYPES,
+    floor_group_name,
     floor_group_unique_id,
+    tech_group_name,
     tech_group_unique_id,
 )
 from scripts._lib.filters import (
@@ -60,16 +62,6 @@ DEFAULT_NORMALIZED_DIR = PROJECT_ROOT / "data" / "normalized"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "light_groups" / "lights_floor_groups.yaml"
 
 ROOT_KEY = "lights_floor_group"
-
-
-def floor_group_name(floor: int) -> str:
-    """«Весь 1-й этаж» — отображаемое имя."""
-    return f"Весь {floor}-й этаж"
-
-
-def tech_group_name(floor: int) -> str:
-    """«Тех.пом 1-й этаж»"""
-    return f"Тех.пом {floor}-й этаж"
 
 
 def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = True) -> str:

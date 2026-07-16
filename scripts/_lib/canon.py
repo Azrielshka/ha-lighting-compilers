@@ -16,6 +16,8 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Optional, Set
 
+from scripts._lib.naming import slugify_room
+
 
 # Версия схемы нормализованных данных (для normalized_meta.json).
 # v3: колонка «Блок», тип hall, датасет units (единицы обслуживания).
@@ -242,24 +244,52 @@ def floor_icon(floor: int) -> str:
     return "mdi:home-floor-a"
 
 
-# Конвенция entity_id групп этажа. Живёт в каноне, а не в генераторе групп:
-# на эти имена ссылаются и generate_floor_groups.py (создаёт), и
-# generate_lovelace_cards.py (кладёт в бейдж этажного view). Два источника
+# Имена и идентификаторы групп этажа. Живут в каноне, а не в генераторе групп:
+# на них ссылаются и generate_floor_groups.py (создаёт группы), и
+# generate_lovelace_cards.py (кладёт группу этажа в бейдж). Два источника
 # правды разъехались бы на первой же правке.
+#
+# ⚠ САМОЕ ВАЖНОЕ ЗДЕСЬ: unique_id — это НЕ entity_id.
+# У YAML-платформы `light: - platform: group` идентификатор сущности HA
+# генерирует из `name` через slugify, а unique_id лишь регистрирует сущность
+# в реестре (чтобы её можно было переименовать через UI).
+# Поэтому группа с name «Весь 1-й этаж» и unique_id «floor_1_all» живёт на
+# объекте как light.ves_1_i_etazh, а никакого light.floor_1_all не существует.
+# Общие группы помещений этой ловушки избегают случайно: у них name уже слаг
+# (`101_tambur_obshchii`), и slugify для него — тождество.
+
+def floor_group_name(floor: int) -> str:
+    """«Весь 1-й этаж» — отображаемое имя группы всего этажа."""
+    return f"Весь {int(floor)}-й этаж"
+
+
+def tech_group_name(floor: int) -> str:
+    """«Тех.пом 1-й этаж» — отображаемое имя группы технических помещений."""
+    return f"Тех.пом {int(floor)}-й этаж"
+
 
 def floor_group_unique_id(floor: int) -> str:
-    """floor_1_all — вся группа этажа."""
+    """floor_1_all — ключ в реестре HA. НЕ entity_id, см. floor_light_entity."""
     return f"floor_{int(floor)}_all"
 
 
 def tech_group_unique_id(floor: int) -> str:
-    """tex_floor_1 — только технические помещения этажа."""
+    """tex_floor_1 — ключ в реестре HA. НЕ entity_id."""
     return f"tex_floor_{int(floor)}"
 
 
 def floor_light_entity(floor: int) -> str:
-    """light.floor_1_all — сущность группы «весь этаж»."""
-    return f"light.{floor_group_unique_id(floor)}"
+    """light.ves_1_i_etazh — сущность группы «весь этаж» так, как её создаст HA.
+
+    Выводим из того же имени, которое сами пишем в группу: тогда переименование
+    группы автоматически тянет за собой и ссылку на неё, без ручной правки.
+
+    ⚠ Оговорка: entity_id фиксируется при ПЕРВОМ создании сущности. Если имя
+    группы поменять уже после деплоя, HA сохранит старый entity_id (сущность
+    зарегистрирована по unique_id), и вычисленное здесь значение разойдётся
+    с объектом. Меняете имя — проверьте entity_id на объекте.
+    """
+    return f"light.{slugify_room(floor_group_name(floor))}"
 
 
 # ============================================================
