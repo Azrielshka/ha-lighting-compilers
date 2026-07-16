@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+from scripts._lib.canon import floor_icon
+
 # Префикс пути наших views. Аналог префикса `zm_` у файлов деплоя: по нему
 # и только по нему деплой отличает своё от чужого.
 VIEW_PREFIX = "zm-"
@@ -29,6 +31,26 @@ SPACE_PREFIX = f"{VIEW_PREFIX}space-"
 # Наши views встают сразу после первого view дашборда (у владельца это
 # «Главная»). Позиция фиксированная, чтобы регенерация не уносила этажи в хвост.
 INSERT_AT = 1
+
+# Раскладка views (согласовано с владельцем 2026-07-16).
+# max_columns — «максимальное число разделов в ширину» у view;
+# column_span — сколько колонок занимает секция внутри view.
+FLOOR_MAX_COLUMNS = 3    # этажный view
+FLOOR_COLUMN_SPAN = 3    # секция этажа во всю ширину view
+SPACE_MAX_COLUMNS = 2    # subview помещения
+
+# Ширина секции в subview: широким раскладкам — 2 колонки, остальным 1.
+# korridor — пары «свет|датчик» тройками, zal — группы + сетка пресетов:
+# в одну колонку они жмутся.
+SPACE_COLUMN_SPAN: Dict[str, int] = {
+    "korridor": 2,
+    "zal": 2,
+}
+SPACE_COLUMN_SPAN_DEFAULT = 1
+
+
+def space_column_span(space_type: str) -> int:
+    return SPACE_COLUMN_SPAN.get(space_type, SPACE_COLUMN_SPAN_DEFAULT)
 
 
 def floor_view_path(floor: int) -> str:
@@ -44,23 +66,39 @@ def is_ours(view: dict) -> bool:
 
 
 def build_floor_view(floor: int, cards: List[dict]) -> dict:
-    """View этажа: компактные карточки помещений в Grid-секции."""
+    """View этажа: компактные карточки помещений в Grid-секции.
+
+    Иконку берём из canon.floor_icon — ту же, что у этажа в реестре HA:
+    иначе вкладка и этаж в Areas разъедутся по виду.
+    """
     return {
         "title": f"Этаж {floor}",
         "path": floor_view_path(floor),
+        "icon": floor_icon(floor),
         "type": "sections",
-        "sections": [{"type": "grid", "cards": cards}],
+        "max_columns": FLOOR_MAX_COLUMNS,
+        "sections": [{
+            "type": "grid",
+            "column_span": FLOOR_COLUMN_SPAN,
+            "cards": cards,
+        }],
     }
 
 
-def build_space_subview(title: str, room_slug: str, card: dict) -> dict:
+def build_space_subview(title: str, room_slug: str, card: dict,
+                        space_type: str = "") -> dict:
     """Subview пространства: полная карточка. Скрыт из вкладок (subview)."""
     return {
         "title": title,
         "path": space_view_path(room_slug),
         "subview": True,
         "type": "sections",
-        "sections": [{"type": "grid", "cards": [card]}],
+        "max_columns": SPACE_MAX_COLUMNS,
+        "sections": [{
+            "type": "grid",
+            "column_span": space_column_span(space_type),
+            "cards": [card],
+        }],
     }
 
 

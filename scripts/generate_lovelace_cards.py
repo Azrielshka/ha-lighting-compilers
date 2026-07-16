@@ -392,7 +392,8 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
 
         room_slug = str(row["room_slug"])
         heading = build_heading(space)
-        subviews.append(V.build_space_subview(heading, room_slug, full_card))
+        subviews.append(V.build_space_subview(heading, room_slug, full_card,
+                                              space_type=space_type))
 
         compact = build_compact_card(
             blocks["compact_card"],
