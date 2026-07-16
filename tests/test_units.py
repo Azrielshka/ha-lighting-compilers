@@ -204,7 +204,8 @@ def test_object_example_units(tmp_path, object_example):
 
     by_id = {u["unit_id"]: u for _, u in units.iterrows()}
 
-    assert set(by_id) == {"hl_1", "103_vestibiul", "ladder_1"}
+    assert set(by_id) == {"hl_1", "103_vestibiul", "ladder_1",
+                          "107_rekreatsiia", "208_vkhodnoi_tambur"}
 
     # Два тамбура склеены в один блок.
     assert list(by_id["hl_1"]["spaces"]) == ["101_Тамбур", "102_Тамбур"]
@@ -215,6 +216,14 @@ def test_object_example_units(tmp_path, object_example):
     # Коридор сам по себе.
     assert by_id["103_vestibiul"]["family"] == "default"
     assert len(by_id["103_vestibiul"]["scripts"]) == 3
+
+    # Рекреация — тоже default (korridor и recreation одного семейства).
+    assert by_id["107_rekreatsiia"]["family"] == "default"
+    assert len(by_id["107_rekreatsiia"]["scripts"]) == 3
+
+    # Холл — своё семейство: on, off, hall_near.
+    assert by_id["208_vkhodnoi_tambur"]["family"] == "hall"
+    assert len(by_id["208_vkhodnoi_tambur"]["scripts"]) == 3
 
 
 # ============================================================
@@ -303,4 +312,4 @@ def test_object_example_has_no_block_errors(object_example):
     findings, stats = V.validate(object_example, V.SHEET_NAME)
 
     assert not [f for f in findings if f.code in ("E15", "E16")]
-    assert stats["units"] == 3
+    assert stats["units"] == 5

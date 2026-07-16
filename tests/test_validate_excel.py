@@ -51,10 +51,11 @@ def test_object_example_passes(object_example):
 
     assert errors(findings) == [], [f.message for f in errors(findings)]
     assert stats == {
-        "rows": 75, "spaces": 6, "groups": 12,
-        "lamps": 75, "sensors": 11, "panels": 5,
-        # hl_1 (два тамбура), 103_vestibiul (сам по себе), ladder_1
-        "units": 3,
+        "rows": 91, "spaces": 8, "groups": 16,
+        "lamps": 91, "sensors": 15, "panels": 5,
+        # hl_1 (два тамбура), 103_vestibiul, ladder_1, 107_rekreatsiia,
+        # 208_vkhodnoi_tambur. Класс и зал единиц не получают — family=None.
+        "units": 5,
     }
 
 
@@ -251,6 +252,37 @@ def test_w03_reported_once_per_row(tmp_path):
     rows[0]["Панель"] = "9.1.1"
     findings, _ = run(build(tmp_path, rows))
     assert len([f for f in findings if f.code == "W03"]) == 1
+
+
+def test_w09_group_prefix_mismatch(tmp_path):
+    """Описка при копировании строки: помещение 208, а группы остались 108_*.
+
+    Не блокируем — конфигурация соберётся и заработает. Но на объекте
+    entity_id перестанут читаться по номеру помещения: ищешь 208 — находишь 108.
+    """
+    rows = base_rows()
+    rows[0]["Название помещения"] = "208_Входной тамбур"
+    findings, _ = run(build(tmp_path, rows))
+
+    assert "W09" in codes(findings)
+    assert errors(findings) == []
+
+    w09 = next(f for f in findings if f.code == "W09")
+    assert "208" in w09.message and "101" in w09.message
+
+
+def test_w09_silent_when_prefix_matches(tmp_path):
+    findings, _ = run(build(tmp_path, base_rows()))
+    assert "W09" not in codes(findings)
+
+
+def test_w09_silent_without_leading_number(tmp_path):
+    """Помещение без номера («Холл») сверять не с чем — правило молчит."""
+    rows = base_rows()
+    rows[0]["Название помещения"] = "Холл"
+    findings, _ = run(build(tmp_path, rows))
+
+    assert "W09" not in codes(findings)
 
 
 def test_w05_group_without_sensors(tmp_path):

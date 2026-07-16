@@ -109,6 +109,7 @@ RULE_TITLES: Dict[str, str] = {
     "W06": "пустая строка внутри листа",
     "W07": "в единице обслуживания больше 12 датчиков",
     "W08": "помещение с автоматизациями, но без датчиков",
+    "W09": "префикс группы не совпадает с номером помещения",
     "E15": "блок смешивает разные семейства",
     "E16": "блок задан у помещения, которое не автоматизируется",
 }
@@ -167,6 +168,16 @@ def _to_int(raw: object) -> Optional[int]:
 def _cell(raw: object) -> str:
     """Ячейка как строка без хвостовых пробелов."""
     return "" if is_blank(raw) else str(raw).strip()
+
+
+def _leading_number(value: object) -> Optional[str]:
+    """Ведущий номер до первого «_»: «208_Входной тамбур» -> «208», «108_1» -> «108».
+
+    Если номера нет («Холл», «wc_1») — None: сверять нечего, правило молчит.
+    Возвращаем строкой, а не int: «01» и «1» — разные номера помещений.
+    """
+    head = str(value).split("_", 1)[0].strip()
+    return head if head.isdigit() else None
 
 
 def _parse_device_cell(kind: str, raw: object, findings: List[Finding], row: int,
@@ -452,6 +463,21 @@ def validate(excel_path: Path, sheet_name: str = SHEET_NAME) -> Tuple[List[Findi
                 f"группа {group_id} встречается в помещениях: {', '.join(gacc.spaces)}",
                 group=group_id,
             ))
+
+        # W09 — префикс группы разошёлся с номером помещения.
+        # Ловит описку при копировании строки: помещение 208, а группы 108_1/108_2.
+        # Ошибкой не делаем: конфигурация соберётся и заработает, просто на
+        # объекте entity_id перестанут читаться по номеру помещения.
+        if space:
+            expected = _leading_number(space)
+            actual = _leading_number(group_id)
+            if expected and actual and expected != actual:
+                findings.append(Finding(
+                    "W09", "warning",
+                    f"группа {group_id} принадлежит помещению «{space}», "
+                    f"но её префикс — {actual}, а не {expected}",
+                    space=space, group=group_id,
+                ))
 
         space_type = spaces[space].space_type if space in spaces else None
         if (

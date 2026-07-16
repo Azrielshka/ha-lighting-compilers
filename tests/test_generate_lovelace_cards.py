@@ -246,6 +246,48 @@ def test_space_subview_is_hidden_and_has_full_card(object_layer, tmp_path):
     assert len(sub["sections"][0]["cards"]) == 1     # ровно полная карточка
 
 
+def test_hall_uses_korridor_layout(object_layer, tmp_path):
+    """Холл рисуется как коридор: заголовки колонок + пары «свет|датчик».
+
+    До появления холла в фикстуре эту ветку можно было проверить только
+    форс-прогоном на чужих данных.
+    """
+    views = _generate(object_layer, tmp_path)
+    hall = views["zm-space-208_vkhodnoi_tambur"]["sections"][0]["cards"][0]
+
+    grid = next(c for c in hall["cards"] if c.get("type") == "grid")
+    kinds = [c["type"] for c in grid["cards"]]
+    assert kinds[:2] == ["heading", "heading"]        # Группы | Датчики
+    # дальше строго чередование свет, датчик
+    entities = [c.get("entity") for c in grid["cards"][2:]]
+    assert entities == ["light.208_1", "sensor.ms_2_1_1",
+                        "light.208_2", "sensor.ms_2_1_2"]
+
+
+def test_recreation_uses_mushroom_groups(object_layer, tmp_path):
+    """Рекреация: узкие группы mushroom + датчики в гриде на 2 колонки."""
+    views = _generate(object_layer, tmp_path)
+    rec = views["zm-space-107_rekreatsiia"]["sections"][0]["cards"][0]
+
+    groups = [c for c in rec["cards"] if c["type"] == "custom:mushroom-light-card"]
+    assert [g["entity"] for g in groups] == ["light.107_1", "light.107_2"]
+
+    sensors_grid = next(c for c in rec["cards"] if c.get("type") == "grid")
+    assert sensors_grid["columns"] == 2
+    assert all(c["type"] == "tile" for c in sensors_grid["cards"])
+
+
+def test_second_floor_gets_its_own_view(object_layer, tmp_path):
+    """Каждый этаж из колонки «Этаж» — свой view со своей иконкой."""
+    views = _generate(object_layer, tmp_path)
+
+    assert views["zm-floor-2"]["icon"] == "mdi:home-floor-2"
+    # 208-е помещение попало на второй этаж, а не к первому
+    cards = views["zm-floor-2"]["sections"][0]["cards"]
+    paths = [c["cards"][-1]["tap_action"]["navigation_path"] for c in cards]
+    assert paths == [f"/{DASHBOARD}/zm-space-208_vkhodnoi_tambur"]
+
+
 def test_zal_lights_are_in_one_row(object_layer, tmp_path):
     """Весь свет зала — одной строкой, а не столбиком во всю ширину."""
     views = _generate(object_layer, tmp_path)

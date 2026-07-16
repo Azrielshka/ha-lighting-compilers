@@ -213,6 +213,11 @@ def test_object_example(object_layer):
         "hl_1_on", "hl_1_off",                                            # special
         "103_vestibiul_on", "103_vestibiul_off", "103_vestibiul_near_off",
         "ladder_1_on", "ladder_1_off", "ladder_1_near_off",
+        # рекреация — то же семейство default, что и коридор
+        "107_rekreatsiia_on", "107_rekreatsiia_off", "107_rekreatsiia_near_off",
+        # холл — своё семейство: вместо near_off у него hall_near
+        "208_vkhodnoi_tambur_on", "208_vkhodnoi_tambur_off",
+        "208_vkhodnoi_tambur_hall_near",
     }
 
 
@@ -286,7 +291,7 @@ def test_cli(monkeypatch, tmp_path, object_layer):
     assert SCRIPTS.main() == 0
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert len(doc) == 8
+    assert len(doc) == 14   # special 2 + default 3×3 + hall 3
 
 
 def test_cli_without_normalized_layer(monkeypatch, tmp_path):

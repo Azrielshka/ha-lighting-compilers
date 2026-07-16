@@ -21,6 +21,9 @@ cards:
   - type: heading
     heading: "[[HEADING]]"
     heading_style: title
+  # grid_options здесь НЕ ставим: он действует только на карточки — прямых
+  # детей секции, а эта плитка вложена в нашу. Внутри стека/грида HA его
+  # игнорирует, и `columns: 12` был бы просто мусором, сбивающим с толку.
   - type: tile
     entity: [[GENERAL_LIGHT]]
     name: "[[HEADING]]"
@@ -28,9 +31,6 @@ cards:
       - type: toggle
       - type: light-brightness
     features_position: bottom
-    grid_options:
-      columns: 12
-      rows: 3
   [[ZONE_GROUPS]]
   - type: grid
     columns: 2

@@ -134,7 +134,8 @@ def test_lights_keeps_table_order(object_layer):
     ids = [g["unique_id"] for g in _groups(doc, "lights_group")]
 
     assert ids == ["101_1", "102_1", "103_1", "103_2", "103_3", "103_4",
-                   "104_1", "104_2", "105_1", "105_2", "106_1", "106_2"]
+                   "104_1", "104_2", "105_1", "105_2", "106_1", "106_2",
+                   "107_1", "107_2", "208_1", "208_2"]
 
 
 def test_lights_platform_is_group(simple_layer):
@@ -188,7 +189,7 @@ def test_general_includes_space_without_type(layer):
 
 def test_general_one_group_per_space(object_layer):
     doc = _run(GENERAL, object_layer)
-    assert len(_groups(doc, "lights_general_group")) == 6
+    assert len(_groups(doc, "lights_general_group")) == 8
 
 
 # ============================================================
@@ -340,12 +341,12 @@ def test_hierarchy_counts(object_layer):
     general = _run(GENERAL, object_layer)
     floor = _run(FLOOR, object_layer, tech_groups=False)
 
-    assert len(_groups(lights, "lights_group")) == 12
-    assert len(_groups(general, "lights_general_group")) == 6
-    assert len(_groups(floor, "lights_floor_group")) == 1
+    assert len(_groups(lights, "lights_group")) == 16
+    assert len(_groups(general, "lights_general_group")) == 8
+    assert len(_groups(floor, "lights_floor_group")) == 2   # этажи 1 и 2
 
     lamps = _referenced(lights, "lights_group")
-    assert len(lamps) == 75
+    assert len(lamps) == 91
 
 
 def test_filters_keep_hierarchy_consistent(object_layer):

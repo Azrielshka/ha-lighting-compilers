@@ -114,11 +114,15 @@ def test_areas_are_bound_to_floors(layer):
 
 
 def test_floor_appears_once_per_level(object_layer):
-    """Шесть помещений на одном этаже дают один Floor, а не шесть."""
+    """Этаж создаётся один раз, сколько бы помещений на нём ни было.
+
+    В фикстуре 7 помещений на первом этаже и 1 на втором → ровно два Floor,
+    а не восемь.
+    """
     payload = _build(object_layer)
 
-    assert len(payload["floors"]) == 1
-    assert len(payload["areas"]) == 6
+    assert [f["level"] for f in payload["floors"]] == [1, 2]
+    assert len(payload["areas"]) == 8
 
 
 def test_floors_sorted_by_level(tmp_path):
@@ -165,17 +169,18 @@ def test_floor_name():
 def test_yaml_is_parseable(object_layer):
     doc = _yaml(object_layer)
 
-    assert len(doc["areas"]) == 6
-    assert len(doc["floors"]) == 1
+    assert len(doc["areas"]) == 8
+    assert len(doc["floors"]) == 2
     assert doc["areas"][0]["name"] == "101_Тамбур"
 
 
 def test_yaml_keeps_table_order(object_layer):
+    """Порядок пространств — как в таблице: наладчик сверяет YAML со своим Excel."""
     doc = _yaml(object_layer)
     names = [a["name"] for a in doc["areas"]]
 
     assert names[0] == "101_Тамбур"
-    assert names[-1] == "106_Лестница"
+    assert names[-1] == "208_Входной тамбур"
 
 
 def test_empty_result_is_commented(object_layer):
@@ -223,7 +228,7 @@ def test_cli_writes_yaml(monkeypatch, tmp_path, object_layer):
     assert AREAS.main() == 0
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert len(doc["areas"]) == 6
+    assert len(doc["areas"]) == 8
 
 
 def test_cli_without_normalized_layer(monkeypatch, tmp_path):

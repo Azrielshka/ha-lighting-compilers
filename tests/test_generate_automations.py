@@ -345,6 +345,8 @@ def test_object_example(object_layer):
         "zm_hl_1_on", "zm_hl_1_off",
         "zm_103_vestibiul_on", "zm_103_vestibiul_off",
         "zm_ladder_1_on", "zm_ladder_1_off",
+        "zm_107_rekreatsiia_on", "zm_107_rekreatsiia_off",
+        "zm_208_vkhodnoi_tambur_on", "zm_208_vkhodnoi_tambur_off",
     }
 
 
@@ -420,7 +422,7 @@ def test_cli(monkeypatch, tmp_path, object_layer):
     assert AUTO.main() == 0
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert len(doc) == 6
+    assert len(doc) == 10   # ON + OFF на каждую из 5 единиц
     assert (bp_out / "zm_default_on.yaml").exists()
 
 

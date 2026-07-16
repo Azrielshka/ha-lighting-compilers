@@ -298,19 +298,21 @@ def test_object_example(tmp_path, object_example):
     s = meta["stats"]
 
     assert s == {
-        "excel_rows": 75,
-        "devices": 91,       # 75 ламп + 11 датчиков + 5 панелей
-        "lamps": 75,
-        "sensors": 11,
+        "excel_rows": 91,
+        "devices": 111,      # 91 лампа + 15 датчиков + 5 панелей
+        "lamps": 91,
+        "sensors": 15,
         "panels": 5,
-        "groups": 12,
-        "spaces": 6,
+        "groups": 16,
+        "spaces": 8,
         "spaces_without_valid_type": 0,
-        # hl_1 (2 тамбура, special) + 103_vestibiul + ladder_1 (оба default).
-        # class и zal не автоматизируются.
-        "units": 3,
-        "scripts": 8,        # special=2, default=3+3
-        "automations": 6,    # ON + OFF на каждую единицу
+        # hl_1 (2 тамбура, special) + 103_vestibiul + ladder_1 + 107_rekreatsiia
+        # (все default) + 208_vkhodnoi_tambur (hall).
+        # class и zal не автоматизируются — единиц не получают.
+        "units": 5,
+        # special=2; default=3 ×3 (103, ladder_1, 107); hall=3
+        "scripts": 14,
+        "automations": 10,   # ON + OFF на каждую единицу
     }
 
 
