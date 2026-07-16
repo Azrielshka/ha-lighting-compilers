@@ -242,6 +242,26 @@ def floor_icon(floor: int) -> str:
     return "mdi:home-floor-a"
 
 
+# Конвенция entity_id групп этажа. Живёт в каноне, а не в генераторе групп:
+# на эти имена ссылаются и generate_floor_groups.py (создаёт), и
+# generate_lovelace_cards.py (кладёт в бейдж этажного view). Два источника
+# правды разъехались бы на первой же правке.
+
+def floor_group_unique_id(floor: int) -> str:
+    """floor_1_all — вся группа этажа."""
+    return f"floor_{int(floor)}_all"
+
+
+def tech_group_unique_id(floor: int) -> str:
+    """tex_floor_1 — только технические помещения этажа."""
+    return f"tex_floor_{int(floor)}"
+
+
+def floor_light_entity(floor: int) -> str:
+    """light.floor_1_all — сущность группы «весь этаж»."""
+    return f"light.{floor_group_unique_id(floor)}"
+
+
 # ============================================================
 # ЕДИНИЦЫ ОБСЛУЖИВАНИЯ, СЕМЕЙСТВА, СКРИПТЫ
 # ============================================================

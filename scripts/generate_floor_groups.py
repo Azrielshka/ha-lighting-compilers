@@ -37,7 +37,11 @@ from typing import Dict, List
 
 import pandas as pd
 
-from scripts._lib.canon import TECHNICAL_SPACE_TYPES
+from scripts._lib.canon import (
+    TECHNICAL_SPACE_TYPES,
+    floor_group_unique_id,
+    tech_group_unique_id,
+)
 from scripts._lib.filters import (
     Filters,
     add_filter_args,
@@ -63,19 +67,9 @@ def floor_group_name(floor: int) -> str:
     return f"Весь {floor}-й этаж"
 
 
-def floor_group_unique_id(floor: int) -> str:
-    """floor_1_all"""
-    return f"floor_{floor}_all"
-
-
 def tech_group_name(floor: int) -> str:
     """«Тех.пом 1-й этаж»"""
     return f"Тех.пом {floor}-й этаж"
-
-
-def tech_group_unique_id(floor: int) -> str:
-    """tex_floor_1"""
-    return f"tex_floor_{floor}"
 
 
 def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = True) -> str:

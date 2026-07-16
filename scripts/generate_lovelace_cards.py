@@ -38,6 +38,7 @@ import pandas as pd
 import yaml
 
 from scripts._lib import ha_views as V
+from scripts._lib.canon import floor_icon, floor_light_entity
 from scripts._lib.filters import add_filter_args, apply_filters, filters_from_args
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -228,6 +229,30 @@ def build_sensors_2col(sensor_block, sensors_flat) -> List[dict]:
     return [_tile(sensor_block, "[[SENSOR]]", s) for s in sensors_flat if s]
 
 
+def build_floor_view(templates_dir: Path, floor: int, cards: List[dict],
+                     dashboard: str) -> dict:
+    """Этажный view из шаблона: шапка, бейджи, компактные карточки.
+
+    Вид целиком в templates/lovelace/floor/view.yaml — владелец правит его сам.
+    Код подставляет только то, что знает: путь, номер этажа, иконку, сущность
+    группы этажа и дашборд.
+
+    `path` подставляем из кода намеренно: по префиксу `zm-` деплой отличает свои
+    views от чужих. Оставь путь на усмотрение шаблона — опечатка в нём
+    превратила бы замену view в бесконечное размножение дублей.
+    """
+    tpl = _strip_header_comments(_read(templates_dir / "floor" / "view.yaml"))
+
+    tpl = tpl.replace("[[PATH]]", V.floor_view_path(floor))
+    tpl = tpl.replace("[[FLOOR_ICON]]", floor_icon(floor))
+    tpl = tpl.replace("[[FLOOR_LIGHT]]", floor_light_entity(floor))
+    tpl = tpl.replace("[[DASHBOARD]]", dashboard)
+    tpl = tpl.replace("[[FLOOR]]", str(floor))
+    tpl = _splice(tpl, "[[CARDS]]", _dump(cards))
+
+    return yaml.safe_load(tpl)
+
+
 def build_compact_card(block: dict, heading: str, general_light: str,
                        subview_path: str) -> dict:
     """Компактная карточка помещения для этажного view: свет + «Подробнее»."""
@@ -411,7 +436,10 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
             "subview": V.space_view_path(room_slug),
         }
 
-    floor_views = [V.build_floor_view(f, floor_cards[f]) for f in sorted(floor_cards)]
+    floor_views = [
+        build_floor_view(templates_dir, f, floor_cards[f], dashboard)
+        for f in sorted(floor_cards)
+    ]
     return V.order_views(floor_views + subviews), report, skipped, excluded
 
 

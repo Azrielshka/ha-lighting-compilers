@@ -48,23 +48,11 @@ def test_is_ours_only_by_prefix():
 
 
 # ============================================================
-# Предустановки раскладки view (согласованы с владельцем)
+# Предустановки раскладки subview (согласованы с владельцем)
+#
+# Этажный view здесь не проверяем: он собирается из шаблона
+# templates/lovelace/floor/view.yaml — его тесты в test_generate_lovelace_cards.
 # ============================================================
-
-def test_floor_view_presets():
-    view = V.build_floor_view(2, cards=[])
-    assert view["max_columns"] == 3            # разделов в ширину
-    assert view["sections"][0]["column_span"] == 3   # секция во всю ширину
-    assert view["type"] == "sections"
-    assert "subview" not in view               # этаж виден во вкладках
-
-
-def test_floor_view_icon_matches_registry_floor():
-    """Иконка вкладки — та же, что у этажа в реестре HA (canon.floor_icon)."""
-    from scripts._lib.canon import floor_icon
-    for floor in (1, 2, 3, 7):
-        assert V.build_floor_view(floor, [])["icon"] == floor_icon(floor)
-
 
 @pytest.mark.parametrize("space_type,expected", [
     ("korridor", 2),      # пары тройками — в одну колонку жмётся

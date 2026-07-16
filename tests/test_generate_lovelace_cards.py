@@ -282,10 +282,65 @@ def test_second_floor_gets_its_own_view(object_layer, tmp_path):
     views = _generate(object_layer, tmp_path)
 
     assert views["zm-floor-2"]["icon"] == "mdi:home-floor-2"
+    assert views["zm-floor-2"]["max_columns"] == 3
+    assert views["zm-floor-2"]["sections"][0]["column_span"] == 3
     # 208-е помещение попало на второй этаж, а не к первому
     cards = views["zm-floor-2"]["sections"][0]["cards"]
     paths = [c["cards"][-1]["tap_action"]["navigation_path"] for c in cards]
     assert paths == [f"/{DASHBOARD}/zm-space-208_vkhodnoi_tambur"]
+
+
+def test_floor_header_and_badges(object_layer, tmp_path):
+    """Шапка и бейджи этажа собираются из шаблона с нашими сущностями."""
+    views = _generate(object_layer, tmp_path)
+    floor = views["zm-floor-1"]
+
+    assert floor["header"]["card"]["content"] == "# 1 Этаж"
+    assert floor["header"]["badges_position"] == "top"
+
+    badges = {b["entity"]: b for b in floor["badges"]}
+    # свет этажа — НАША группа, а не заведённая руками сущность
+    assert "light.floor_1_all" in badges
+    assert badges["light.floor_1_all"]["name"] == "Управление светом 1-го этажа"
+    # помощники владельца — по конвенции от номера этажа
+    assert "input_boolean.regim_auto_1" in badges
+    assert "input_button.but_back" in badges
+
+
+def test_floor_badge_light_matches_generated_floor_group(object_layer, tmp_path):
+    """Бейдж ссылается ровно на ту группу, которую создаёт generate_floor_groups.
+
+    Имя берётся из canon обоими генераторами — если конвенция разъедется,
+    бейдж будет ссылаться в пустоту, и поймать это на объекте трудно.
+    """
+    from scripts._lib.canon import floor_light_entity
+
+    views = _generate(object_layer, tmp_path)
+    for floor in (1, 2):
+        badges = [b.get("entity") for b in views[f"zm-floor-{floor}"]["badges"]]
+        assert floor_light_entity(floor) in badges
+
+
+def test_back_badge_leads_to_dashboard_root(object_layer, tmp_path):
+    """«Назад» ведёт на корень дашборда — там первый view, то есть Главная."""
+    views = _generate(object_layer, tmp_path)
+    back = next(b for b in views["zm-floor-1"]["badges"]
+                if b["entity"] == "input_button.but_back")
+
+    assert back["tap_action"]["navigation_path"] == f"/{DASHBOARD}"
+
+
+def test_floor_view_path_comes_from_code_not_template(object_layer, tmp_path):
+    """Путь этажа задаёт код: по префиксу zm- деплой отличает свои views.
+
+    Оставь его на усмотрение шаблона — опечатка превратила бы замену view
+    в размножение дублей на дашборде владельца.
+    """
+    from scripts._lib import ha_views as V
+
+    views = _generate(object_layer, tmp_path)
+    for floor in (1, 2):
+        assert views[V.floor_view_path(floor)]["path"] == f"zm-floor-{floor}"
 
 
 def test_zal_lights_are_in_one_row(object_layer, tmp_path):

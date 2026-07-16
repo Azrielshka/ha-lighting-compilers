@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from scripts._lib.canon import floor_icon
 
 # Префикс пути наших views. Аналог префикса `zm_` у файлов деплоя: по нему
 # и только по нему деплой отличает своё от чужого.
@@ -32,12 +31,13 @@ SPACE_PREFIX = f"{VIEW_PREFIX}space-"
 # «Главная»). Позиция фиксированная, чтобы регенерация не уносила этажи в хвост.
 INSERT_AT = 1
 
-# Раскладка views (согласовано с владельцем 2026-07-16).
+# Раскладка subview помещения (согласовано с владельцем 2026-07-16).
 # max_columns — «максимальное число разделов в ширину» у view;
 # column_span — сколько колонок занимает секция внутри view.
-FLOOR_MAX_COLUMNS = 3    # этажный view
-FLOOR_COLUMN_SPAN = 3    # секция этажа во всю ширину view
-SPACE_MAX_COLUMNS = 2    # subview помещения
+#
+# Этажный view здесь НЕ описан: он целиком собирается из редактируемого
+# шаблона templates/lovelace/floor/view.yaml (там же шапка и бейджи).
+SPACE_MAX_COLUMNS = 2
 
 # Ширина секции в subview: широким раскладкам — 2 колонки, остальным 1.
 # korridor — пары «свет|датчик» тройками, zal — группы + сетка пресетов:
@@ -63,26 +63,6 @@ def space_view_path(room_slug: str) -> str:
 
 def is_ours(view: dict) -> bool:
     return str(view.get("path", "")).startswith(VIEW_PREFIX)
-
-
-def build_floor_view(floor: int, cards: List[dict]) -> dict:
-    """View этажа: компактные карточки помещений в Grid-секции.
-
-    Иконку берём из canon.floor_icon — ту же, что у этажа в реестре HA:
-    иначе вкладка и этаж в Areas разъедутся по виду.
-    """
-    return {
-        "title": f"Этаж {floor}",
-        "path": floor_view_path(floor),
-        "icon": floor_icon(floor),
-        "type": "sections",
-        "max_columns": FLOOR_MAX_COLUMNS,
-        "sections": [{
-            "type": "grid",
-            "column_span": FLOOR_COLUMN_SPAN,
-            "cards": cards,
-        }],
-    }
 
 
 def build_space_subview(title: str, room_slug: str, card: dict,
