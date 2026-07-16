@@ -10,11 +10,16 @@
 #   [[ZONE_COLUMNS]] — генератор кладёт в грид порядок
 #     [свет_1..N, датчик_1..N, подпись_1..N] → грид сам разложит в 3 ряда.
 #   Блоки: _blocks/light_tile.yaml, _blocks/sensor_tile.yaml, _blocks/class_label.yaml.
+#
+# ⚠ grid_options.columns: full — НЕ 12. Сетка секции считается как
+#   base(12) * column_span, поэтому при column_span: 2 в ней 24 колонки,
+#   и columns: 12 дал бы ровно ПОЛОВИНУ ширины. `full` = grid-column: 1/-1,
+#   то есть вся ширина при любом column_span. Проверено на объекте.
 type: grid
 columns: 1
 square: false
 grid_options:
-  columns: 12
+  columns: full
   rows: auto
 cards:
   - type: heading

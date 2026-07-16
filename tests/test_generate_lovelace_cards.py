@@ -203,6 +203,22 @@ def test_floor_view_holds_compact_cards_with_navigation(object_layer, tmp_path):
         assert path.rsplit("/", 1)[1] in views
 
 
+def test_card_spans_full_section_width(object_layer, tmp_path):
+    """Карточка помещения занимает всю ширину секции при любом column_span.
+
+    Сетка секции = base(12) * column_span, поэтому `columns: 12` дал бы половину
+    ширины у типов с column_span: 2 (korridor, zal). Спасает только `full`
+    (grid-column: 1/-1). Ловим, если кто-то вернёт число.
+    """
+    views = _generate(object_layer, tmp_path)
+    subviews = [v for p, v in views.items() if p.startswith("zm-space-")]
+    assert subviews
+
+    for view in subviews:
+        card = view["sections"][0]["cards"][0]
+        assert card["grid_options"]["columns"] == "full", view["path"]
+
+
 def test_compact_button_keeps_card_mod_css(object_layer, tmp_path):
     """CSS кнопки «Подробнее» доезжает до view дословно.
 

@@ -8,11 +8,16 @@
 #   square: false: свет широкий (columns: 9), датчик(-и) узкие справа (columns: 3
 #   суммарно, делятся между собой). Строки идут вертикально, одна под другой.
 #   Блоки: _blocks/light_tile.yaml, _blocks/sensor_tile.yaml.
+#
+# ⚠ grid_options.columns: full — НЕ 12. Сетка секции считается как
+#   base(12) * column_span, поэтому при column_span: 2 в ней 24 колонки,
+#   и columns: 12 дал бы ровно ПОЛОВИНУ ширины. `full` = grid-column: 1/-1,
+#   то есть вся ширина при любом column_span. Проверено на объекте.
 type: grid
 columns: 1
 square: false
 grid_options:
-  columns: 12
+  columns: full
   rows: auto
 cards:
   - type: heading

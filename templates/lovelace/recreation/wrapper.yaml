@@ -6,11 +6,16 @@
 #   [[HEADING]], [[GENERAL_LIGHT]]
 #   [[ZONE_GROUPS]]  — на каждую зону mushroom-light-card (_blocks/recreation_group.yaml)
 #   [[SENSORS_2COL]] — датчики движения плитками, лягут в грид columns: 2 ниже
+#
+# ⚠ grid_options.columns: full — НЕ 12. Сетка секции считается как
+#   base(12) * column_span, поэтому при column_span: 2 в ней 24 колонки,
+#   и columns: 12 дал бы ровно ПОЛОВИНУ ширины. `full` = grid-column: 1/-1,
+#   то есть вся ширина при любом column_span. Проверено на объекте.
 type: grid
 columns: 1
 square: false
 grid_options:
-  columns: 12
+  columns: full
   rows: auto
 cards:
   - type: heading
