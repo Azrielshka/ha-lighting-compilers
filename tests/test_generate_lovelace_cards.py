@@ -203,6 +203,25 @@ def test_floor_view_holds_compact_cards_with_navigation(object_layer, tmp_path):
         assert path.rsplit("/", 1)[1] in views
 
 
+def test_compact_button_keeps_card_mod_css(object_layer, tmp_path):
+    """CSS кнопки «Подробнее» доезжает до view дословно.
+
+    Он выверен на живом объекте (без `!important` раскладка не применяется —
+    стили кнопки лежат в adopted stylesheets и выигрывают у card_mod), поэтому
+    потерять или исказить его при сборке нельзя.
+    """
+    views = _generate(object_layer, tmp_path)
+    button = views["zm-floor-1"]["sections"][0]["cards"][0]["cards"][-1]
+
+    css = button["card_mod"]["style"]
+    assert "flex-direction: row-reverse !important" in css
+    assert "width: 36px !important" in css        # иначе иконка займёт 40% ширины
+
+    # ровно тот CSS, что лежит в редактируемом блоке — без «улучшений» по пути
+    block = G._load_block(G.DEFAULT_TEMPLATES_DIR, "compact_card")
+    assert css == block["cards"][-1]["card_mod"]["style"]
+
+
 def test_space_subview_is_hidden_and_has_full_card(object_layer, tmp_path):
     views = _generate(object_layer, tmp_path)
     sub = views["zm-space-103_vestibiul"]

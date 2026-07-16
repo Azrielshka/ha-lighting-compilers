@@ -256,9 +256,31 @@ def build_zal_lights(zone_lights) -> List[dict]:
 # Вставка сгенерированного в обёртку
 # ============================================================
 
+class _Dumper(yaml.SafeDumper):
+    """Свой дампер: многострочные строки пишем блоком `|`, а не с \\n.
+
+    Иначе CSS из card_mod превращается в нечитаемую простыню с экранированием,
+    а файлы views существуют ровно затем, чтобы владелец читал их глазами.
+    Отдельный класс, а не глобальный представитель, — чтобы не менять вывод
+    остальных генераторов, которые тоже зовут yaml в этом же процессе.
+    """
+
+
+def _str_representer(dumper, data: str):
+    style = "|" if "\n" in data else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)
+
+
+_Dumper.add_representer(str, _str_representer)
+
+
+def _yaml(obj) -> str:
+    return yaml.dump(obj, Dumper=_Dumper, sort_keys=False, allow_unicode=True,
+                     default_flow_style=False)
+
+
 def _dump(cards: List[dict]) -> str:
-    return yaml.safe_dump(cards, sort_keys=False, allow_unicode=True,
-                          default_flow_style=False).rstrip("\n")
+    return _yaml(cards).rstrip("\n")
 
 
 def _splice(text: str, marker: str, block: str) -> str:
@@ -403,11 +425,7 @@ def generate_cards(spaces_parquet: Path, templates_dir: Path, out_dir: Path,
         old.unlink()                       # чтобы удалённые помещения не оставались
     for view in views:
         path = out_dir / f"{view['path']}.yaml"
-        path.write_text(
-            yaml.safe_dump(view, sort_keys=False, allow_unicode=True,
-                           default_flow_style=False),
-            encoding="utf-8",
-        )
+        path.write_text(_yaml(view), encoding="utf-8")
 
     report_json.parent.mkdir(parents=True, exist_ok=True)
     report_json.write_text(
