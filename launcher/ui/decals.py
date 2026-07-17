@@ -11,14 +11,21 @@ launcher/ui/decals.py
     попадает в сборку сам. `QSvgRenderer` умеет читать разметку прямо из
     QByteArray — проверено.
 
-Почему рисуем сами, а не берём готовое:
-    - Лицензии. Vecteezy / Freepik / VectorStock пишут «free for commercial
-      use», а в условиях — обязательная атрибуция либо подписка. Инструмент
-      уезжает на объекты, тащить в него чужую графику с хвостом не стоит.
-      Настоящий CC0 существует, но это игровая графика: рисовалась под HUD
-      космического шутера и в окне инженерного инструмента выглядит наклейкой.
-    - Вектор. У наладчика на ноутбуке вполне может стоять масштаб 125% или
-      150%, где растр поплывёт. SVG рисуется под текущий devicePixelRatio.
+Откуда графика:
+    - Декаль шапки — иконки Lucide (ISC). Выбрана владельцем из четырёх
+      вариантов, см. docs/design/decals/. ⚠ ISC требует, чтобы копирайт и текст
+      лицензии присутствовали во всех копиях: отсюда LUCIDE_NOTICE ниже — он
+      обязан ехать внутри EXE, а не лежать файлом рядом.
+    - Иконка окна нарисована здесь: прав третьих лиц в ней нет.
+
+Чего здесь нет и не будет: Pinterest, Vecteezy, Freepik, VectorStock. Pinterest —
+доска чужих картинок без автора и лицензии. У остальных «free for commercial
+use» означает атрибуцию либо подписку. На itch.io фильтр «free» — это ЦЕНА, а
+не лицензия; настоящий CC0-фильтр там есть, но за ним лежит пиксель-арт для
+игр — растр, чужая эстетика, в шапке инженерного окна наклейка.
+
+Вектор, а не растр: у наладчика на ноутбуке вполне может стоять масштаб 125%
+или 150%, где растр поплывёт. SVG рисуется под текущий devicePixelRatio.
 
 Почему вектор рисуется В КОД, а не остаётся картинкой: ширина линий и цвета
 берутся из палитры темы. Поменяете акцент — графика поменяется с ним, а не
@@ -35,55 +42,101 @@ from launcher.ui.theme import ACCENT, CYAN
 
 
 # ------------------------------------------------------------
-# Декаль шапки: схема этажа
+# Декаль шапки: цепочка иконок Lucide
 # ------------------------------------------------------------
-# Абстрактный план: корпус, коридор по центру, перегородки, точки светильников.
-# Выбрана владельцем как «буквально то, что делает инструмент»: из плана этажа
-# с группами света он и собирает конфигурацию.
+# ⚠ ОБЯЗАТЕЛЬСТВО, а не справка.
 #
-# Намеренно НЕ похоже ни на один реальный объект: это знак, а не чертёж. План
-# конкретного заказчика в шапке был бы враньём на всех остальных объектах.
-# Проёмы в стенах коридора обязательны: сплошные линии читаются как таблица, а
-# не как план — первая версия декали выглядела ровно так. План узнаётся по
-# коридору с дверями и по НЕравным помещениям; идеальная сетка выдаёт таблицу.
-FLOOR_PLAN_SVG = f"""
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 46">
-  <g fill="none" stroke="{CYAN}" stroke-linecap="square">
+# Контуры иконок ниже взяты из Lucide (https://lucide.dev), лицензия ISC. Она
+# разрешает коммерческое использование даром и без спроса, но ТРЕБУЕТ, чтобы
+# копирайт и текст лицензии присутствовали во всех копиях. Лаунчер уезжает на
+# объекты в виде EXE — значит текст обязан быть внутри EXE.
+#
+# Поэтому он здесь строкой, а не в файле рядом: файл потребовал бы --add-data,
+# и забытый флаг превратил бы нарушение лицензии в тихую ошибку сборки. Копия
+# для людей — THIRD-PARTY-LICENSES.md в корне репозитория.
+#
+# Уберёте иконки — уберите и это. Оставите иконки без этого — нарушите ISC.
+# Стережёт test_lucide_icons_carry_their_licence.
+LUCIDE_NOTICE = """ISC License
 
-    <path d="M1 2 H259 V44 H1 Z" stroke-width="1.6" opacity="0.6"/>
+Copyright (c) 2026 Lucide Icons and Contributors
 
-    <g stroke-width="1.2" opacity="0.55">
-      <path d="M1 19 H34 M48 19 H94 M108 19 H146 M160 19 H212 M226 19 H259"/>
-      <path d="M1 29 H26 M40 29 H82 M96 29 H138 M152 29 H198 M212 29 H259"/>
-    </g>
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
 
-    <g stroke-width="1" opacity="0.45">
-      <path d="M42 2 V19 M88 2 V19 M140 2 V19 M196 2 V19"/>
-      <path d="M32 29 V44 M78 29 V44 M126 29 V44 M172 29 V44 M224 29 V44"/>
-    </g>
-  </g>
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE."""
 
-  <g fill="{ACCENT}" opacity="0.7">
-    <circle cx="21" cy="10" r="1.8"/>
-    <circle cx="65" cy="10" r="1.8"/>
-    <circle cx="114" cy="10" r="1.8"/>
-    <circle cx="168" cy="10" r="1.8"/>
-    <circle cx="228" cy="10" r="1.8"/>
-    <circle cx="16" cy="37" r="1.8"/>
-    <circle cx="55" cy="37" r="1.8"/>
-    <circle cx="102" cy="37" r="1.8"/>
-    <circle cx="149" cy="37" r="1.8"/>
-    <circle cx="198" cy="37" r="1.8"/>
-    <circle cx="242" cy="37" r="1.8"/>
-  </g>
+# Контуры иконок Lucide (24x24), дословно из исходников. Менять их не надо:
+# это чужая работа, и правки здесь означают, что при обновлении Lucide вы уже
+# не сможете просто перевзять файл.
+#
+# Ни одна из пяти не входит в список иконок, производных от Feather, — значит
+# применяется только ISC, без второго слоя MIT. Добавите новую — сверьтесь со
+# списком в LICENSE Lucide, иначе к NOTICE придётся добавлять и MIT.
+LUCIDE_ICONS = {
+    "scan-line": ('<path d="M3 7V5a2 2 0 0 1 2-2h2"/>'
+                  '<path d="M17 3h2a2 2 0 0 1 2 2v2"/>'
+                  '<path d="M21 17v2a2 2 0 0 1-2 2h-2"/>'
+                  '<path d="M7 21H5a2 2 0 0 1-2-2v-2"/>'
+                  '<path d="M7 12h10"/>'),
+    "cpu": ('<rect width="16" height="16" x="4" y="4" rx="2"/>'
+            '<rect width="6" height="6" x="9" y="9" rx="1"/>'
+            '<path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/>'
+            '<path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/>'
+            '<path d="M9 2v2"/><path d="M9 20v2"/>'),
+    "circuit-board": ('<rect width="18" height="18" x="3" y="3" rx="2"/>'
+                      '<path d="M11 9h4a2 2 0 0 0 2-2V3"/>'
+                      '<circle cx="9" cy="9" r="2"/>'
+                      '<path d="M7 21v-4a2 2 0 0 1 2-2h4"/>'
+                      '<circle cx="15" cy="15" r="2"/>'),
+    "network": ('<rect x="16" y="16" width="6" height="6" rx="1"/>'
+                '<rect x="2" y="16" width="6" height="6" rx="1"/>'
+                '<rect x="9" y="2" width="6" height="6" rx="1"/>'
+                '<path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/>'
+                '<path d="M12 12V8"/>'),
+    "radar": ('<path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/>'
+              '<path d="M4 6h.01"/>'
+              '<path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/>'
+              '<path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/>'
+              '<path d="M12 18h.01"/>'
+              '<path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/>'
+              '<circle cx="12" cy="12" r="2"/>'
+              '<path d="m13.41 10.59 5.66-5.66"/>'),
+}
 
-  <g fill="{CYAN}" opacity="0.5">
-    <circle cx="130" cy="24" r="1.2"/>
-    <circle cx="60" cy="24" r="1.2"/>
-    <circle cx="205" cy="24" r="1.2"/>
-  </g>
-</svg>
-"""
+# Порядок — цепочкой слева направо; замыкает радар, он же единственный
+# пурпурный. Пурпур здесь не нарушает правило «действие»: это знак, а не
+# элемент управления, трогать его нельзя.
+_STRIP_ORDER = ["scan-line", "cpu", "circuit-board", "network", "radar"]
+
+
+def _build_strip() -> str:
+    parts = []
+    for i, name in enumerate(_STRIP_ORDER):
+        x = 8 + i * 50
+        colour = ACCENT if name == "radar" else CYAN
+        parts.append(
+            f'<g transform="translate({x} 10)" fill="none" stroke="{colour}" '
+            f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
+            f'opacity="0.75">{LUCIDE_ICONS[name]}</g>')
+        if i < len(_STRIP_ORDER) - 1:
+            parts.append(f'<path d="M{x + 28} 22 H{x + 46}" stroke="{CYAN}" '
+                         f'stroke-width="0.8" opacity="0.35"/>')
+
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 44">'
+            + "".join(parts) + "</svg>")
+
+
+# Декаль шапки. Выбрана владельцем из четырёх вариантов (docs/design/decals/):
+# схема этажа не читалась планом, спектр/осциллограмма/радар отклонены.
+HEADER_SVG = _build_strip()
 
 # ------------------------------------------------------------
 # Иконка окна: шина DALI с тремя узлами

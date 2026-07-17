@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from launcher.ui.decals import FLOOR_PLAN_SVG, render_svg
+from launcher.ui.decals import HEADER_SVG, render_svg
 from launcher.ui.theme import BORDER, CYAN, MONO, TEXT, TEXT_MUTED
 
 # Длина уголка-скобки и толщина линии.
@@ -97,7 +97,7 @@ class HeaderBar(QWidget):
         # 125/150% растр в логическом размере мылил бы.
         plan = QLabel()
         ratio = self.devicePixelRatioF() or 1.0
-        plan.setPixmap(render_svg(FLOOR_PLAN_SVG, 260, 44, ratio))
+        plan.setPixmap(render_svg(HEADER_SVG, 260, 44, ratio))
         plan.setAttribute(Qt.WA_TransparentForMouseEvents)
         layout.addWidget(plan, 0, Qt.AlignVCenter)
 

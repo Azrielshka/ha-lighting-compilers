@@ -96,7 +96,7 @@ def test_custom_widget_with_a_stylesheet_paints_itself():
 # Живая отрисовка
 # ============================================================
 
-@pytest.mark.parametrize("name", ["FLOOR_PLAN_SVG", "ICON_SVG"])
+@pytest.mark.parametrize("name", ["HEADER_SVG", "ICON_SVG"])
 def test_svg_parses(name):
     _qt()
     from PySide6.QtCore import QByteArray
@@ -108,7 +108,7 @@ def test_svg_parses(name):
     assert renderer.isValid(), f"{name} не разобрался"
 
 
-@pytest.mark.parametrize("name,w,h", [("FLOOR_PLAN_SVG", 260, 44), ("ICON_SVG", 64, 64)])
+@pytest.mark.parametrize("name,w,h", [("HEADER_SVG", 260, 44), ("ICON_SVG", 64, 64)])
 def test_svg_actually_draws_something(name, w, h):
     """Не «разобрался», а НАРИСОВАЛ.
 
@@ -223,3 +223,67 @@ def test_buttons_never_squash_below_their_text():
         assert not clipped, f"при высоте {height}px обрезаны: {clipped}"
 
     window.close()
+
+
+# ============================================================
+# Лицензия чужой графики
+# ============================================================
+
+def test_lucide_icons_carry_their_licence():
+    """Есть иконки Lucide — обязан быть и текст ISC. Внутри EXE, не рядом с ним.
+
+    ISC разрешает коммерческое использование даром и без спроса, но требует
+    копирайт и текст лицензии «во всех копиях». Лаунчер уезжает на объект одним
+    EXE, поэтому текст лежит строкой в модуле: файл рядом потребовал бы
+    --add-data, и забытый флаг превратил бы нарушение лицензии в тихую ошибку
+    сборки.
+
+    Тест связывает обязательство с кодом: уберёте иконки — уберите и notice;
+    оставите иконки без notice — упадёте здесь, а не в разговоре с юристом
+    заказчика.
+    """
+    src = DECALS_PY.read_text(encoding="utf-8")
+
+    if "LUCIDE_ICONS" not in src:
+        pytest.skip("иконки Lucide больше не используются")
+
+    from launcher.ui.decals import LUCIDE_NOTICE
+
+    assert "ISC License" in LUCIDE_NOTICE
+    assert "Lucide Icons and Contributors" in LUCIDE_NOTICE
+    assert "appear in all copies" in LUCIDE_NOTICE
+
+
+def test_licence_file_matches_the_notice_in_code():
+    """Файл для людей и строка для EXE не должны разъехаться."""
+    src = DECALS_PY.read_text(encoding="utf-8")
+    if "LUCIDE_ICONS" not in src:
+        pytest.skip("иконки Lucide больше не используются")
+
+    from launcher.ui.decals import LUCIDE_NOTICE
+
+    licences = (Path(__file__).resolve().parent.parent / "THIRD-PARTY-LICENSES.md")
+    assert licences.exists(), "чужая графика есть, а файла лицензий нет"
+
+    text = licences.read_text(encoding="utf-8")
+    assert "Lucide" in text
+    # Ключевые строки ISC обязаны быть в обоих местах дословно.
+    for line in ("ISC License", "Copyright (c) 2026 Lucide Icons and Contributors"):
+        assert line in LUCIDE_NOTICE and line in text, line
+
+
+def test_no_icons_from_sources_we_rejected():
+    """Ни Pinterest, ни стоков с атрибуцией — ни в коде, ни в вариантах.
+
+    Условия у них требуют атрибуцию либо подписку, а «для личного
+    использования» не покрывает нашу работу: инструментом настраивают
+    освещение за деньги.
+    """
+    banned = ("pinterest", "vecteezy", "freepik", "vectorstock")
+
+    for path in (DECALS_PY, WIDGETS_PY):
+        text = path.read_text(encoding="utf-8").lower()
+        for name in banned:
+            # Упоминание в объяснении «почему не берём» — нормально;
+            # ссылка на скачивание — нет.
+            assert f"{name}.com" not in text, f"{path.name}: ссылка на {name}"
