@@ -460,14 +460,63 @@ def test_main_floor_card_points_at_generated_area(object_layer, tmp_path):
         assert block["cards"][0]["navigation_path"] == f"/{DASHBOARD}/zm-floor-{floor}"
 
 
-def test_main_floor_lights_are_generated_groups(object_layer, tmp_path):
-    """Обе плитки света — наши группы этажа, выведенные из их же имён."""
+def _real_floor_lights(object_layer) -> set:
+    """entity_id групп этажа так, как их заведёт HA: из name через slugify.
+
+    Берём фактический YAML соседнего генератора, а не канон: сверка с каноном
+    была бы тавтологией — оба конца правила совпадут даже тогда, когда группы
+    вовсе нет.
+    """
+    import generate_floor_groups as FLOOR
+    from scripts._lib.naming import slugify_room
+    from scripts._lib.normalized import load_dataset
+
+    spaces = load_dataset(object_layer, "spaces")
+    doc = yaml.safe_load(FLOOR.build_yaml(spaces, Filters()))
+    return {f"light.{slugify_room(g['name'])}" for g in doc[FLOOR.ROOT_KEY]["light"]}
+
+
+def test_main_floor_lights_are_groups_that_really_exist(object_layer, tmp_path):
+    """Каждая плитка света на Главной — группа, которую HA реально создаст.
+
+    Ловит то, что уже пролезло: плитка тех.помещений ставилась на каждый этаж,
+    а группу generate_floor_groups заводит только там, где есть korridor /
+    special / recreation. На этаже без них (в фикстуре второй — один hall)
+    плитка висела в пустоте: «сущность недоступна» без единой подсказки почему.
+
+    Проверяем по факту, а не по канону: канон подтвердит имя даже несуществующей
+    группы — на этом и погорели.
+    """
+    real = _real_floor_lights(object_layer)
+    blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
+
+    for block in blocks:
+        for tile in block["cards"][1]["cards"]:
+            assert tile["entity"] in real, (
+                f"плитка ссылается на {tile['entity']}, "
+                f"а создаются только {sorted(real)}"
+            )
+
+
+def test_main_shows_tech_tile_exactly_where_the_group_exists(object_layer, tmp_path):
+    """Не только «не лишняя», но и «не потеряна»: этаж с тех.группой её показывает.
+
+    Без этой половины проверку можно пройти, выкинув плитку отовсюду.
+    """
     from scripts._lib.canon import floor_light_entity, tech_light_entity
 
+    real = _real_floor_lights(object_layer)
     blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
+
     for floor, block in zip((1, 2), blocks):
         entities = [t["entity"] for t in block["cards"][1]["cards"]]
-        assert entities == [floor_light_entity(floor), tech_light_entity(floor)]
+        expected = [floor_light_entity(floor)]
+        if tech_light_entity(floor) in real:
+            expected.append(tech_light_entity(floor))
+        assert entities == expected
+
+    # фикстура должна покрывать оба случая, иначе тест ничего не стережёт
+    assert tech_light_entity(1) in real and tech_light_entity(2) not in real
 
 
 def test_nav_map_matches_helper_options(object_layer, tmp_path):

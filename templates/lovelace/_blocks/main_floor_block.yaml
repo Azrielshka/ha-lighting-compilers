@@ -6,7 +6,8 @@
 #   [[FLOOR_AREA_ID]]    — ves_<N>_etazh, Area этажа (её создаёт generate_areas)
 #   [[FLOOR_VIEW_PATH]]  — zm-floor-<N>, куда ведёт карточка этажа
 #   [[FLOOR_LIGHT]]      — light.ves_<N>_i_etazh, «Весь N-й этаж»
-#   [[TECH_LIGHT]]       — light.tekh_pom_<N>_i_etazh, «Тех.пом N-й этаж»
+#   [[TECH_TILE]]        — плитка тех.помещений (_blocks/main_tech_tile.yaml);
+#                          только на этажах, где эта группа реально создаётся
 #   [[NAV_SELECT]]       — input_select.nav_floor_<N> (его создаёт generate_helpers)
 #   [[NAV_MAP]]          — карта «имя помещения → room_slug», строки Jinja-словаря
 #   [[DASHBOARD]]        — url_path дашборда
@@ -46,13 +47,7 @@
           features_position: bottom
           features:
             - type: toggle
-        - type: tile
-          entity: "[[TECH_LIGHT]]"
-          name: Тех.пом. [[FLOOR]]-й этаж
-          vertical: false
-          features_position: bottom
-          features:
-            - type: toggle
+        [[TECH_TILE]]
     - type: tile
       entity: "[[NAV_SELECT]]"
       vertical: false

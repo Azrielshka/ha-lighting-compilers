@@ -39,6 +39,7 @@ import yaml
 
 from scripts._lib import ha_views as V
 from scripts._lib.canon import (
+    TECHNICAL_SPACE_TYPES,
     floor_area_id,
     floor_icon,
     floor_light_entity,
@@ -251,18 +252,27 @@ def build_nav_map(rooms: List[tuple]) -> str:
 
 
 def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
-                    dashboard: str, title: str) -> dict:
+                    tech_floors: set, dashboard: str, title: str) -> dict:
     """Главная: блок на этаж — карточка, свет, выбор помещения, переход.
 
     Собирается текстом, а не структурой: в блоке живут Jinja-карта и CSS
     card_mod, которые владелец правит руками — их надо донести дословно.
+
+    `tech_floors` — этажи, на которых generate_floor_groups реально заведёт
+    группу тех.помещений. На остальных плитки не будет: этаж без korridor /
+    special / recreation группы не получает, и плитка показывала бы
+    «сущность недоступна».
     """
     block_tpl = _strip_header_comments(
         _read(templates_dir / "_blocks" / "main_floor_block.yaml"))
+    tech_tpl = _strip_header_comments(
+        _read(templates_dir / "_blocks" / "main_tech_tile.yaml"))
 
     blocks: List[str] = []
     for floor in sorted(rooms_by_floor):
         block = block_tpl
+        block = _splice(block, "[[TECH_TILE]]",
+                        tech_tpl if floor in tech_floors else "")
         block = block.replace("[[FLOOR_AREA_ID]]", floor_area_id(floor))
         block = block.replace("[[FLOOR_VIEW_PATH]]", V.floor_view_path(floor))
         block = block.replace("[[FLOOR_LIGHT]]", floor_light_entity(floor))
@@ -449,6 +459,16 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
     spaces_df = pd.read_parquet(spaces_parquet)
     filtered, excluded = apply_filters(spaces_df, filters)
 
+    # Этажи с группой тех.помещений — тем же правилом, что и в
+    # generate_floor_groups: считаем по filtered, а не в цикле сборки карточек.
+    # В цикле помещение может быть пропущено (нет типа, нет обёртки), и этаж
+    # молча остался бы без плитки при живой группе.
+    tech_floors = {
+        int(f)
+        for f in filtered[filtered["space_type"].isin(TECHNICAL_SPACE_TYPES)
+                          & filtered["floor"].notna()]["floor"].unique()
+    }
+
     floor_cards: Dict[int, List[dict]] = {}
     rooms_by_floor: Dict[int, List[tuple]] = {}
     subviews: List[dict] = []
@@ -503,7 +523,8 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
 
     views = floor_views + subviews
     if rooms_by_floor:
-        views.append(build_main_view(templates_dir, rooms_by_floor, dashboard, title))
+        views.append(build_main_view(templates_dir, rooms_by_floor, tech_floors,
+                                     dashboard, title))
 
     return V.order_views(views), report, skipped, excluded
 
