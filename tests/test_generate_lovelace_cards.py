@@ -484,12 +484,20 @@ def test_nav_map_matches_helper_options(object_layer, tmp_path):
     helpers = HELPERS.build_payload(load_dataset(object_layer, "spaces"), Filters())
     blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
 
+    from scripts._lib.canon import NAV_PLACEHOLDER
+
     for floor, block in zip((1, 2), blocks):
         options = helpers["input_select"][f"nav_floor_{floor}"]["options"]
         content = block["cards"][3]["content"]
 
         assert block["cards"][2]["entity"] == f"input_select.nav_floor_{floor}"
+
         for option in options:
+            if option == NAV_PLACEHOLDER:
+                # Заглушки в карте нет НАМЕРЕННО: на этом и держится «ничего не
+                # выбрано» — map.get() вернёт пусто, и кнопка покажет подсказку.
+                assert f"'{option}':" not in content
+                continue
             assert f"'{option}':" in content, (
                 f"опции списка нет в карте перехода: {option!r}"
             )

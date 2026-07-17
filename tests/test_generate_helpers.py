@@ -20,6 +20,7 @@ import generate_helpers as H
 import normalize_excel as N
 from conftest import make_book
 from scripts._lib.canon import (
+    NAV_PLACEHOLDER,
     VACANT_DELAY_DEFAULT,
     VACANT_DELAY_ENTITY,
     ZAL_PRESETS,
@@ -92,11 +93,29 @@ def test_nav_select_per_floor_with_room_options(object_layer):
     selects = _package(object_layer)["input_select"]
 
     assert set(selects) == {"nav_floor_1", "nav_floor_2"}
-    assert selects["nav_floor_2"]["options"] == ["208 Входной тамбур"]
-    # порядок помещений — как в таблице
-    assert selects["nav_floor_1"]["options"][:3] == [
-        "101 Тамбур", "102 Тамбур", "103 Вестибюль",
+    assert selects["nav_floor_2"]["options"] == [NAV_PLACEHOLDER, "208 Входной тамбур"]
+    # порядок помещений — как в таблице, следом за заглушкой
+    assert selects["nav_floor_1"]["options"][:4] == [
+        NAV_PLACEHOLDER, "101 Тамбур", "102 Тамбур", "103 Вестибюль",
     ]
+
+
+def test_nav_starts_with_nothing_selected(object_layer):
+    """При загрузке ничего не выбрано — кнопка перехода показывает подсказку.
+
+    У input_select пустого состояния не бывает: оно всегда одна из options.
+    Поэтому «ничего не выбрано» = заглушка первой опцией, она же initial.
+    """
+    for select in _package(object_layer)["input_select"].values():
+        assert select["options"][0] == NAV_PLACEHOLDER
+        assert select["initial"] == NAV_PLACEHOLDER
+
+
+def test_placeholder_is_not_a_room_name(object_layer):
+    """Заглушка не должна совпасть с именем помещения — оно стало бы недостижимо."""
+    for select in _package(object_layer)["input_select"].values():
+        rooms = select["options"][1:]
+        assert NAV_PLACEHOLDER not in rooms
 
 
 def test_nav_options_use_same_label_as_card_heading(object_layer):
@@ -112,12 +131,6 @@ def test_nav_options_use_same_label_as_card_heading(object_layer):
     assert "103 Вестибюль" in options
     assert CARDS.build_heading("103_Вестибюль") == "103 Вестибюль"
     assert H.space_label("103_Вестибюль") == CARDS.build_heading("103_Вестибюль")
-
-
-def test_nav_initial_is_first_option(object_layer):
-    """Без initial список стартует в unknown, и кнопка перехода пуста."""
-    for select in _package(object_layer)["input_select"].values():
-        assert select["initial"] == select["options"][0]
 
 
 # ============================================================

@@ -43,6 +43,7 @@ import pandas as pd
 
 from scripts._lib.canon import (
     BACK_BUTTON_ID,
+    NAV_PLACEHOLDER,
     space_label,
     VACANT_DELAY_DEFAULT,
     VACANT_DELAY_ID,
@@ -107,7 +108,7 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     }
 
     buttons = {
-        BACK_BUTTON_ID: {"name": "Назад", "icon": "mdi:arrow-left-circle"},
+        BACK_BUTTON_ID: {"name": "Назад", "icon": "mdi:skip-backward"},
     }
 
     booleans: Dict[str, Dict] = {}
@@ -119,12 +120,14 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     for preset_id, title in ZAL_PRESETS.items():
         booleans[preset_id] = {"name": title, "icon": "mdi:theater"}
 
+    # Заглушка первой опцией и она же initial: при загрузке ничего не выбрано.
+    # В карту перехода она не попадает — см. canon.NAV_PLACEHOLDER.
     selects: Dict[str, Dict] = {}
     for floor in floors:
         selects[floor_nav_id(floor)] = {
             "name": f"Помещения {floor} этажа",
-            "options": by_floor[floor],
-            "initial": by_floor[floor][0],
+            "options": [NAV_PLACEHOLDER] + by_floor[floor],
+            "initial": NAV_PLACEHOLDER,
             "icon": "mdi:door",
         }
 

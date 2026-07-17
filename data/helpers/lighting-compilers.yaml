@@ -24,7 +24,7 @@ lighting_compilers:
   input_button:
     but_back:
       name: Назад
-      icon: mdi:arrow-left-circle
+      icon: mdi:skip-backward
   input_boolean:
     regim_auto_1:
       name: Автоматический режим — 1 этаж
@@ -48,6 +48,7 @@ lighting_compilers:
     nav_floor_1:
       name: Помещения 1 этажа
       options:
+      - —
       - 101 Тамбур
       - 102 Тамбур
       - 103 Вестибюль
@@ -55,11 +56,12 @@ lighting_compilers:
       - 105 Актовый зал
       - 106 Лестница
       - 107 Рекреация
-      initial: 101 Тамбур
+      initial: —
       icon: mdi:door
     nav_floor_2:
       name: Помещения 2 этажа
       options:
+      - —
       - 208 Входной тамбур
-      initial: 208 Входной тамбур
+      initial: —
       icon: mdi:door
