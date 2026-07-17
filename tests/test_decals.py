@@ -229,6 +229,24 @@ def test_buttons_never_squash_below_their_text():
 # Лицензия чужой графики
 # ============================================================
 
+def _notice_from_source() -> str:
+    """Текст ISC из исходника — БЕЗ импорта модуля.
+
+    ⚠ Импорт decals тянет PySide6, а на dev-VM он не грузится (нет libEGL) —
+    тест падал бы вместо проверки. Но проверка-то текстовая: Qt ей не нужен, и
+    пропускать её на машине без GUI неправильно. Соблюдение лицензии не должно
+    зависеть от того, установлен ли где-то libEGL.
+    """
+    src = DECALS_PY.read_text(encoding="utf-8")
+
+    if "LUCIDE_ICONS" not in src:
+        pytest.skip("иконки Lucide больше не используются")
+
+    match = re.search(r'LUCIDE_NOTICE = """(.*?)"""', src, re.DOTALL)
+    assert match, "иконки Lucide есть, а LUCIDE_NOTICE не объявлен"
+    return match.group(1)
+
+
 def test_lucide_icons_carry_their_licence():
     """Есть иконки Lucide — обязан быть и текст ISC. Внутри EXE, не рядом с ним.
 
@@ -242,34 +260,25 @@ def test_lucide_icons_carry_their_licence():
     оставите иконки без notice — упадёте здесь, а не в разговоре с юристом
     заказчика.
     """
-    src = DECALS_PY.read_text(encoding="utf-8")
+    notice = _notice_from_source()
 
-    if "LUCIDE_ICONS" not in src:
-        pytest.skip("иконки Lucide больше не используются")
-
-    from launcher.ui.decals import LUCIDE_NOTICE
-
-    assert "ISC License" in LUCIDE_NOTICE
-    assert "Lucide Icons and Contributors" in LUCIDE_NOTICE
-    assert "appear in all copies" in LUCIDE_NOTICE
+    assert "ISC License" in notice
+    assert "Lucide Icons and Contributors" in notice
+    assert "appear in all copies" in notice
 
 
 def test_licence_file_matches_the_notice_in_code():
     """Файл для людей и строка для EXE не должны разъехаться."""
-    src = DECALS_PY.read_text(encoding="utf-8")
-    if "LUCIDE_ICONS" not in src:
-        pytest.skip("иконки Lucide больше не используются")
+    notice = _notice_from_source()
 
-    from launcher.ui.decals import LUCIDE_NOTICE
-
-    licences = (Path(__file__).resolve().parent.parent / "THIRD-PARTY-LICENSES.md")
+    licences = Path(__file__).resolve().parent.parent / "THIRD-PARTY-LICENSES.md"
     assert licences.exists(), "чужая графика есть, а файла лицензий нет"
 
     text = licences.read_text(encoding="utf-8")
     assert "Lucide" in text
     # Ключевые строки ISC обязаны быть в обоих местах дословно.
     for line in ("ISC License", "Copyright (c) 2026 Lucide Icons and Contributors"):
-        assert line in LUCIDE_NOTICE and line in text, line
+        assert line in notice and line in text, line
 
 
 def test_no_icons_from_sources_we_rejected():
