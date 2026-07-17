@@ -657,3 +657,43 @@ def test_service_blocks_have_no_editor_leftovers(object_layer, tmp_path):
 
 def _yaml_text(node) -> str:
     return yaml.safe_dump(node, allow_unicode=True)
+
+
+def test_service_blocks_have_nothing_that_can_wrap(object_layer, tmp_path):
+    """Ни подписи у кнопки, ни длинного заголовка: перенос ломает ряд.
+
+    У блоков `rows: auto` — высота считается по содержимому. Текст, не влезший
+    в колонку шириной 6, переносится на вторую строку, блок становится выше
+    соседнего, и ряд едет. Ровно это и случилось с «Настройка конфигурации».
+
+    Выравнивать высоты постфактум (жёсткий rows, card_mod с высотой в пикселях)
+    владелец отказался осознанно: подпись дублировала заголовок над собой, и
+    правильнее убрать причину, чем подгонять высоту под текущий текст.
+    """
+    from scripts._lib.canon import SERVICE_VIEWS
+
+    section = _service_section(_main_view(_generate(object_layer, tmp_path)))
+    blocks = [c for c in section["cards"] if c.get("type") == "vertical-stack"]
+
+    for block in blocks:
+        button = block["cards"][1]
+        assert button["show_name"] is False
+        assert "name" not in button
+
+    for spec in SERVICE_VIEWS:
+        # эмодзи + одно слово. Порог с запасом: «🔧 Конфигурация» = 15.
+        assert len(spec["heading"]) <= 18, (
+            f"заголовок «{spec['heading']}» длинный: в колонке шириной 6 он "
+            f"перенесётся на вторую строку и ряд поедет"
+        )
+
+
+def test_service_page_title_stays_full():
+    """Заголовок страницы укорачивать не надо: во вкладке места сколько угодно.
+
+    Короткий — только heading на Главной, и лишь потому, что там узкая колонка.
+    """
+    from scripts._lib.canon import SERVICE_VIEWS
+
+    for spec in SERVICE_VIEWS:
+        assert spec["title"].startswith("Настройка ")

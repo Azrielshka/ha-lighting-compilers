@@ -312,7 +312,6 @@ def build_service_blocks(templates_dir: Path, dashboard: str) -> str:
         block = tpl
         block = block.replace("[[SERVICE_HEADING]]", spec["heading"])
         block = block.replace("[[SERVICE_ICON]]", spec["icon"])
-        block = block.replace("[[SERVICE_BUTTON]]", spec["button"])
         block = block.replace("[[SERVICE_PATH]]", spec["path"])
         block = block.replace("[[DASHBOARD]]", dashboard)
         blocks.append(block)
