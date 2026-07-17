@@ -1,10 +1,20 @@
 name: Build and Release EXE
 
+# Тег -> EXE, других EXE не бывает.
+#
+# Сборка идёт на чистой windows-latest из коммита, на который указывает тег:
+# по любому EXE всегда можно сказать, из чего он собран. Собранный локально
+# приходит с чьей-то машины в неизвестном состоянии, и доказать его состав
+# нечем — а лаунчер показывает версию в шапке именно затем, чтобы на вопрос
+# «что стоит на объекте» был ответ.
+#
+# Тесты здесь НЕ гоняются — решение владельца (2026-07-17): не усложнять.
+# Цена решения: красная сборка уедет в релиз молча. Гоняйте pytest локально
+# перед тем, как ставить тег.
 on:
   push:
     tags:
-      - 'v*'   # запуск при создании тега (v1.0, v1.1 и т.д.)
-
+      - 'v*'
 
 jobs:
   build:
@@ -13,56 +23,70 @@ jobs:
       contents: write
 
     steps:
-      # 1. Клонируем репозиторий
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2. Устанавливаем Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # 3. Устанавливаем зависимости
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+        run: pip install -r requirements.txt
 
-      # 4. Сборка exe
-      - name: Build EXE
+      # Версия в шапке лаунчера обязана совпасть с тегом.
+      #
+      # Наладчик звонит с объекта и читает версию С ЭКРАНА. Поставить тег
+      # v3.0.0, забыв снять «-dev» в launcher/__version__, — значит раздать
+      # сборку, которая называет себя не своим именем. Ловим здесь: чинить
+      # тег после публикации релиза куда дороже.
+      - name: Check version matches tag
+        shell: bash
         run: |
-          pyinstaller --onefile --noconsole launcher/main.py --name launcher
-      # 5. Prepare release folder
+          tag="${GITHUB_REF_NAME#v}"
+          code=$(python -c "import launcher; print(launcher.__version__)")
+          echo "тег: $tag | launcher.__version__: $code"
+          if [ "$tag" != "$code" ]; then
+            echo "::error::тег v$tag не совпадает с launcher/__version__ = $code."
+            echo "::error::Поправьте __version__ и переставьте тег."
+            exit 1
+          fi
+
+      # .ico собираем из того же SVG, которым лаунчер красит своё окно.
+      # В репозитории его нет намеренно: производная от decals.ICON_SVG, и
+      # закоммиченный файл стал бы вторым источником правды.
+      - name: Build icon
+        run: python tools/make_icon.py build/launcher.ico
+
+      # --icon — про иконку самого файла в Проводнике. setWindowIcon в коде
+      # красит окно и панель задач у запущенной программы: это разные вещи,
+      # нужны обе.
+      - name: Build EXE
+        run: pyinstaller --onefile --noconsole --icon build/launcher.ico launcher/main.py --name launcher
+
       - name: Prepare release folder
         run: |
           mkdir release
 
-          # exe
           copy dist\launcher.exe release\launcher.exe
 
-          # templates
           xcopy templates release\templates /E /I
+          xcopy scripts release\scripts /E /I
 
-          # data + пример excel
           mkdir release\data
           copy data\*.xlsx release\data\
 
-          # requirements
           copy requirements.txt release\requirements.txt
-
-          # инструкция
           copy README_RELEASE.txt release\INSTALL.txt
-          
-          # scripts
-          xcopy scripts release\scripts /E /I
 
-      # 6. Архивация
+          REM Обязательство ISC: текст лицензии Lucide едет с продуктом.
+          REM В самом EXE он тоже есть (decals.LUCIDE_NOTICE) — это копия
+          REM для человека, который откроет архив.
+          copy THIRD-PARTY-LICENSES.md release\THIRD-PARTY-LICENSES.md
+
       - name: Create ZIP archive
-        run: |
-          powershell Compress-Archive -Path release\* -DestinationPath ha-lighting-compilers.zip
+        run: powershell Compress-Archive -Path release\* -DestinationPath ha-lighting-compilers.zip
 
-      # 7. Создание релиза
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
