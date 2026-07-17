@@ -224,9 +224,18 @@ class LauncherWindow(QMainWindow):
     # ------------------------------------------------------------
     def _build_config_group(self) -> QGroupBox:
         """
-        Создаёт блок с путями:
+        Создаёт блок параметров объекта:
             - Project Root
             - Excel File Path
+            - Дашборд   (url_path на объекте)
+            - Объект    (имя в шапке Главной)
+
+        ⚠ Дашборд и Объект стоят здесь, а не в диалоге Deploy, хотя раньше жили
+        там. Читает их ГЕНЕРАЦИЯ карточек: имя идёт в шапку Главной, дашборд — в
+        navigate-пути. Деплой ничего не генерирует, он льёт уже готовые файлы.
+        Пока поля стояли в диалоге деплоя, выходило так: наладчик правит имя,
+        жмёт Deploy — и не понимает, почему в шапке старое. Поле обязано стоять
+        рядом с кнопкой, которая его читает.
         """
 
         group = QGroupBox("Project Configuration")
@@ -263,6 +272,36 @@ class LauncherWindow(QMainWindow):
         layout.addWidget(excel_file_label, 1, 0)
         layout.addWidget(self.excel_file_input, 1, 1)
         layout.addWidget(self.excel_file_browse_btn, 1, 2)
+
+        # ------------------------------------------------------------
+        # Поле: Дашборд (url_path на объекте)
+        # ------------------------------------------------------------
+        dashboard_label = QLabel("Дашборд:")
+        self.ha_dashboard_input = QLineEdit()
+        self.ha_dashboard_input.setPlaceholderText("dashboard-tets")
+        self.ha_dashboard_input.setToolTip(
+            "url_path дашборда на объекте. Из него строятся navigate-пути\n"
+            "карточек, и в него же деплой пишет views.\n"
+            "Обязан содержать дефис (требование Home Assistant)."
+        )
+
+        layout.addWidget(dashboard_label, 2, 0)
+        layout.addWidget(self.ha_dashboard_input, 2, 1)
+
+        # ------------------------------------------------------------
+        # Поле: Объект (имя в шапке Главной)
+        # ------------------------------------------------------------
+        title_label = QLabel("Объект:")
+        self.ha_title_input = QLineEdit()
+        self.ha_title_input.setPlaceholderText("Колледж Химки")
+        self.ha_title_input.setToolTip(
+            "Заголовок в шапке Главной страницы. В таблице его нет.\n"
+            "Читается при генерации карточек — поменяли имя,\n"
+            "прогоните Generate Lovelace Cards заново."
+        )
+
+        layout.addWidget(title_label, 3, 0)
+        layout.addWidget(self.ha_title_input, 3, 1)
 
         # ------------------------------------------------------------
         # Центральная колонка растягивается
@@ -432,6 +471,8 @@ class LauncherWindow(QMainWindow):
         self.project_root_input.editingFinished.connect(self._save_current_config)
         self.excel_file_input.editingFinished.connect(self._save_current_config)
         self.strict_checkbox.toggled.connect(self._save_current_config)
+        self.ha_dashboard_input.editingFinished.connect(self._save_current_config)
+        self.ha_title_input.editingFinished.connect(self._save_current_config)
 
         # ------------------------------------------------------------
         # Кнопки операций pipeline
@@ -658,6 +699,11 @@ class LauncherWindow(QMainWindow):
 
         self.strict_checkbox.setChecked(bool(saved_config.get("strict", False)))
 
+        # Параметры объекта. Пустая строка — нормально: генератор подставит
+        # свои дефолты, а поле останется с подсказкой-плейсхолдером.
+        self.ha_dashboard_input.setText(str(saved_config.get("ha_dashboard", "")).strip())
+        self.ha_title_input.setText(str(saved_config.get("ha_title", "")).strip())
+
         loaded_from_saved = False
 
         if project_root and Path(project_root).exists():
@@ -680,16 +726,23 @@ class LauncherWindow(QMainWindow):
     # ------------------------------------------------------------
     def _save_current_config(self) -> None:
         """
-        Сохраняет текущие значения полей launcher в JSON config.
+        Сохраняет значения полей главного окна в JSON config.
+
+        ⚠ Только update(), никогда save(): окно знает лишь свои поля, а в том же
+        файле живут настройки диалога Deploy (хост, токен, ключ). Через save()
+        они стирались при каждом старте, закрытии окна и правке пути — и
+        наладчик вводил их заново, не понимая почему.
         """
 
         data = {
             "project_root": self.project_root_input.text().strip(),
             "excel_file": self.excel_file_input.text().strip(),
             "strict": self.strict_checkbox.isChecked(),
+            "ha_dashboard": self.ha_dashboard_input.text().strip(),
+            "ha_title": self.ha_title_input.text().strip(),
         }
 
-        self.config_store.save(data)
+        self.config_store.update(data)
 
     # ------------------------------------------------------------
     # Автозаполнение стартовых путей при открытии launcher

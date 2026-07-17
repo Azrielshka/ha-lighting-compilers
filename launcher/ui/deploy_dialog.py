@@ -59,6 +59,10 @@ class DeployDialog(QDialog):
 
         config = config or {}
 
+        # Дашборд принадлежит главному окну; деплою он нужен только чтобы знать,
+        # куда писать views. Запоминаем значение, но не редактируем.
+        self.dashboard = str(config.get("ha_dashboard", "")).strip()
+
         # Результат: заполняется при нажатии кнопки.
         self.live = False
         self.accepted_targets: List[str] = []
@@ -162,29 +166,27 @@ class DeployDialog(QDialog):
         hint.setStyleSheet("color: gray;")
         layout.addWidget(hint, 2, 1)
 
-        # url_path дашборда: нужен и для записи views, и для navigate-путей
-        # в компактных карточках. На каждом объекте свой.
+        # Дашборд показываем, но не редактируем: он живёт в главном окне.
+        #
+        # Раньше поля «Дашборд» и «Объект» стояли здесь — и это была ловушка.
+        # Читает их ГЕНЕРАЦИЯ карточек, а не деплой: имя идёт в шапку Главной,
+        # дашборд — в navigate-пути. Наладчик правил имя тут, жал Deploy и не
+        # понимал, почему в шапке старое: деплой ничего не генерирует, он льёт
+        # уже готовые файлы. Поле переехало к кнопке, которая его читает.
+        dashboard = str(config.get("ha_dashboard", "")).strip()
         layout.addWidget(QLabel("Дашборд:"), 3, 0)
-        self.ha_dashboard = QLineEdit(config.get("ha_dashboard", "dashboard-tets"))
-        self.ha_dashboard.setPlaceholderText("dashboard-tets")
-        self.ha_dashboard.setToolTip(
-            "url_path дашборда, куда писать views карточек.\n"
-            "Обязан содержать дефис (требование Home Assistant)."
+        self.dashboard_value = QLabel(dashboard or "— не задан, см. главное окно —")
+        self.dashboard_value.setStyleSheet("color: gray;")
+        self.dashboard_value.setToolTip(
+            "Задаётся в главном окне: он нужен и генерации карточек, и деплою."
         )
-        layout.addWidget(self.ha_dashboard, 3, 1)
-
-        # Имя объекта — в шапку Главной. Из таблицы его не взять.
-        layout.addWidget(QLabel("Объект:"), 4, 0)
-        self.ha_title = QLineEdit(config.get("ha_title", ""))
-        self.ha_title.setPlaceholderText("Колледж Химки")
-        self.ha_title.setToolTip("Заголовок в шапке Главной страницы.")
-        layout.addWidget(self.ha_title, 4, 1)
+        layout.addWidget(self.dashboard_value, 3, 1)
 
         # Для объектов с самоподписанным https (Traefik default cert).
         # На локальном http:// не нужен и просто игнорируется.
         self.ha_insecure = QCheckBox("Не проверять TLS-сертификат (самоподписанный https)")
         self.ha_insecure.setChecked(bool(config.get("ha_insecure", False)))
-        layout.addWidget(self.ha_insecure, 5, 1)
+        layout.addWidget(self.ha_insecure, 4, 1)
 
         return group
 
@@ -280,10 +282,10 @@ class DeployDialog(QDialog):
             "ssh_key": self.ssh_key.text().strip(),
             "ha_url": self.ha_url.text().strip(),
             "ha_token": self.ha_token.text().strip(),
-            "ha_dashboard": self.ha_dashboard.text().strip(),
-            "ha_title": self.ha_title.text().strip(),
             "ha_insecure": self.ha_insecure.isChecked(),
         }
+        # ha_dashboard / ha_title сюда НЕ возвращаем: их владелец — главное
+        # окно. Вернём — затрём то, что наладчик там только что ввёл.
 
     def script_args(self) -> List[str]:
         """Аргументы для scripts/deploy.py."""
@@ -301,8 +303,8 @@ class DeployDialog(QDialog):
             args += ["--url", self.ha_url.text().strip()]
         if self.ha_token.text().strip():
             args += ["--token", self.ha_token.text().strip()]
-        if self.ha_dashboard.text().strip():
-            args += ["--dashboard", self.ha_dashboard.text().strip()]
+        if self.dashboard:
+            args += ["--dashboard", self.dashboard]
         if self.ha_insecure.isChecked():
             args.append("--insecure")
 
