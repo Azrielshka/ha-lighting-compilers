@@ -158,6 +158,7 @@ def object_layer(tmp_path, object_example) -> Path:
 
 
 DASHBOARD = "dash-test"
+DASHBOARD_TITLE = "Объект-тест"
 
 
 def _generate(object_layer, tmp_path) -> dict:
@@ -170,6 +171,7 @@ def _generate(object_layer, tmp_path) -> dict:
         report_json=tmp_path / "report.json",
         filters=Filters(),
         dashboard=DASHBOARD,
+        title=DASHBOARD_TITLE,
     )
     views = {}
     for f in sorted(out_dir.glob("*.yaml")):
@@ -408,3 +410,118 @@ def test_regeneration_removes_stale_views(object_layer, tmp_path):
 
     _generate(object_layer, tmp_path)
     assert not stale.exists()
+
+
+# ============================================================
+# ГЛАВНАЯ СТРАНИЦА
+# ============================================================
+
+def _main_view(views: dict) -> dict:
+    return views["zm-main"]
+
+
+def _floor_blocks(main: dict) -> list:
+    return [c for c in main["sections"][0]["cards"] if c.get("type") == "vertical-stack"]
+
+
+def test_main_view_is_generated_and_first(object_layer, tmp_path):
+    """Главная — наша и обязана быть первой: дашборд открывается на первом view."""
+    from scripts._lib import ha_views as V
+
+    views = _generate(object_layer, tmp_path)
+    assert "zm-main" in views
+
+    ordered = V.order_views(list(views.values()))
+    assert ordered[0]["path"] == "zm-main"
+    # и merge ставит наши в начало, а не после чужого view
+    merged = V.merge_views([{"path": "energy"}], ordered)
+    assert merged[0]["path"] == "zm-main"
+
+
+def test_main_has_one_block_per_floor(object_layer, tmp_path):
+    blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
+
+    assert len(blocks) == 2          # в фикстуре два этажа
+    areas = [b["cards"][0]["area"] for b in blocks]
+    assert areas == ["ves_1_etazh", "ves_2_etazh"]
+
+
+def test_main_floor_card_points_at_generated_area(object_layer, tmp_path):
+    """Карточка этажа ссылается на Area, которую создаёт generate_areas.
+
+    type: area показывает только Area — на Floor она не встанет. Если id
+    разойдётся с тем, что создаёт generate_areas, карточка будет пустой.
+    """
+    from scripts._lib.canon import floor_area_id
+
+    blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
+    for floor, block in zip((1, 2), blocks):
+        assert block["cards"][0]["area"] == floor_area_id(floor)
+        assert block["cards"][0]["navigation_path"] == f"/{DASHBOARD}/zm-floor-{floor}"
+
+
+def test_main_floor_lights_are_generated_groups(object_layer, tmp_path):
+    """Обе плитки света — наши группы этажа, выведенные из их же имён."""
+    from scripts._lib.canon import floor_light_entity, tech_light_entity
+
+    blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
+    for floor, block in zip((1, 2), blocks):
+        entities = [t["entity"] for t in block["cards"][1]["cards"]]
+        assert entities == [floor_light_entity(floor), tech_light_entity(floor)]
+
+
+def test_nav_map_matches_helper_options(object_layer, tmp_path):
+    """Карта «имя → слаг» и опции input_select строятся из одного источника.
+
+    Сверка идёт по строке состояния: разойдутся на символ — кнопка молча
+    покажет «выберите помещение» при выбранном помещении. Поймать это глазами
+    почти нельзя, поэтому держим тестом.
+    """
+    import generate_helpers as HELPERS
+    from scripts._lib.filters import Filters
+    from scripts._lib.normalized import load_dataset
+
+    helpers = HELPERS.build_payload(load_dataset(object_layer, "spaces"), Filters())
+    blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
+
+    for floor, block in zip((1, 2), blocks):
+        options = helpers["input_select"][f"nav_floor_{floor}"]["options"]
+        content = block["cards"][3]["content"]
+
+        assert block["cards"][2]["entity"] == f"input_select.nav_floor_{floor}"
+        for option in options:
+            assert f"'{option}':" in content, (
+                f"опции списка нет в карте перехода: {option!r}"
+            )
+
+
+def test_nav_map_slugs_point_at_existing_subviews(object_layer, tmp_path):
+    """Каждая ссылка карты ведёт на реально созданный subview."""
+    import re
+
+    views = _generate(object_layer, tmp_path)
+    blocks = _floor_blocks(_main_view(views))
+
+    for block in blocks:
+        for slug in re.findall(r"': '([a-z0-9_]+)'", block["cards"][3]["content"]):
+            assert f"zm-space-{slug}" in views, slug
+
+
+def test_main_title_from_flag(object_layer, tmp_path):
+    """Имя объекта в таблице не хранится — приходит флагом."""
+    main = _main_view(_generate(object_layer, tmp_path))
+
+    assert main["header"]["card"]["content"] == f"# {DASHBOARD_TITLE}"
+
+
+def test_main_nav_button_keeps_card_mod(object_layer, tmp_path):
+    """CSS кнопки перехода доезжает дословно, в словарной форме с `$`.
+
+    Ссылка живёт внутри ha-markdown со своим shadow-root — строковый style
+    до неё не дойдёт, и кнопка останется голой ссылкой.
+    """
+    blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
+    style = blocks[0]["cards"][3]["card_mod"]["style"]
+
+    assert "ha-markdown$" in style
+    assert "display: block" in style["ha-markdown$"]

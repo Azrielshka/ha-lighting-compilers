@@ -415,3 +415,39 @@ def test_missing_artifacts_suggest_pipeline_steps(monkeypatch, tmp_path, capsys)
     out = capsys.readouterr().out
     assert "не сгенерирована" in out
     assert "generate_scripts.py" in out
+
+
+# ============================================================
+# ЛАУНЧЕР НЕ ДОЛЖЕН ОТСТАВАТЬ ОТ КОДА
+# ============================================================
+
+def test_deploy_dialog_targets_match_ha_targets():
+    """Галочки в диалоге деплоя = цели в ha_targets, один в один.
+
+    В диалоге стоит комментарий «должны совпадать с ha_targets.py», но пока не
+    было теста, список отставал: цель `helpers` в коде появилась, а галочки
+    для неё не было — наладчик просто не смог бы её отправить.
+
+    Файл разбираем AST-ом, а не импортом: PySide6 в тестовом окружении нет,
+    да и поднимать Qt ради списка строк незачем.
+    """
+    import ast
+
+    src = (Path(__file__).resolve().parent.parent
+           / "launcher" / "ui" / "deploy_dialog.py").read_text(encoding="utf-8")
+
+    found = None
+    for node in ast.walk(ast.parse(src)):
+        target = None
+        if isinstance(node, ast.AnnAssign):
+            target = getattr(node.target, "id", None)
+        elif isinstance(node, ast.Assign) and node.targets:
+            target = getattr(node.targets[0], "id", None)
+        if target == "TARGETS":
+            found = [el.elts[0].value for el in node.value.elts]
+            break
+
+    assert found is not None, "в deploy_dialog.py не нашёлся список TARGETS"
+    assert found == list(TARGETS), (
+        f"диалог: {found}\nha_targets: {list(TARGETS)}"
+    )

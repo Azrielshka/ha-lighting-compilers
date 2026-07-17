@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
 # Цели деплоя. Должны совпадать с scripts/_lib/ha_targets.py.
 TARGETS: List[tuple] = [
     ("lights", "Группы света", "includes/packages/zm_*.yaml"),
+    ("helpers", "Вспомогательные объекты", "includes/packages/zm_lighting-compilers.yaml"),
     ("scripts", "Скрипты", "includes/scripts/zm_scripts.yaml"),
     ("automations", "Автоматизации", "includes/automations/zm_automations.yaml"),
     ("blueprints", "Blueprint'ы", "blueprints/automation/zone_manager/"),
@@ -172,11 +173,18 @@ class DeployDialog(QDialog):
         )
         layout.addWidget(self.ha_dashboard, 3, 1)
 
+        # Имя объекта — в шапку Главной. Из таблицы его не взять.
+        layout.addWidget(QLabel("Объект:"), 4, 0)
+        self.ha_title = QLineEdit(config.get("ha_title", ""))
+        self.ha_title.setPlaceholderText("Колледж Химки")
+        self.ha_title.setToolTip("Заголовок в шапке Главной страницы.")
+        layout.addWidget(self.ha_title, 4, 1)
+
         # Для объектов с самоподписанным https (Traefik default cert).
         # На локальном http:// не нужен и просто игнорируется.
         self.ha_insecure = QCheckBox("Не проверять TLS-сертификат (самоподписанный https)")
         self.ha_insecure.setChecked(bool(config.get("ha_insecure", False)))
-        layout.addWidget(self.ha_insecure, 4, 1)
+        layout.addWidget(self.ha_insecure, 5, 1)
 
         return group
 
@@ -273,6 +281,7 @@ class DeployDialog(QDialog):
             "ha_url": self.ha_url.text().strip(),
             "ha_token": self.ha_token.text().strip(),
             "ha_dashboard": self.ha_dashboard.text().strip(),
+            "ha_title": self.ha_title.text().strip(),
             "ha_insecure": self.ha_insecure.isChecked(),
         }
 

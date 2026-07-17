@@ -38,7 +38,14 @@ import pandas as pd
 import yaml
 
 from scripts._lib import ha_views as V
-from scripts._lib.canon import floor_icon, floor_light_entity
+from scripts._lib.canon import (
+    floor_area_id,
+    floor_icon,
+    floor_light_entity,
+    floor_nav_entity,
+    space_label,
+    tech_light_entity,
+)
 from scripts._lib.filters import add_filter_args, apply_filters, filters_from_args
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +58,10 @@ DEFAULT_REPORT_JSON = PROJECT_ROOT / "data" / "lovelace_cards_report.json"
 # url_path дашборда на объекте. Нужен для navigate-путей в компактных
 # карточках, поэтому свой на каждом объекте — задаётся флагом/полем лаунчера.
 DEFAULT_DASHBOARD = "dashboard-tets"
+
+# Заголовок в шапке Главной. Из таблицы его не взять — имя объекта там не
+# хранится, поэтому флаг.
+DEFAULT_TITLE = "Освещение"
 
 # Раскладка коридора (согласовано с владельцем 2026-07-15):
 ZONES_PER_GRID = 3   # зон в одной сетке-тройке
@@ -229,6 +240,49 @@ def build_sensors_2col(sensor_block, sensors_flat) -> List[dict]:
     return [_tile(sensor_block, "[[SENSOR]]", s) for s in sensors_flat if s]
 
 
+def build_nav_map(rooms: List[tuple]) -> str:
+    """Строки Jinja-словаря «имя помещения → room_slug» для кнопки перехода.
+
+    Ключи — те же, что в опциях input_select навигации (обе стороны берут
+    canon.space_label). Сверка идёт по строке состояния: разойдутся на символ —
+    кнопка молча покажет «выберите помещение» при выбранном помещении.
+    """
+    return ",\n".join(f"  '{label}': '{slug}'" for label, slug in rooms)
+
+
+def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
+                    dashboard: str, title: str) -> dict:
+    """Главная: блок на этаж — карточка, свет, выбор помещения, переход.
+
+    Собирается текстом, а не структурой: в блоке живут Jinja-карта и CSS
+    card_mod, которые владелец правит руками — их надо донести дословно.
+    """
+    block_tpl = _strip_header_comments(
+        _read(templates_dir / "_blocks" / "main_floor_block.yaml"))
+
+    blocks: List[str] = []
+    for floor in sorted(rooms_by_floor):
+        block = block_tpl
+        block = block.replace("[[FLOOR_AREA_ID]]", floor_area_id(floor))
+        block = block.replace("[[FLOOR_VIEW_PATH]]", V.floor_view_path(floor))
+        block = block.replace("[[FLOOR_LIGHT]]", floor_light_entity(floor))
+        block = block.replace("[[TECH_LIGHT]]", tech_light_entity(floor))
+        block = block.replace("[[NAV_SELECT]]", floor_nav_entity(floor))
+        block = block.replace("[[DASHBOARD]]", dashboard)
+        block = _splice(block, "[[NAV_MAP]]", build_nav_map(rooms_by_floor[floor]))
+        # [[FLOOR]] — последним: он подстрока остальных маркеров только внешне,
+        # но порядок всё равно держим предсказуемым.
+        block = block.replace("[[FLOOR]]", str(floor))
+        blocks.append(block)
+
+    view = _strip_header_comments(_read(templates_dir / "main" / "view.yaml"))
+    view = view.replace("[[PATH]]", V.MAIN_PATH)
+    view = view.replace("[[TITLE]]", title)
+    view = _splice(view, "[[FLOOR_BLOCKS]]", "\n".join(blocks))
+
+    return yaml.safe_load(view)
+
+
 def build_floor_view(templates_dir: Path, floor: int, cards: List[dict],
                      dashboard: str) -> dict:
     """Этажный view из шаблона: шапка, бейджи, компактные карточки.
@@ -366,7 +420,9 @@ def build_card(space_type: str, wrapper: str, blocks: Dict[str, dict],
 
 
 def build_heading(space: str) -> str:
-    return str(space).replace("_", " ").strip()
+    """Заголовок карточки. Правило одно на проект — в каноне: им же подписаны
+    опции навигационного input_select и ключи карты «имя → слаг»."""
+    return space_label(space)
 
 
 # ============================================================
@@ -378,7 +434,7 @@ BLOCK_NAMES = ("light_tile", "sensor_tile", "class_label", "recreation_group",
 
 
 def build_views(spaces_parquet: Path, templates_dir: Path, filters,
-                dashboard: str):
+                dashboard: str, title: str = ""):
     """Собрать views дашборда: этажные + subview пространств.
 
     Возвращает (views, report, skipped, excluded). Чистая часть — без записи
@@ -394,6 +450,7 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
     filtered, excluded = apply_filters(spaces_df, filters)
 
     floor_cards: Dict[int, List[dict]] = {}
+    rooms_by_floor: Dict[int, List[tuple]] = {}
     subviews: List[dict] = []
     report: Dict[str, Dict] = {}
     skipped: List[Dict] = []
@@ -427,6 +484,9 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
             subview_path=f"/{dashboard}/{V.space_view_path(room_slug)}",
         )
         floor_cards.setdefault(int(row["floor"]), []).append(compact)
+        # Для Главной: карта «имя → слаг» и опции навигации строятся из одного
+        # списка (canon.space_label) — иначе кнопка перехода молча сломается.
+        rooms_by_floor.setdefault(int(row["floor"]), []).append((heading, room_slug))
 
         report[space] = {
             "space_type": space_type,
@@ -440,13 +500,19 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
         build_floor_view(templates_dir, f, floor_cards[f], dashboard)
         for f in sorted(floor_cards)
     ]
-    return V.order_views(floor_views + subviews), report, skipped, excluded
+
+    views = floor_views + subviews
+    if rooms_by_floor:
+        views.append(build_main_view(templates_dir, rooms_by_floor, dashboard, title))
+
+    return V.order_views(views), report, skipped, excluded
 
 
 def generate_cards(spaces_parquet: Path, templates_dir: Path, out_dir: Path,
-                   report_json: Path, filters, dashboard: str) -> None:
+                   report_json: Path, filters, dashboard: str,
+                   title: str = DEFAULT_TITLE) -> None:
     views, report, skipped, excluded = build_views(
-        spaces_parquet, templates_dir, filters, dashboard)
+        spaces_parquet, templates_dir, filters, dashboard, title)
 
     # Файл на view: так глазами видно, что поедет, и диффы читаемы.
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -482,6 +548,8 @@ def main() -> None:
     parser.add_argument("--report", default=str(DEFAULT_REPORT_JSON))
     parser.add_argument("--dashboard", default=DEFAULT_DASHBOARD,
                         help="url_path дашборда на объекте (нужен для navigate-путей)")
+    parser.add_argument("--title", default=DEFAULT_TITLE,
+                        help="Заголовок в шапке Главной (имя объекта)")
     add_filter_args(parser, with_include_floors=True)
     args = parser.parse_args()
 
@@ -493,6 +561,7 @@ def main() -> None:
             templates_dir=Path(args.templates),
             out_dir=Path(args.out),
             dashboard=args.dashboard,
+            title=args.title,
             report_json=Path(args.report),
             filters=filters_from_args(args),
         )

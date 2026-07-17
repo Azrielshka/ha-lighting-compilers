@@ -73,12 +73,17 @@ def test_space_subview_column_span_by_type(space_type, expected):
 # Слияние
 # ============================================================
 
-def test_merge_inserts_after_first_view():
-    """Наши views встают сразу после Главной, а не в хвост."""
+def test_merge_puts_ours_first():
+    """Наши views встают в НАЧАЛО дашборда, а не в хвост и не после чужого.
+
+    Раньше было «сразу после первого view»: Главная принадлежала владельцу и
+    шла первой. Теперь Главную генерируем мы, и первой обязана быть она —
+    дашборд открывается на первом view, и туда же ведёт кнопка «назад» с этажа.
+    """
     merged = V.merge_views(_foreign(), _ours())
     paths = [v["path"] for v in merged]
-    assert paths == ["home", "zm-floor-1", "zm-space-103_vestibiul",
-                     "energy", "errors"]
+    assert paths == ["zm-floor-1", "zm-space-103_vestibiul",
+                     "home", "energy", "errors"]
 
 
 def test_merge_keeps_foreign_views_untouched():
@@ -112,10 +117,10 @@ def test_merge_into_empty_dashboard():
 
 
 def test_merge_when_only_one_foreign_view():
-    """insert_at=1 не должен падать на дашборде из одного view."""
+    """Единственный чужой view уезжает за наши, а не наоборот."""
     merged = V.merge_views([{"path": "home"}], _ours())
-    assert [v["path"] for v in merged] == ["home", "zm-floor-1",
-                                           "zm-space-103_vestibiul"]
+    assert [v["path"] for v in merged] == ["zm-floor-1",
+                                           "zm-space-103_vestibiul", "home"]
 
 
 # ============================================================
@@ -146,3 +151,38 @@ def test_diff_summary_counts():
     ])
     s = V.diff_summary(existing, _ours())
     assert s == {"keep_foreign": 3, "replace": 1, "add": 1, "remove": 1}
+
+
+# ============================================================
+# Главная — наша и первая
+# ============================================================
+
+def test_main_view_sorts_first():
+    """Порядок: Главная, этажи по номеру, subview. Главная строго первая."""
+    views = [
+        {"path": V.space_view_path("a")},
+        {"path": V.floor_view_path(2)},
+        {"path": V.MAIN_PATH},
+        {"path": V.floor_view_path(1)},
+    ]
+    assert [v["path"] for v in V.order_views(views)] == [
+        "zm-main", "zm-floor-1", "zm-floor-2", "zm-space-a",
+    ]
+
+
+def test_main_view_is_ours():
+    assert V.is_ours({"path": V.MAIN_PATH})
+    assert V.MAIN_PATH.startswith(V.VIEW_PREFIX)
+
+
+def test_merge_keeps_main_first_on_regeneration():
+    """Повторный деплой не уводит Главную с первого места."""
+    ours = V.order_views([
+        {"path": V.MAIN_PATH},
+        {"path": V.floor_view_path(1)},
+    ])
+    once = V.merge_views(_foreign(), ours)
+    twice = V.merge_views(once, ours)
+
+    assert once == twice
+    assert twice[0]["path"] == V.MAIN_PATH

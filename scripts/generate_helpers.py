@@ -43,6 +43,7 @@ import pandas as pd
 
 from scripts._lib.canon import (
     BACK_BUTTON_ID,
+    space_label,
     VACANT_DELAY_DEFAULT,
     VACANT_DELAY_ID,
     VACANT_DELAY_MAX,
@@ -68,16 +69,6 @@ DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "helpers" / "lighting-compilers.ya
 # Имя пакета — корневой ключ файла. merge_named требует его: каждый файл
 # в includes/packages/ становится пакетом с этим именем.
 PACKAGE_KEY = "lighting_compilers"
-
-
-def space_label(space: str) -> str:
-    """Как помещение выглядит в списке выбора: «103_Вестибюль» -> «103 Вестибюль».
-
-    То же правило, что у заголовка карточки (generate_lovelace_cards.
-    build_heading). Опции этого списка и карта «имя → слаг» в markdown-кнопке
-    обязаны совпадать символ в символ — иначе навигация молча не сработает.
-    """
-    return str(space).replace("_", " ").strip()
 
 
 def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:

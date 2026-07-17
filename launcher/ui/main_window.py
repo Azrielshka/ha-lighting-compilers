@@ -895,9 +895,15 @@ class LauncherWindow(QMainWindow):
         # «Подробнее» → subview. Берём тот же, что задан в диалоге Deploy,
         # иначе ссылки на этажных карточках укажут не туда.
         if operation_key == "lovelace":
-            dashboard = str(self.config_store.load().get("ha_dashboard", "")).strip()
+            saved = self.config_store.load()
+            dashboard = str(saved.get("ha_dashboard", "")).strip()
             if dashboard:
                 script_args.extend(["--dashboard", dashboard])
+            # Заголовок Главной: имя объекта. В таблице его нет — берём из
+            # того же диалога Deploy, где задан дашборд.
+            title = str(saved.get("ha_title", "")).strip()
+            if title:
+                script_args.extend(["--title", title])
 
         return script_args
 
