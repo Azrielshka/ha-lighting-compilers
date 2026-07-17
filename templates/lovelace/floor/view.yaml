@@ -1,0 +1,62 @@
+# Этажный view: шапка, бейджи, компактные карточки помещений этажа.
+# Правьте вид здесь — генератор трогает только маркеры.
+#
+# Маркеры (подставляет генератор):
+#   [[PATH]]         — путь view. НЕ ТРОГАТЬ: по префиксу `zm-` деплой отличает
+#                      свои views от ваших. Сменить путь = деплой перестанет
+#                      узнавать этот view и вместо замены наплодит дубли.
+#   [[FLOOR]]        — номер этажа (1, 2, …)
+#   [[FLOOR_ICON]]   — иконка этажа, та же, что у этажа в реестре HA
+#   [[FLOOR_LIGHT]]  — light.floor_<N>_all, группа «Весь N-й этаж» (мы её и создаём)
+#   [[DASHBOARD]]    — url_path дашборда, из флага --dashboard
+#   [[CARDS]]        — компактные карточки помещений этажа
+#
+# ⚠ Внешние сущности, которых генератор НЕ создаёт — заводит владелец руками:
+#   input_button.but_back            — один на объект
+#   input_boolean.regim_auto_<этаж>  — по одному на каждый этаж
+# Забыли завести — бейдж покажет «сущность недоступна». Карточка не сломается.
+#
+# Навигация «назад» ведёт на /[[DASHBOARD]] без указания view: так открывается
+# ПЕРВЫЙ view дашборда, то есть ваша Главная. Наши этажи деплой всегда ставит
+# после первого view, поэтому знать её path не нужно. Нужен конкретный —
+# допишите его здесь руками.
+title: Этаж [[FLOOR]]
+path: [[PATH]]
+icon: [[FLOOR_ICON]]
+type: sections
+max_columns: 3
+header:
+  layout: responsive
+  badges_position: top
+  badges_wrap: wrap
+  card:
+    type: markdown
+    text_only: true
+    content: "# [[FLOOR]] Этаж"
+badges:
+  - type: entity
+    entity: input_button.but_back
+    show_name: true
+    show_state: false
+    show_icon: true
+    color: red
+    tap_action:
+      action: navigate
+      navigation_path: /[[DASHBOARD]]
+  - type: entity
+    entity: [[FLOOR_LIGHT]]
+    show_name: true
+    show_state: true
+    show_icon: true
+    name: Управление светом [[FLOOR]]-го этажа
+  - type: entity
+    entity: input_boolean.regim_auto_[[FLOOR]]
+    show_name: true
+    show_state: true
+    show_icon: true
+    color: green
+sections:
+  - type: grid
+    column_span: 3
+    cards:
+      [[CARDS]]

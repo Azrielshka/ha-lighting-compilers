@@ -1,0 +1,26 @@
+# hall — холлы. Раскладка идентична korridor (пары «свет | датчик», разбивка по 3).
+# Держим отдельным файлом, чтобы при желании развести вид; пока — копия korridor.
+#
+# Маркеры и правило разворота [[ZONES]] — см. korridor/wrapper.yaml.
+#
+# ⚠ grid_options.columns: full — НЕ 12. Сетка секции считается как
+#   base(12) * column_span, поэтому при column_span: 2 в ней 24 колонки,
+#   и columns: 12 дал бы ровно ПОЛОВИНУ ширины. `full` = grid-column: 1/-1,
+#   то есть вся ширина при любом column_span. Проверено на объекте.
+type: grid
+columns: 1
+square: false
+grid_options:
+  columns: full
+  rows: auto
+cards:
+  - type: heading
+    heading: "[[HEADING]]"
+    heading_style: title
+  - type: tile
+    entity: [[GENERAL_LIGHT]]
+    features:
+      - type: toggle
+      - type: light-brightness
+    features_position: bottom
+  [[ZONES]]

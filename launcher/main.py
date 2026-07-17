@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QApplication
 # Главное окно launcher
 # ------------------------------------------------------------
 from launcher.ui.main_window import LauncherWindow
+from launcher.ui.theme import apply_theme
 
 
 # ------------------------------------------------------------
@@ -35,6 +36,8 @@ def main():
     """
 
     app = QApplication(sys.argv)
+    # До создания окон: QSS наследуется всеми, включая диалог Deploy.
+    apply_theme(app)
 
     window = LauncherWindow()
     window.show()

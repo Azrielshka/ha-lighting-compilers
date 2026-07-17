@@ -1,0 +1,32 @@
+# special — санузлы/тамбуры. Простой вертикальный список пар «свет | датчик(и)».
+# Без разбивки по 3 и без заголовков «Группы/Датчики» — помещения мелкие (1–3 зоны).
+#
+# Маркеры:
+#   [[HEADING]], [[GENERAL_LIGHT]], [[ZONES]]
+#
+# Разворот [[ZONES]]: на каждую зону — одна строка type: grid, columns: 12,
+#   square: false: свет широкий (columns: 9), датчик(-и) узкие справа (columns: 3
+#   суммарно, делятся между собой). Строки идут вертикально, одна под другой.
+#   Блоки: _blocks/light_tile.yaml, _blocks/sensor_tile.yaml.
+#
+# ⚠ grid_options.columns: full — НЕ 12. Сетка секции считается как
+#   base(12) * column_span, поэтому при column_span: 2 в ней 24 колонки,
+#   и columns: 12 дал бы ровно ПОЛОВИНУ ширины. `full` = grid-column: 1/-1,
+#   то есть вся ширина при любом column_span. Проверено на объекте.
+type: grid
+columns: 1
+square: false
+grid_options:
+  columns: full
+  rows: auto
+cards:
+  - type: heading
+    heading: "[[HEADING]]"
+    heading_style: title
+  - type: tile
+    entity: [[GENERAL_LIGHT]]
+    features:
+      - type: toggle
+      - type: light-brightness
+    features_position: bottom
+  [[ZONES]]

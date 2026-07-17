@@ -32,9 +32,11 @@ from pathlib import Path
 # ------------------------------------------------------------
 # Импорты Qt
 # ------------------------------------------------------------
-from PySide6.QtCore import QEventLoop
+from PySide6.QtCore import QEventLoop, Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QMainWindow,
     QWidget,
     QVBoxLayout,
@@ -43,6 +45,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QTextEdit,
     QGroupBox,
     QSizePolicy,
@@ -53,8 +56,12 @@ from PySide6.QtWidgets import (
 # ------------------------------------------------------------
 # Импорт сервисов launcher
 # ------------------------------------------------------------
+from launcher import __version__
 from launcher.services.process_runner import ProcessRunner
 from launcher.services.config_store import ConfigStore
+from launcher.ui.deploy_dialog import DeployDialog
+from launcher.ui.decals import window_icon
+from launcher.ui.widgets import BracketGroupBox, HeaderBar
 
 
 # ------------------------------------------------------------
@@ -76,7 +83,8 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         # Базовые настройки окна
         # ------------------------------------------------------------
-        self.setWindowTitle("HA College Lighting — Launcher v1")
+        self.setWindowTitle("HA Lighting Compilers — Launcher")
+        self.setWindowIcon(window_icon())   # без неё в панели задач заглушка Qt
         self.resize(1100, 700)
 
         # ------------------------------------------------------------
@@ -113,22 +121,45 @@ class LauncherWindow(QMainWindow):
         # значение — относительный путь до скрипта проекта
         # ------------------------------------------------------------
         self.script_map = {
+            "validate": "scripts/validate_excel.py",
             "normalize": "scripts/normalize_excel.py",
             "lights": "scripts/generate_lights_groups.py",
             "general": "scripts/generate_general_groups.py",
             "floor": "scripts/generate_floor_groups.py",
-            "lovelace": "scripts/generate_lovelace_cards_v2.py",
+            "areas": "scripts/generate_areas.py",
+            "helpers": "scripts/generate_helpers.py",
+            "scripts": "scripts/generate_scripts.py",
+            "automations": "scripts/generate_automations.py",
+            "lovelace": "scripts/generate_lovelace_cards.py",
+            "deploy": "scripts/deploy.py",
         }
 
         # ------------------------------------------------------------
-        # Порядок шагов полного pipeline для Build All
+        # Порядок шагов полного pipeline для Build All.
+        #
+        # validate идёт первым: он возвращает ненулевой код на битой таблице,
+        # и Build All останавливается ДО генерации. Иначе ошибки таблицы
+        # всплыли бы уже в Home Assistant.
+        #
+        # lovelace в pipeline НЕ входит по решению владельца: карточки вставляются
+        # в дашборд вручную, а часть типов (zal/recreation) требует кастом-карт
+        # (mushroom/card_mod). Кнопка остаётся — нажал и собрал файл, — но
+        # Build All на ней не спотыкается.
+        #
+        # areas входит: шаг ОФЛАЙНОВЫЙ, он лишь готовит файл-задание.
+        # Само создание пространств в Home Assistant — отдельный шаг деплоя,
+        # по явному действию наладчика. Build All в живую систему не пишет.
         # ------------------------------------------------------------
         self.pipeline_order = [
+            "validate",
             "normalize",
             "lights",
             "general",
             "floor",
-            "lovelace",
+            "areas",
+            "helpers",
+            "scripts",
+            "automations",
         ]
 
         # ------------------------------------------------------------
@@ -144,6 +175,13 @@ class LauncherWindow(QMainWindow):
         root_layout.setContentsMargins(12, 12, 12, 12)
         root_layout.setSpacing(12)
         central_widget.setLayout(root_layout)
+
+        # ------------------------------------------------------------
+        # Шапка: имя, версия, декаль
+        # ------------------------------------------------------------
+        root_layout.addWidget(
+            HeaderBar("HA Lighting Compilers", f"v{__version__}")
+        )
 
         # ------------------------------------------------------------
         # Верхний блок конфигурации
@@ -181,11 +219,12 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         # Стартовые строки в лог
         # ------------------------------------------------------------
-        self.append_log("Launcher UI initialized")
-        self.append_log("Step 12: Clear Log button is enabled")
-        self.append_log("Project Root and Excel File Path are saved between launches")
-        self.append_log("Python is auto-detected from Project Root/.venv/Scripts/python.exe")
-        self.append_log("Hotfix: immediate UI refresh before blocking subprocess execution")
+        self.append_log("Launcher готов")
+        self.append_log("Pipeline: validate → normalize → lights → general → floor → areas → helpers → scripts → automations")
+        self.append_log("Build All работает офлайн: в Home Assistant ничего не пишет")
+        self.append_log("Build All останавливается, если таблица не прошла проверку")
+        self.append_log("Lovelace собирает карточки в файл; в Build All не входит (вставка в дашборд вручную)")
+        self.append_log("Python берётся из <Project Root>/.venv/Scripts/python.exe")
 
         # ------------------------------------------------------------
         # Сразу применяем стартовый лог визуально
@@ -197,12 +236,21 @@ class LauncherWindow(QMainWindow):
     # ------------------------------------------------------------
     def _build_config_group(self) -> QGroupBox:
         """
-        Создаёт блок с путями:
+        Создаёт блок параметров объекта:
             - Project Root
             - Excel File Path
+            - Дашборд   (url_path на объекте)
+            - Объект    (имя в шапке Главной)
+
+        ⚠ Дашборд и Объект стоят здесь, а не в диалоге Deploy, хотя раньше жили
+        там. Читает их ГЕНЕРАЦИЯ карточек: имя идёт в шапку Главной, дашборд — в
+        navigate-пути. Деплой ничего не генерирует, он льёт уже готовые файлы.
+        Пока поля стояли в диалоге деплоя, выходило так: наладчик правит имя,
+        жмёт Deploy — и не понимает, почему в шапке старое. Поле обязано стоять
+        рядом с кнопкой, которая его читает.
         """
 
-        group = QGroupBox("Project Configuration")
+        group = BracketGroupBox("Project Configuration".upper())
 
         layout = QGridLayout()
         layout.setHorizontalSpacing(10)
@@ -215,7 +263,7 @@ class LauncherWindow(QMainWindow):
         project_root_label = QLabel("Project Root:")
         self.project_root_input = QLineEdit()
         self.project_root_input.setPlaceholderText(
-            "C:/Users/Andrey/PycharmProjects/ha-college-lighting"
+            "C:/Users/Andrey/PycharmProjects/ha-lighting-compilers"
         )
         self.project_root_browse_btn = QPushButton("Browse...")
 
@@ -238,6 +286,36 @@ class LauncherWindow(QMainWindow):
         layout.addWidget(self.excel_file_browse_btn, 1, 2)
 
         # ------------------------------------------------------------
+        # Поле: Дашборд (url_path на объекте)
+        # ------------------------------------------------------------
+        dashboard_label = QLabel("Дашборд:")
+        self.ha_dashboard_input = QLineEdit()
+        self.ha_dashboard_input.setPlaceholderText("dashboard-tets")
+        self.ha_dashboard_input.setToolTip(
+            "url_path дашборда на объекте. Из него строятся navigate-пути\n"
+            "карточек, и в него же деплой пишет views.\n"
+            "Обязан содержать дефис (требование Home Assistant)."
+        )
+
+        layout.addWidget(dashboard_label, 2, 0)
+        layout.addWidget(self.ha_dashboard_input, 2, 1)
+
+        # ------------------------------------------------------------
+        # Поле: Объект (имя в шапке Главной)
+        # ------------------------------------------------------------
+        title_label = QLabel("Объект:")
+        self.ha_title_input = QLineEdit()
+        self.ha_title_input.setPlaceholderText("Колледж Химки")
+        self.ha_title_input.setToolTip(
+            "Заголовок в шапке Главной страницы. В таблице его нет.\n"
+            "Читается при генерации карточек — поменяли имя,\n"
+            "прогоните Generate Lovelace Cards заново."
+        )
+
+        layout.addWidget(title_label, 3, 0)
+        layout.addWidget(self.ha_title_input, 3, 1)
+
+        # ------------------------------------------------------------
         # Центральная колонка растягивается
         # ------------------------------------------------------------
         layout.setColumnStretch(1, 1)
@@ -250,35 +328,157 @@ class LauncherWindow(QMainWindow):
     def _build_operations_group(self) -> QGroupBox:
         """
         Создаёт блок с кнопками операций launcher.
+
+        ⚠ Кнопки живут в прокручиваемой области, и это не удобство, а защита от
+        обрезки текста.
+
+        Их четырнадцать, и без прокрутки панель требовала себе 689px по высоте.
+        Вместе с конфигурацией и шапкой окно просило 1016px — больше, чем есть у
+        ноутбучного экрана. Оконный менеджер ужимал окно ниже его же минимума,
+        layout сплющивал кнопки, и от подписи оставалась горизонтальная полоска
+        по центру. На большом мониторе всё выглядело прекрасно — потому и
+        всплыло только у владельца.
+
+        Прокрутка снимает у панели право диктовать окну высоту: не влезло —
+        прокрутил. На большом экране полосы прокрутки просто нет.
         """
 
-        group = QGroupBox("Operations")
-        group.setMinimumWidth(260)
-        group.setMaximumWidth(320)
+        group = BracketGroupBox("Operations".upper())
+        # Минимум НЕ задаём: его выведет прокручиваемая область из содержимого
+        # (см. ниже). Прибитые 260 как раз и не учитывали полосу прокрутки.
+        group.setMaximumWidth(360)
 
+        # Кнопки собираем в отдельный виджет — его и отдадим прокрутке.
+        buttons = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(10)
-        group.setLayout(layout)
+        layout.setContentsMargins(0, 0, 0, 0)
+        buttons.setLayout(layout)
 
-        self.btn_normalize = QPushButton("Normalize Excel")
-        self.btn_lights = QPushButton("Generate Lights Groups")
-        self.btn_general = QPushButton("Generate General Groups")
-        self.btn_floor = QPushButton("Generate Floor Groups")
-        self.btn_lovelace = QPushButton("Generate Lovelace Cards")
-        self.btn_build_all = QPushButton("Build All")
-        self.btn_clear_log = QPushButton("Clear Log")
+        # 1. Проверка таблицы — первый шаг пайплайна.
+        self.btn_validate = QPushButton("[01] VALIDATE EXCEL")
 
+        # Строгий режим: предупреждения считаются ошибками.
+        # Влияет и на отдельный запуск Validate, и на его шаг в Build All.
+        self.strict_checkbox = QCheckBox("Strict (предупреждения = ошибки)")
+
+        self.btn_normalize = QPushButton("[02] NORMALIZE EXCEL")
+        self.btn_lights = QPushButton("[03] LIGHTS GROUPS")
+        self.btn_general = QPushButton("[04] GENERAL GROUPS")
+        self.btn_floor = QPushButton("[05] FLOOR GROUPS")
+
+        # Офлайн: готовит data/areas/areas.yaml, в Home Assistant не пишет.
+        self.btn_areas = QPushButton("[06] AREAS && FLOORS")
+        self.btn_areas.setToolTip(
+            "Готовит пространства и этажи для Home Assistant в файл data/areas/areas.yaml.\n"
+            "К HA не подключается: создание — на шаге деплоя."
+        )
+
+        # Офлайн: помощники одним пакетом (vacant_delay, режимы этажей,
+        # пресеты зала, списки навигации).
+        self.btn_helpers = QPushButton("[07] HELPERS")
+        self.btn_helpers.setToolTip(
+            "Вспомогательные объекты HA одним пакетом:\n"
+            "data/helpers/lighting-compilers.yaml.\n\n"
+            "input_number.vacant_delay — без него свет не гаснет.\n"
+            "input_select.nav_floor_<N> — списки помещений для навигации.\n"
+            "Пресеты зала и режимы этажей — объекты создаются, логику за ними\n"
+            "описывают ваши автоматизации."
+        )
+
+        # Клоны шаблонных скриптов: свой набор на каждую единицу обслуживания.
+        self.btn_scripts = QPushButton("[08] SCRIPTS")
+        self.btn_scripts.setToolTip(
+            "Клонирует шаблоны из templates/scripts/ по единицам обслуживания.\n"
+            "Один экземпляр скрипта в HA — одна очередь, поэтому у каждой единицы свой набор."
+        )
+
+        # Экземпляры blueprint'ов: по две автоматизации на единицу (ON и OFF).
+        self.btn_automations = QPushButton("[09] AUTOMATIONS")
+        self.btn_automations.setToolTip(
+            "По две автоматизации на единицу обслуживания (ON и OFF).\n"
+            "Плюс копии blueprint'ов в data/blueprints/ для деплоя.\n\n"
+            "⚠ input_number.vacant_delay пайплайн не создаёт — заведите его на объекте."
+        )
+
+        # Не входит в Build All: карточки вставляются в дашборд вручную.
+        self.btn_lovelace = QPushButton("[ +] LOVELACE CARDS")
+        self.btn_lovelace.setToolTip(
+            "Собирает карточки помещений в data/lovelace_cards_generated.txt.\n"
+            "В Build All не входит — вставка в дашборд вручную.\n"
+            "Типы zal/recreation требуют кастом-карт (mushroom/card_mod)."
+        )
+
+        self.btn_build_all = QPushButton("[ ▶] BUILD ALL")
+
+        # Единственный шаг, который трогает живую систему на объекте.
+        # В Build All НЕ входит: только по явному действию наладчика.
+        self.btn_deploy = QPushButton("[ ↑] DEPLOY → HOME ASSISTANT")
+        self.btn_deploy.setToolTip(
+            "Доставка конфигурации на Home Assistant.\n"
+            "Dry-run показывает план; LIVE отправляет.\n\n"
+            "⚠ Рестарт HA деплой не делает — перезапустите вручную."
+        )
+
+        self.btn_open_output = QPushButton("[ ·] Открыть папку")
+        self.btn_clear_log = QPushButton("[ ·] Очистить лог")
+
+        layout.addWidget(self.btn_validate)
+        layout.addWidget(self.strict_checkbox)
+
+        layout.addSpacing(8)
         layout.addWidget(self.btn_normalize)
         layout.addWidget(self.btn_lights)
         layout.addWidget(self.btn_general)
         layout.addWidget(self.btn_floor)
+        layout.addWidget(self.btn_areas)
+        layout.addWidget(self.btn_helpers)
+        layout.addWidget(self.btn_scripts)
+        layout.addWidget(self.btn_automations)
+
+        layout.addSpacing(8)
         layout.addWidget(self.btn_lovelace)
 
         layout.addSpacing(12)
         layout.addWidget(self.btn_build_all)
+
+        layout.addSpacing(8)
+        layout.addWidget(self.btn_deploy)
+
+        layout.addSpacing(8)
+        layout.addWidget(self.btn_open_output)
         layout.addWidget(self.btn_clear_log)
 
         layout.addStretch(1)
+
+        # Кнопки не должны сжиматься НИЖЕ своей высоты: именно это и обрезало
+        # текст. Прибиваем минимум — тогда при нехватке места layout не
+        # сплющивает их, а прокрутка честно показывает, что не влезло.
+        for button in buttons.findChildren(QPushButton):
+            button.setMinimumHeight(button.sizeHint().height())
+
+        scroll = QScrollArea()
+        scroll.setWidget(buttons)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)   # рамку рисует сама панель
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # Ширину выводим из содержимого, а не назначаем на глаз: полоса
+        # прокрутки съедает свои пиксели у виджета внутри, и подпись флажка
+        # «Strict» упиралась в неё и обрезалась. Прибавляем её ширину явно —
+        # тогда панель раздвинется ровно настолько, насколько нужно.
+        scroll.setMinimumWidth(
+            buttons.sizeHint().width()
+            + scroll.verticalScrollBar().sizeHint().width()
+        )
+        # Прозрачная подложка: иначе поверх белой карточки ляжет серый прямоугольник.
+        scroll.setStyleSheet("QScrollArea { background: transparent; }")
+        buttons.setStyleSheet("background: transparent;")
+
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
+        group.setLayout(outer)
 
         return group
 
@@ -290,7 +490,7 @@ class LauncherWindow(QMainWindow):
         Создаёт окно логов.
         """
 
-        group = QGroupBox("Execution Log")
+        group = BracketGroupBox("Execution Log".upper())
 
         layout = QVBoxLayout()
         group.setLayout(layout)
@@ -328,10 +528,16 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         self.project_root_input.editingFinished.connect(self._save_current_config)
         self.excel_file_input.editingFinished.connect(self._save_current_config)
+        self.strict_checkbox.toggled.connect(self._save_current_config)
+        self.ha_dashboard_input.editingFinished.connect(self._save_current_config)
+        self.ha_title_input.editingFinished.connect(self._save_current_config)
 
         # ------------------------------------------------------------
         # Кнопки операций pipeline
         # ------------------------------------------------------------
+        self.btn_validate.clicked.connect(
+            lambda: self._run_single_operation("validate")
+        )
         self.btn_normalize.clicked.connect(
             lambda: self._run_single_operation("normalize")
         )
@@ -344,15 +550,107 @@ class LauncherWindow(QMainWindow):
         self.btn_floor.clicked.connect(
             lambda: self._run_single_operation("floor")
         )
+        self.btn_areas.clicked.connect(
+            lambda: self._run_single_operation("areas")
+        )
+        self.btn_helpers.clicked.connect(
+            lambda: self._run_single_operation("helpers")
+        )
+        self.btn_scripts.clicked.connect(
+            lambda: self._run_single_operation("scripts")
+        )
+        self.btn_automations.clicked.connect(
+            lambda: self._run_single_operation("automations")
+        )
         self.btn_lovelace.clicked.connect(
             lambda: self._run_single_operation("lovelace")
         )
         self.btn_build_all.clicked.connect(self._run_build_all)
+        self.btn_deploy.clicked.connect(self._open_deploy_dialog)
 
         # ------------------------------------------------------------
-        # Кнопка очистки лога
+        # Открыть папку с результатами и очистить лог
         # ------------------------------------------------------------
+        self.btn_open_output.clicked.connect(self._open_output_folder)
         self.btn_clear_log.clicked.connect(self._clear_log)
+
+    # ------------------------------------------------------------
+    # Деплой на Home Assistant
+    # ------------------------------------------------------------
+    def _open_deploy_dialog(self) -> None:
+        """
+        Собрать параметры деплоя и запустить scripts/deploy.py.
+
+        Деплой — единственный шаг, который трогает живую систему на объекте,
+        поэтому он отдельным окном и не входит в Build All.
+        """
+        if self.is_running:
+            self.append_log("Launcher занят — дождитесь окончания операции.")
+            self._flush_ui_updates()
+            return
+
+        config = self._validate_runtime_config()
+        if config is None:
+            return
+
+        saved = self.config_store.load()
+        dialog = DeployDialog(self, saved)
+
+        if dialog.exec() != DeployDialog.Accepted:
+            self.append_log("Deploy отменён")
+            self._flush_ui_updates()
+            return
+
+        # Параметры деплоя сохраняем между запусками (в конфиг лаунчера, не в git).
+        saved.update(dialog.result_config())
+        self.config_store.save(saved)
+
+        mode = "LIVE" if dialog.live else "dry-run"
+        self.append_log(f"Deploy ({mode}): {', '.join(dialog.accepted_targets)}")
+        self._flush_ui_updates()
+
+        self._set_running_state(True)
+        try:
+            self._execute_script(
+                config=config,
+                operation_key="deploy",
+                script_relative_path=self.script_map["deploy"],
+                script_args=dialog.script_args(),
+            )
+        finally:
+            self._set_running_state(False)
+            self._flush_ui_updates()
+
+    # ------------------------------------------------------------
+    # Открыть папку с готовым YAML
+    # ------------------------------------------------------------
+    def _open_output_folder(self) -> None:
+        """
+        Открывает data/light_groups в проводнике.
+
+        Наладчику надо забрать готовый YAML, а не искать его руками.
+        """
+        project_root = self.project_root_input.text().strip()
+
+        if not project_root:
+            QMessageBox.warning(self, "Launcher", "Заполни поле Project Root.")
+            return
+
+        # Открываем data/, а не light_groups: результаты лежат в двух местах
+        # (light_groups/*.yaml и areas/areas.yaml), плюс отчёт валидации.
+        output_dir = Path(project_root) / "data"
+
+        if not output_dir.exists():
+            self.append_log(f"Папки с результатами ещё нет: {output_dir}")
+            QMessageBox.information(
+                self,
+                "Launcher",
+                "Папка с результатами ещё не создана.\nСначала запусти Build All.",
+            )
+            return
+
+        self.append_log(f"Открываю папку: {output_dir}")
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(output_dir)))
 
     # ------------------------------------------------------------
     # Очистка окна логов
@@ -409,6 +707,11 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         self.project_root_input.setEnabled(not is_running)
         self.excel_file_input.setEnabled(not is_running)
+        # Параметры объекта тоже: их читает запускаемый скрипт, и правка на
+        # ходу выглядела бы так, будто она на что-то влияет. Не влияет —
+        # аргументы уже собраны.
+        self.ha_dashboard_input.setEnabled(not is_running)
+        self.ha_title_input.setEnabled(not is_running)
 
         # ------------------------------------------------------------
         # Кнопки выбора путей
@@ -419,12 +722,20 @@ class LauncherWindow(QMainWindow):
         # ------------------------------------------------------------
         # Кнопки запуска операций
         # ------------------------------------------------------------
+        self.btn_validate.setEnabled(not is_running)
+        self.strict_checkbox.setEnabled(not is_running)
         self.btn_normalize.setEnabled(not is_running)
         self.btn_lights.setEnabled(not is_running)
         self.btn_general.setEnabled(not is_running)
         self.btn_floor.setEnabled(not is_running)
+        self.btn_areas.setEnabled(not is_running)
+        self.btn_helpers.setEnabled(not is_running)
+        self.btn_scripts.setEnabled(not is_running)
+        self.btn_automations.setEnabled(not is_running)
         self.btn_lovelace.setEnabled(not is_running)
         self.btn_build_all.setEnabled(not is_running)
+        self.btn_deploy.setEnabled(not is_running)
+        self.btn_open_output.setEnabled(not is_running)
 
         # ------------------------------------------------------------
         # Clear Log тоже блокируем на время выполнения,
@@ -449,6 +760,13 @@ class LauncherWindow(QMainWindow):
         project_root = str(saved_config.get("project_root", "")).strip()
         excel_file = str(saved_config.get("excel_file", "")).strip()
 
+        self.strict_checkbox.setChecked(bool(saved_config.get("strict", False)))
+
+        # Параметры объекта. Пустая строка — нормально: генератор подставит
+        # свои дефолты, а поле останется с подсказкой-плейсхолдером.
+        self.ha_dashboard_input.setText(str(saved_config.get("ha_dashboard", "")).strip())
+        self.ha_title_input.setText(str(saved_config.get("ha_title", "")).strip())
+
         loaded_from_saved = False
 
         if project_root and Path(project_root).exists():
@@ -471,15 +789,23 @@ class LauncherWindow(QMainWindow):
     # ------------------------------------------------------------
     def _save_current_config(self) -> None:
         """
-        Сохраняет текущие значения полей launcher в JSON config.
+        Сохраняет значения полей главного окна в JSON config.
+
+        ⚠ Только update(), никогда save(): окно знает лишь свои поля, а в том же
+        файле живут настройки диалога Deploy (хост, токен, ключ). Через save()
+        они стирались при каждом старте, закрытии окна и правке пути — и
+        наладчик вводил их заново, не понимая почему.
         """
 
         data = {
             "project_root": self.project_root_input.text().strip(),
             "excel_file": self.excel_file_input.text().strip(),
+            "strict": self.strict_checkbox.isChecked(),
+            "ha_dashboard": self.ha_dashboard_input.text().strip(),
+            "ha_title": self.ha_title_input.text().strip(),
         }
 
-        self.config_store.save(data)
+        self.config_store.update(data)
 
     # ------------------------------------------------------------
     # Автозаполнение стартовых путей при открытии launcher
@@ -630,6 +956,7 @@ class LauncherWindow(QMainWindow):
         return {
             "project_root": project_root,
             "excel_file": excel_file,
+            "strict": self.strict_checkbox.isChecked(),
             "python_interpreter": self._resolve_python_interpreter(project_root),
         }
 
@@ -659,19 +986,40 @@ class LauncherWindow(QMainWindow):
         """
         Возвращает список CLI-аргументов для запуска конкретной операции.
 
-        Логика шага 9:
-            - только normalize умеет получать --excel из UI
-            - если Excel File Path пустой, аргумент не передаём
-              и normalize_excel.py использует свой DEFAULT_EXCEL_PATH
+        Excel читают два шага — validate и normalize. Остальные работают
+        с нормализованным слоем и про Excel ничего не знают.
+
+        Если Excel File Path пустой, аргумент не передаём: скрипт возьмёт
+        свой DEFAULT_EXCEL_PATH.
+
+        Фильтры генераторов (--spaces, --exclude-floors и прочие) в GUI
+        намеренно не выведены: они нужны редко и при отладке. Кому надо —
+        запускает скрипт из командной строки.
         """
 
         script_args: list[str] = []
+        excel_file = config["excel_file"].strip()
 
-        if operation_key == "normalize":
-            excel_file = config["excel_file"].strip()
-
+        if operation_key in ("validate", "normalize"):
             if excel_file:
                 script_args.extend(["--excel", excel_file])
+
+        if operation_key == "validate" and config.get("strict"):
+            script_args.append("--strict")
+
+        # Карточкам нужен url_path дашборда: из него строятся navigate-пути
+        # «Подробнее» → subview. Берём тот же, что задан в диалоге Deploy,
+        # иначе ссылки на этажных карточках укажут не туда.
+        if operation_key == "lovelace":
+            saved = self.config_store.load()
+            dashboard = str(saved.get("ha_dashboard", "")).strip()
+            if dashboard:
+                script_args.extend(["--dashboard", dashboard])
+            # Заголовок Главной: имя объекта. В таблице его нет — берём из
+            # того же диалога Deploy, где задан дашборд.
+            title = str(saved.get("ha_title", "")).strip()
+            if title:
+                script_args.extend(["--title", title])
 
         return script_args
 

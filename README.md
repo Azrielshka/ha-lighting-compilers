@@ -1,333 +1,166 @@
-# 🏫 HA College Lighting
+# ha-lighting-compilers
 
-Генератор конфигурации освещения для Home Assistant на основе Excel.
-
----
-
-# 📑 Содержание
-
-- [Описание проекта](#описание-проекта)
-- [Архитектура](#архитектура)
-- [Скрипты](#скрипты)
-  - [normalize_excel.py](#1-normalize_excelpy)
-  - [generate_lights_groups.py](#2-generate_lights_groupspy)
-  - [generate_general_groups.py](#3-generate_general_groupspy)
-  - [generate_floor_groups.py](#4-generate_floor_groupspy)
-  - [generate_lovelace_cards_v2.py](#5-generate_lovelace_cards_v2py)
-- [Launcher (GUI)](#launcher-gui)
-- [Установка и запуск](#установка-и-запуск)
+Генератор конфигурации Home Assistant для управления освещением DALI на основе
+одной Excel-таблицы. Запускается на машине наладчика (Windows), готовит YAML и
+опционально доставляет его на HAOS. Это **не** интеграция Home Assistant.
 
 ---
 
-# 📌 Описание проекта
+## Идея
 
-Проект **ha-college-lighting** предназначен для автоматической генерации:
+Проектировщик заполняет **одну** Excel-таблицу с именами будущих устройств.
+Из неё пайплайн собирает всю конфигурацию HA: группы света, пространства,
+скрипты, автоматизации — и кладёт на сервер.
 
-- YAML-групп освещения
-- Lovelace-карточек
-- структуры управления освещением
+```
+Excel  →  проверка  →  нормализация  →  генераторы  →  YAML  →  деплой на HA
+```
 
-на основе одной Excel-таблицы.
+Excel читается **один раз** (в normalize). Дальше всё работает с parquet —
+генераторы саму таблицу не открывают.
 
 ---
 
-## Основная идея
+## Пайплайн (9 шагов)
 
-Excel — это **единственный источник данных**.
+| # | Скрипт | Делает |
+|---|---|---|
+| 1 | `validate_excel.py` | проверяет таблицу; на ошибках пайплайн останавливается |
+| 2 | `normalize_excel.py` | Excel → `devices` / `groups` / `spaces` / `units` parquet |
+| 3 | `generate_lights_groups.py` | подгруппы света (зоны) → `lights_group.yaml` |
+| 4 | `generate_general_groups.py` | общие группы помещений → `lights_general_groups.yaml` |
+| 5 | `generate_floor_groups.py` | группы этажей → `lights_floor_groups.yaml` |
+| 6 | `generate_areas.py` | пространства и этажи HA → `areas.yaml` (офлайн) |
+| 7 | `generate_helpers.py` | вспомогательные объекты → `lighting-compilers.yaml` (на HA `zm_`) |
+| 8 | `generate_scripts.py` | клоны шаблонных скриптов → `scripts.yaml` |
+| 9 | `generate_automations.py` | автоматизации из blueprint'ов → `automations.yaml` |
 
-Pipeline проекта:
+Каждый шаг запускается **отдельно**, из CLI или кнопкой лаунчера, и работает на
+том, что уже лежит в `data/normalized/`. `Build All` прогоняет все девять.
 
-```
-Excel → normalize → parquet → generators → YAML → Lovelace
-```
+**`Build All` офлайновый** — в живую систему не пишет ничего. Доставка на HA —
+отдельный шаг (`deploy.py`), по явному действию.
 
----
+### Вне `Build All`
 
-## Что решает проект
+| Скрипт | Делает |
+|---|---|
+| `generate_lovelace_cards.py` | карточки помещений → views дашборда в `data/lovelace/` |
 
-- исключает ручное написание YAML
-- обеспечивает единый нейминг сущностей
-- упрощает поддержку проекта освещения
-- позволяет быстро пересобирать конфигурацию
+Карточки собираются отдельной кнопкой: у каждого `space_type` своя раскладка,
+а типы `zal` и `recreation` требуют HACS-карт (mushroom, card_mod).
 
----
+Вспомогательные скрипты:
 
-# 🧠 Архитектура
+| Скрипт | Делает |
+|---|---|
+| `show_normalized.py` | просмотр parquet — бинарь, глазами не открыть |
+| `check_sftp.py` | разведка канала деплоя на новом объекте |
+| `backup_dashboard.py` | снимок конфига дашборда и восстановление (`--restore`) |
 
-Ключевой принцип:
-
-👉 Excel читается **один раз** (в normalize)
-
-Дальше всё работает через **parquet слой**
-
-```
-Excel
-  ↓
-normalize_excel.py
-  ↓
-data/normalized/
-  ↓
-генераторы
-  ↓
-YAML + Lovelace
-```
-
----
-
-# 🧩 Скрипты
-
-## 1. normalize_excel.py
-
-**Назначение:**
-нормализация Excel → канонический слой данных
-
-**Что делает:**
-
-- читает Excel
-- строит:
-  - `device_rows.parquet`
-  - `spaces.parquet`
-- формирует `normalized_meta.json`
-
-**Особенности:**
-
-- поддерживает 2 режима:
-  - CLI: `--excel`
-  - standalone: DEFAULT_EXCEL_PATH
-
-**Выход:**
-
-```
-data/normalized/
-```
+`backup_dashboard.py` — перед первым `deploy.py --targets lovelace`: деплой
+карточек переписывает конфиг дашборда **целиком**.
 
 ---
 
-## 2. generate_lights_groups.py
+## Ключевые понятия
 
-**Назначение:**
-создание подгрупп света
+**Устройство принадлежит группе, указанной в его строке.** Лампа, датчик и
+панель в одной строке Excel — это разные устройства одной группы. У группы
+может быть 0..N датчиков и панелей.
 
-**Что делает:**
+**Единица обслуживания** (колонка «Блок»): помещение либо все помещения одного
+блока. На каждую клонируется свой набор скриптов — один экземпляр скрипта в HA
+это одна очередь, и при тысяче датчиков свет отставал бы от человека.
 
-- читает `device_rows.parquet`
-- группирует лампы по `group_id`
+**Канон имён** живёт в `scripts/_lib/canon.py` — генераторы его не дублируют:
 
-**Результат:**
-
-```
-light.<group_id>
-```
-
-пример:
-
-```
-light.403_0
-light.403_1
-```
+| Объект | entity_id |
+|---|---|
+| лампа | `light.l_1_20_15` |
+| датчик движения | `sensor.ms_1_20_3` |
+| датчик освещённости | `sensor.il_1_20_3` |
+| панель | `event.kp_1_1_1` |
+| зона | `light.<group_id>` |
+| общая группа | `light.<room_slug>_obshchii` |
 
 ---
 
-## 3. generate_general_groups.py
+## Деплой
 
-**Назначение:**
-создание общей группы помещения
+Две цели — два транспорта:
 
-**Что делает:**
+| Что | Куда | Транспорт |
+|---|---|---|
+| YAML-файлы | `/config/includes/...`, `blueprints/` | **SFTP** (add-on «Advanced SSH & Web Terminal») |
+| пространства, этажи | реестры HA | **WebSocket API** |
 
-- объединяет подгруппы
-- строит:
+Dry-run по умолчанию — показывает, что и куда поедет. `--live` отправляет.
+Файлы на HA идут с префиксом `zm_`: деплой перезаписывает только своё и не
+трогает файлы наладчика. Рестарт HA деплой **не делает** — его выполняет человек.
 
-```
-light.<room_slug>_obshchii
-```
-
----
-
-## 4. generate_floor_groups.py
-
-**Назначение:**
-создание групп этажей
-
-**Что делает:**
-
-- объединяет помещения по этажу
-
-**Результат:**
-
-```
-floor_<n>_all
-```
-
-опционально:
-
-```
-tex_floor_<n>
-```
+Требования к SSH-аддону на объекте: `sftp: true`, `username: root`, порт наружу,
+публичный ключ в `authorized_keys`. Проверить канал: `python scripts/check_sftp.py`.
 
 ---
 
-## 5. generate_lovelace_cards_v2.py
+## Установка и запуск
 
-**Назначение:**
-генерация Lovelace UI
+Окружение (Windows, машина наладчика):
 
-**Источник:**
-
-```
-spaces.parquet
-```
-
-**Использует:**
-
-```
-templates/
-manifest.yaml
-```
-
----
-
-## Как работает генерация карточек
-
-1. определяется `card_type`
-2. определяется `groups_count`
-3. выбирается шаблон
-4. выполняется подстановка:
-
-- entity_id света
-- датчиков
-- названий
-
----
-
-# 🖥 Launcher (GUI)
-
-Launcher — это **графическая оболочка для pipeline**
-
----
-
-## Назначение
-
-Позволяет запускать генерацию без терминала.
-
----
-
-## Возможности
-
-- выбор Project Root
-- выбор Excel файла
-- запуск отдельных шагов
-- запуск полного pipeline (Build All)
-- просмотр логов
-- сохранение конфигурации
-
----
-
-## Pipeline в launcher
-
-```
-Normalize
-→ Lights
-→ General
-→ Floor
-→ Lovelace
-```
-
----
-
-## Особенности
-
-- запускает скрипты через subprocess
-- Python определяется автоматически:
-
-```
-<project_root>/.venv/Scripts/python.exe
-```
-
-- UI блокируется во время выполнения
-- лог выводится после завершения шагов
-
----
-
-## Запуск launcher (dev)
-
-```
-python launcher/main.py
-```
-
----
-
-# ⚙️ Установка и запуск
-
-## 1. Клонирование репозитория
-
-```
-git clone <repo_url>
-cd ha-college-lighting
-```
-
----
-
-## 2. Создание виртуального окружения
-
-```
+```bash
 python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 ```
 
----
+CLI:
 
-## 3. Установка зависимостей
-
+```bash
+python scripts/validate_excel.py --excel data/object_example.xlsx
+python scripts/normalize_excel.py --excel data/object_example.xlsx
+python scripts/generate_lights_groups.py
+# ... остальные генераторы
+python scripts/deploy.py                       # dry-run
+python scripts/deploy.py --live --host ... --key ...
 ```
-pip install -r requirements.txt
-```
 
----
+Лаунчер (GUI):
 
-## 4. Запуск launcher (dev)
-
-```
+```bash
 python launcher/main.py
 ```
 
----
+Тесты (нужен `requirements-dev.txt`):
 
-## 5. Сборка EXE
-
-```
-pyinstaller launcher/main.py --onefile --noconsole
+```bash
+python -m pytest tests/ -q
 ```
 
 ---
 
-## 6. Запуск EXE
+## Документация
 
-```
-dist/main.exe
-```
-
----
-
-## ⚠️ Важно
-
-- launcher **не является автономным**
-- требуется структура проекта
-- требуется `.venv`
-- требуется Excel файл
+| Файл | О чём |
+|---|---|
+| `docs/ROADMAP.md` | что сделано, что осталось, известный долг, открытые вопросы |
+| `docs/internal/data_model.md` | правила модели, канон имён, единицы обслуживания |
+| `docs/internal/parquet_reference.md` | что лежит в каждой колонке parquet |
+| `scripts/_lib/schemas.py` | машиночитаемая схема; при расхождении верна она |
 
 ---
 
-# 📌 Статус проекта
+## ⚠ Важно
 
-Проект используется как внутренний инструмент генерации конфигурации освещения для Home Assistant.
+Пайплайн собирает **конфигурацию**, но на объекте свет не включится, пока не
+появится **JSON Zone Manager** — автоматизация вызовет
+`zone_manager.get_sensor_config`, получит `found: false`, и включения не будет.
+Он собирается вручную; помощником не является, шагом `generate_helpers.py` не
+закрывается. Подробности — ROADMAP → «Известный долг».
 
----
+`input_number.vacant_delay` (без него свет не **гаснет**) раньше был второй
+такой вещью — с 2026-07-17 его создаёт `generate_helpers.py`.
 
-# 📎 Дополнительно
-
-Подробности архитектуры:
-
-```
-docs/internal/architecture_rules.md
-docs/internal/project_context.md
-```
+**Помощники: объект создаём, логику — нет.** `input_boolean` пресетов зала и
+режимов этажей появятся, но это выключатели: что они делают, описывают ваши
+автоматизации. Исключение — `vacant_delay` и `input_select.nav_floor_<N>`:
+их читает сгенерированный код.

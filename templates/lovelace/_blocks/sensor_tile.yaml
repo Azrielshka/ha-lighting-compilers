@@ -1,0 +1,5 @@
+# Штатная плитка датчика движения. Используют korridor/hall/special/class/recreation.
+# Плейсхолдер: [[SENSOR]] — sensor.<датчик>.
+- type: tile
+  entity: "[[SENSOR]]"
+  features_position: bottom

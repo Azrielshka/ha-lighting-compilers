@@ -1,0 +1,158 @@
+#Шаблон общего скрипта выключения Коридор/Рекреация/Лестница/Холл
+shablon_script_near_off:
+  alias: Шаблон скрипта на выключение соседних зон
+  description: Обработчик соседних зон коридоров этажей (DALI-friendly)
+  mode: queued
+  max: 6
+  fields:
+    trigger_sensor:
+      description: Сработавший датчик движения
+      required: true
+    neighbors:
+      description: Список ближних соседей (через запятую)
+      required: true
+    far_neighbors:
+      description: Список дальних соседей (через запятую)
+      required: true
+    neighbor_light_groups:
+      description: Список групп светильников соседей (через запятую)
+      required: true
+  variables:
+    recheck_delay_ms: 400
+    step_delay_ms: 100
+    wait_off_timeout_ms: 500
+    neighbors_list: |
+      {% if neighbors is string %}
+        {{ neighbors.split(',') | map('trim') | list }}
+      {% else %}
+        {{ neighbors }}
+      {% endif %}
+    far_neighbors_list: |
+      {% if far_neighbors is string %}
+        {{ far_neighbors.split(',') | map('trim') | list }}
+      {% else %}
+        {{ far_neighbors }}
+      {% endif %}
+    neighbor_groups_list: |
+      {% if neighbor_light_groups is string %}
+        {{ neighbor_light_groups.split(',') | map('trim') | list }}
+      {% else %}
+        {{ neighbor_light_groups }}
+      {% endif %}
+    neighbor_states: |
+      {% set ns = namespace(lst=[]) %} {% for n in neighbors_list %}
+        {% set s = (states(n) | default('') | lower) %}
+        {% set ns.lst = ns.lst + [ 'motion' if s == 'motion' else 'vacant' ] %}
+      {% endfor %} {{ ns.lst }}
+    far_neighbor_states: |
+      {% set ns = namespace(lst=[]) %} {% for fn in far_neighbors_list %}
+        {% set s = (states(fn) | default('') | lower) %}
+        {% set ns.lst = ns.lst + [ 'motion' if s == 'motion' else 'vacant' ] %}
+      {% endfor %} {{ ns.lst }}
+    eff_len: >
+      {% set l1 = neighbors_list|length %} {% set l2 = far_neighbors_list|length
+      %} {% set l3 = neighbor_groups_list|length %} {% set m = l1 %} {% if l2 < m
+      %}{% set m = l2 %}{% endif %} {% if l3 < m %}{% set m = l3 %}{% endif %} {{
+      m }}
+    decisions_initial: |
+      {% set ns = namespace(lst=[]) %} {% for i in range(eff_len) %}
+        {% set near = (states(neighbors_list[i]) | default('') | lower) %}
+        {% if near == 'motion' %}
+          {% set ns.lst = ns.lst + ['skip'] %}
+        {% else %}
+          {% set far = (states(far_neighbors_list[i]) | default('') | lower) %}
+          {% if far == 'motion' %}
+            {% set ns.lst = ns.lst + [30] %}
+          {% else %}
+            {% set ns.lst = ns.lst + [0] %}
+          {% endif %}
+        {% endif %}
+      {% endfor %} {{ ns.lst | tojson }}
+  sequence:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: >-
+                {% set di = decisions_initial if decisions_initial is not string else (decisions_initial | from_json(default=[])) %}
+                {{ 30 in di }}
+          sequence:
+            - delay:
+                milliseconds: "{{ recheck_delay_ms | int }}"
+    - variables:
+        decisions_final: |
+          {% set di = decisions_initial if decisions_initial is not string else (decisions_initial | from_json(default=[])) %}
+          {% set ns = namespace(lst=[]) %} {% for i in range(eff_len) %}
+            {% set d = di[i] %}
+            {% if d == 30 %}
+              {% set near = (states(neighbors_list[i]) | default('') | lower) %}
+              {% set far  = (states(far_neighbors_list[i]) | default('') | lower) %}
+              {% if near != 'motion' and far != 'motion' %}
+                {% set ns.lst = ns.lst + [0] %}
+              {% else %}
+                {% set ns.lst = ns.lst + [30] %}
+              {% endif %}
+            {% else %}
+              {% set ns.lst = ns.lst + [d] %}
+            {% endif %}
+          {% endfor %} {{ ns.lst | tojson }}
+    - repeat:
+        count: "{{ eff_len | int }}"
+        sequence:
+          - variables:
+              idx: "{{ repeat.index-1 }}"
+              target_group: "{{ neighbor_groups_list[idx] }}"
+              act: >-
+               {% set df = decisions_final if decisions_final is not string else (decisions_final | from_json(default=[])) %}
+               {{ df[idx] if (df is sequence and (df|length > idx)) else 'skip' }}
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ act == 30 }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ target_group }}"
+                    data:
+                      brightness_pct: 30
+              - conditions:
+                  - condition: template
+                    value_template: "{{ act == 0 }}"
+                sequence:
+                  - action: light.turn_off
+                    target:
+                      entity_id: "{{ target_group }}"
+                    data: {}
+                  - delay:
+                      milliseconds: "{{ step_delay_ms | int }}"
+                  - wait_template: |
+                      {{ is_state(target_group, 'off') }}
+                    timeout: >
+                      00:00:{{ '%06.3f' | format((wait_off_timeout_ms | int) / 1000) }}
+                    continue_on_timeout: true
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ not is_state(target_group, 'off') }}"
+                        sequence:
+                          - action: light.turn_off
+                            target:
+                              entity_id: "{{ target_group }}"
+                            data: {}
+              - conditions:
+                  - condition: template
+                    value_template: "{{ act == 'skip' }}"
+                sequence: []
+          - delay:
+              milliseconds: "{{ step_delay_ms | int }}"
+    - action: notify.persistent_notification
+      data:
+        title: OFF соседние (DALI)
+        message: |
+          Триггер: {{ trigger_sensor }}
+          Ближние: {{ neighbors_list }} → {{ neighbor_states }}
+          Дальние: {{ far_neighbors_list }} → {{ far_neighbor_states }}
+          Группы:  {{ neighbor_groups_list }}
+          eff_len: {{ eff_len }}
+          Решения (перв.): {{ decisions_initial if decisions_initial is not string else (decisions_initial | from_json(default=[])) }}
+          Решения (финал): {{ decisions_final if decisions_final is not string else (decisions_final | from_json(default=[])) }}
+      enabled: false

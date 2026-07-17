@@ -1,40 +1,79 @@
 # -*- coding: utf-8 -*-
 """
 excel_schema.py
-Единые имена колонок Excel и выбор приоритетных "источников правды".
+Единые имена листа и колонок входной таблицы.
 
 Зачем:
-- входная таблица со временем меняется (имена/наличие колонок)
-- мы хотим, чтобы скрипты работали устойчиво: сначала ищем колонку по имени, затем fallback.
+- входная таблица со временем меняется
+- все скрипты должны знать о ней из одного места
 
-Эта схема покрывает текущую "Тестовую таблицу.xlsx".
+Схема v2 покрывает "Проектную БД" (см. docs/internal/data_model.md).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Tuple
+
+
+# Лист читается по имени, а не по порядку: в книге есть ещё ПНР,
+# "ИНФ контроллеры", "Глоссарий" и "Группы соседей" — их пайплайн не трогает.
+SHEET_NAME: str = "Проектная БД"
 
 
 @dataclass(frozen=True)
-class ExcelColumns:
-    # "Сырые" колонки (как заполняет человек)
-    floor_raw: str = "Этаж"
-    space_raw: str = "Помещение"
-    dali_bus_raw: str = "Шина DALI"
-    group_raw: str = "Группа"
-    lamp_raw: str = "Лампа"
-    sensor_raw: str = "Датчик"
-    button_raw: str = "Кнопка"
-    card_type: str = "card_type"
+class ExcelColumnsV2:
+    """Колонки листа "Проектная БД"."""
 
-    # "Авто" колонки (вычисляемые/протянутые)
-    floor_auto: str = "Этаж (авто)"
-    space_auto: str = "Помещение (авто)"
-    dali_bus_auto: str = "Шина DALI (авто)"
-    group_auto: str = "Группа (авто)"
-    sensor_auto: str = "Датчик (авто)"
-    button_auto: str = "Кнопка (авто)"
+    floor: str = "Этаж"                      # заполнена в каждой строке
+    space: str = "Название помещения"        # только первая строка помещения
+    space_type: str = "Тип помещения"        # только первая строка помещения
+
+    # Единица обслуживания: помещения с одинаковым «Блоком» обслуживаются
+    # одним набором скриптов. Пусто — помещение само по себе.
+    # Заполняется только на первой строке помещения, как и тип.
+    block: str = "Блок"
+
+    dali_bus: str = "Шина DALI"              # справочно, истина — в адресе
+    group: str = "Группа"                    # заполнена в каждой строке
+    lamp: str = "Лампа"
+    sensor: str = "Датчик"
+    panel: str = "Панель"
 
 
-COLUMNS = ExcelColumns()
+COLUMNS = ExcelColumnsV2()
+
+
+# Без этих колонок читать таблицу бессмысленно.
+REQUIRED_COLUMNS: Tuple[str, ...] = (
+    COLUMNS.floor,
+    COLUMNS.space,
+    COLUMNS.space_type,
+    COLUMNS.block,
+    COLUMNS.dali_bus,
+    COLUMNS.group,
+    COLUMNS.lamp,
+    COLUMNS.sensor,
+    COLUMNS.panel,
+)
+
+# Колонки, которые есть в таблице, но пайплайном не читаются.
+# Заполняются наладчиком вручную и на генерацию не влияют.
+IGNORED_COLUMNS: Tuple[str, ...] = ("Addr L", "Addr MS", "Addr KP")
+
+# Колонки, которые протягиваются вниз внутри помещения.
+# "Группа" сюда НЕ входит: в v2 она заполнена в каждой строке.
+FFILL_COLUMNS: Tuple[str, ...] = (COLUMNS.space, COLUMNS.space_type, COLUMNS.block)
+
+# Колонки устройств: kind -> колонка. Порядок задаёт порядок в отчётах.
+DEVICE_COLUMNS = {
+    "lamp": COLUMNS.lamp,
+    "sensor": COLUMNS.sensor,
+    "panel": COLUMNS.panel,
+}
+
+
+# Схема v1 (таблица data/example.xlsx с колонками «(авто)» и card_type)
+# удалена вместе с переездом генераторов. Сам файл остаётся в репозитории
+# как исторический артефакт, но пайплайн его не читает — валидатор скажет
+# «нет листа "Проектная БД"», и это ожидаемое поведение.

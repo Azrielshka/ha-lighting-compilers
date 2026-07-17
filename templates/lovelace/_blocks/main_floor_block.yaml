@@ -1,0 +1,93 @@
+# Блок одного этажа на Главной: карточка этажа, свет, выбор помещения и
+# кнопка перехода. Повторяется по числу этажей.
+#
+# Маркеры (подставляет генератор):
+#   [[FLOOR]]            — номер этажа
+#   [[FLOOR_AREA_ID]]    — ves_<N>_etazh, Area этажа (её создаёт generate_areas)
+#   [[FLOOR_VIEW_PATH]]  — zm-floor-<N>, куда ведёт карточка этажа
+#   [[FLOOR_LIGHT]]      — light.ves_<N>_i_etazh, «Весь N-й этаж»
+#   [[TECH_TILE]]        — плитка тех.помещений (_blocks/main_tech_tile.yaml);
+#                          только на этажах, где эта группа реально создаётся
+#   [[NAV_SELECT]]       — input_select.nav_floor_<N> (его создаёт generate_helpers)
+#   [[NAV_MAP]]          — карта «имя помещения → room_slug», строки Jinja-словаря
+#   [[DASHBOARD]]        — url_path дашборда
+#
+# ⚠ Про навигацию — почему именно так, а не 76 карточек `conditional`:
+# `navigation_path` у штатных карточек СТАТИЧЕН, шаблоны в него не
+# подставляются. Единственный штатный способ выбрать путь по состоянию —
+# markdown: он поддерживает Jinja и внутренние ссылки. Одна карточка на этаж
+# вместо одной на помещение.
+#
+# ⚠ Карта [[NAV_MAP]] и опции [[NAV_SELECT]] строятся генератором из ОДНОГО
+# списка помещений (canon-правило space_label). Заполнить опции руками нельзя:
+# расхождение на один символ — и кнопка молча покажет «выберите помещение»
+# при выбранном помещении.
+#
+# ⚠ card_mod здесь обязателен в СЛОВАРНОЙ форме с `$`: ссылка живёт внутри
+# ha-markdown, у него свой shadow-root, и строковый `style: |` до неё не дойдёт.
+- type: vertical-stack
+  cards:
+    - type: area
+      area: "[[FLOOR_AREA_ID]]"
+      display_type: picture
+      navigation_path: /[[DASHBOARD]]/[[FLOOR_VIEW_PATH]]
+      alert_classes:
+        - motion
+        - moisture
+      sensor_classes:
+        - temperature
+        - humidity
+      features_position: bottom
+      vertical: false
+    - type: horizontal-stack
+      cards:
+        - type: tile
+          entity: "[[FLOOR_LIGHT]]"
+          vertical: false
+          features_position: bottom
+          features:
+            - type: toggle
+        [[TECH_TILE]]
+    - type: tile
+      entity: "[[NAV_SELECT]]"
+      vertical: false
+      features_position: bottom
+      features:
+        - type: select-options
+    - type: markdown
+      content: |
+        {% set room = states('[[NAV_SELECT]]') %}
+        {% set map = {
+        [[NAV_MAP]]
+        } %}
+        {% if map.get(room) %}
+        [Открыть: {{ room }}](/[[DASHBOARD]]/zm-space-{{ map[room] }})
+        {% else %}
+        *Выберите помещение из списка*
+        {% endif %}
+      card_mod:
+        style:
+          ha-markdown$: |
+            a {
+              display: block;
+              padding: 16px 16px;
+              font-size: 16px;
+              font-weight: 500;
+              color: #4682B4 !important;
+              text-decoration: underline;
+              text-underline-offset: 2px;
+            }
+            a::after {
+              content: "›";
+              float: right;
+              font-size: 22px;
+              line-height: 1;
+              text-decoration: none;
+            }
+            p {
+              margin: 0;
+            }
+          .: |
+            ha-card {
+              padding: 0 !important;
+            }

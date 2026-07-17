@@ -1,0 +1,68 @@
+# Шаблон скрипта выключения SPECIAL-зоны (вся зона -> off)
+shablon_script_special_off:
+  alias: SPECIAL — Выключение зоны
+  description: >-
+    Выключение одной большой зоны: когда все датчики держат vacant заданное время,
+    выключаем группу(ы) зоны. Без логики 30% и без обработки соседей.
+  mode: queued
+  max: 6
+
+  fields:
+    trigger_sensor:
+      description: Якорный датчик (для диагностики/логов)
+      required: true
+    light_group:
+      description: Группа(ы) светильников зоны для выключения
+      required: true
+
+  variables:
+    step_delay_ms: 100
+    wait_off_timeout_ms: 500
+
+    # Нормализация входа: принимаем строку "a, b" или list
+    light_group_list: |
+      {% if light_group is string %}
+        {{ light_group.split(',') | map('trim') | list }}
+      {% else %}
+        {{ light_group }}
+      {% endif %}
+
+  sequence:
+    # Выключаем все группы зоны (DALI-friendly)
+    - repeat:
+        count: "{{ light_group_list | length }}"
+        sequence:
+          - variables:
+              group: "{{ light_group_list[repeat.index-1] }}"
+          - action: light.turn_off
+            target:
+              entity_id: "{{ group }}"
+            data: {}
+          - delay:
+              milliseconds: "{{ step_delay_ms | int }}"
+          - wait_template: |
+              {{ is_state(group, 'off') }}
+            timeout: >
+              00:00:{{ '%06.3f' | format((wait_off_timeout_ms | int) / 1000) }}
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ not is_state(group, 'off') }}"
+                sequence:
+                  - action: light.turn_off
+                    target:
+                      entity_id: "{{ group }}"
+                    data: {}
+
+    # Диагностика (выключено по умолчанию)
+    - action: notify.persistent_notification
+      data:
+        title: SPECIAL OFF
+        message: |
+          Датчик: {{ trigger_sensor }}
+          Группа(ы): {{ light_group_list }} → off
+      enabled: false
+
+    - delay:
+        milliseconds: "{{ step_delay_ms | int }}"

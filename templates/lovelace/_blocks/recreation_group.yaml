@@ -1,0 +1,10 @@
+# Узкая группа света рекреации (mushroom-light-card). Требует HACS-карту mushroom
+# (считаем установленной). Плейсхолдер: [[ZONE_LIGHT]] — light.<группа>.
+- type: custom:mushroom-light-card
+  entity: "[[ZONE_LIGHT]]"
+  layout: horizontal
+  show_brightness_control: true
+  icon: mdi:led-strip-variant
+  use_light_color: false
+  double_tap_action:
+    action: more-info

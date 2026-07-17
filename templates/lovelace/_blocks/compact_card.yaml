@@ -1,0 +1,66 @@
+# Компактная карточка помещения — идёт на ЭТАЖНЫЙ view (сводка).
+# Полная карточка живёт в subview помещения; сюда — только общий свет и переход.
+#
+# Плейсхолдеры:
+#   [[HEADING]]        — имя помещения
+#   [[GENERAL_LIGHT]]  — общий свет помещения
+#   [[SUBVIEW_PATH]]   — /<дашборд>/zm-space-<room_slug>, куда ведёт «Подробнее»
+#
+# ⚠ Про card_mod у кнопки (проверено на объекте, ушёл вечер — не переоткрывать):
+# карточка-кнопка это Lit-компонент, её собственные стили лежат в adopted
+# stylesheets, а card_mod вставляет <style> в shadow-root. В каскаде adopted
+# идут ПОЗЖЕ, поэтому при равной специфичности выигрывает кнопка, а не мы.
+# Отсюда правило: `!important` обязателен на всё, что кнопка задаёт сама
+# (flex-direction, justify-content, align-items, text-align, padding, height,
+# width и max-height иконки). На то, чего в её CSS нет — font-size, шрифт,
+# подчёркивание, color текста — `!important` не нужен.
+#
+# Раскладка: в разметке кнопки иконка идёт ПЕРЕД именем, поэтому row-reverse
+# даёт «имя слева, иконка справа». Цвет текста берём из --state-color — той же
+# переменной, из которой красится иконка: тогда нативная опция `color:` у кнопки
+# перекрашивает и иконку, и текст разом.
+- type: grid
+  columns: 1
+  square: false
+  cards:
+    - type: heading
+      heading: "[[HEADING]]"
+      heading_style: subtitle
+    - type: tile
+      entity: "[[GENERAL_LIGHT]]"
+      features:
+        - type: toggle
+        - type: light-brightness
+      features_position: bottom
+    - type: button
+      name: Подробнее
+      icon: mdi:arrow-right-circle
+      show_name: true
+      show_icon: true
+      show_state: false
+      tap_action:
+        action: navigate
+        navigation_path: "[[SUBVIEW_PATH]]"
+      card_mod:
+        style: |
+          ha-card {
+              flex-direction: row-reverse !important;
+              justify-content: space-between !important;
+              align-items: center !important;
+              text-align: left !important;
+              padding: 20px 16px !important;
+              height: auto !important;
+          }
+          ha-state-icon {
+              width: 36px !important;
+              max-height: none !important;
+              --mdc-icon-size: 36px !important;
+          }
+          ha-state-icon + span {
+              margin-top: 0 !important;
+              font-size: 18px;
+              font-weight: 500;
+              text-decoration: underline;
+              text-underline-offset: 2px;
+              color: var(--state-color);
+          }

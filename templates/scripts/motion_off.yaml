@@ -1,0 +1,111 @@
+# Скрипты на выключение своей зоны по движению
+
+#Шаблон общего скрипта выключения Коридор/Рекреация/Лестница/Холл
+shablon_script_off:
+  alias: Шаблон скрипта на выключение своей зоны
+  description: >-
+    Обработчик потери движения в коридорах этажей (триггерная зона)
+  mode: queued
+  max: 6
+  fields:
+    trigger_sensor:
+      description: Сработавший датчик движения
+      required: true
+    neighbors:
+      description: Список соседних датчиков (через запятую)
+      required: true
+    light_group:
+      description: Группа светильников для управления (триггерная)
+      required: true
+  variables:
+    recheck_delay_ms: 400
+    step_delay_ms: 100
+    wait_off_timeout_ms: 500
+    neighbors_list: |
+      {% if neighbors is string %}
+        {{ neighbors.split(',') | map('trim') | list }}
+      {% else %}
+        {{ neighbors }}
+      {% endif %}
+    neighbor_states: |
+      {% set ns = namespace(lst=[]) %} {% for n in neighbors_list %}
+        {% set s = (states(n) | default('') | lower) %}
+        {% set ns.lst = ns.lst + [ 'motion' if s == 'motion' else 'vacant' ] %}
+      {% endfor %} {{ ns.lst }}
+    decision_initial: |
+      {% set ns = namespace(has_motion=false) %} {% for n in neighbors_list %}
+        {% if (states(n) | default('') | lower) == 'motion' %}
+          {% set ns.has_motion = true %}
+        {% endif %}
+      {% endfor %} {{ 30 if ns.has_motion else 0 }}
+  sequence:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ decision_initial | int == 30 }}"
+          sequence:
+            - action: light.turn_on
+              target:
+                entity_id: "{{ light_group }}"
+              data:
+                brightness_pct: 30
+        - conditions:
+            - condition: template
+              value_template: "{{ decision_initial | int == 0 }}"
+          sequence:
+            - delay:
+                milliseconds: "{{ recheck_delay_ms | int }}"
+            - variables:
+                decision_final: >
+                  {% set ns = namespace(has_motion=false) %} {% for n in
+                  neighbors_list %}
+                    {% if (states(n) | default('') | lower) == 'motion' %}
+                      {% set ns.has_motion = true %}
+                    {% endif %}
+                  {% endfor %} {{ 30 if ns.has_motion else 0 }}
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ decision_final | int == 30 }}"
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ light_group }}"
+                      data:
+                        brightness_pct: 30
+                - conditions:
+                    - condition: template
+                      value_template: "{{ decision_final | int == 0 }}"
+                  sequence:
+                    - action: light.turn_off
+                      target:
+                        entity_id: "{{ light_group }}"
+                      data: {}
+                    - delay:
+                        milliseconds: "{{ step_delay_ms | int}}"
+                    - wait_template: |
+                        {{ is_state(light_group, 'off') }}
+                      timeout: >
+                        00:00:{{ '%06.3f' | format(wait_off_timeout_ms | int / 1000) }}
+                      continue_on_timeout: true
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ not is_state(light_group, 'off') }}"
+                          sequence:
+                            - action: light.turn_off
+                              target:
+                                entity_id: "{{ light_group }}"
+                              data: {}
+    - action: notify.persistent_notification
+      data:
+        title: OFF триггерная (DALI)
+        message: |
+          Датчик: {{ trigger_sensor }}
+          Соседи: {{ neighbors_list }}
+          Состояния: {{ neighbor_states }}
+          Решение(перв.): {{ decision_initial }}%
+          Группа: {{ light_group }}
+      enabled: false
+    - delay:
+        milliseconds: "{{ step_delay_ms | int }}"

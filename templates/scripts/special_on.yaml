@@ -1,0 +1,66 @@
+# Скрипты для SPECIAL-зон (одна большая зона, без соседей и 30%)
+
+# Шаблон скрипта включения SPECIAL-зоны (вся зона -> 100%)
+shablon_script_special_on:
+  alias: SPECIAL — Включение зоны
+  description: >-
+    Включение одной большой зоны: если любой датчик = motion, включаем всю группу(ы) на 100%.
+    Без логики 30% и без обработки соседей.
+  mode: queued
+  max: 4
+
+  fields:
+    trigger_sensor:
+      description: Сработавший датчик движения (для диагностики/логов)
+      required: true
+      example: sensor.ms_1_6_4_2_state
+    light_group:
+      description: Группа(ы) светильников зоны (100%)
+      required: true
+      example: light.koridor_102_obshchii
+
+  variables:
+    # Небольшая задержка после команд (DALI-friendly / стабилизация)
+    step_delay_ms: 200
+
+    # Нормализация входа: принимаем строку "a, b" или list
+    light_group_list: |
+      {% if light_group is string %}
+        {{ light_group.split(',') | map('trim') | list }}
+      {% else %}
+        {{ light_group }}
+      {% endif %}
+
+  sequence:
+    # Включаем все группы зоны на 100% (если нужно)
+    - repeat:
+        count: "{{ light_group_list | length }}"
+        sequence:
+          - variables:
+              group: "{{ light_group_list[repeat.index-1] }}"
+              st: "{{ states(group) }}"
+              b: "{{ state_attr(group, 'brightness') | int(0) }}"
+              pct: "{{ ((b | float) / 255.0 * 100.0) | round(0) }}"
+              need_100: "{{ st != 'on' or (pct | int) < 100 }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ need_100 }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ group }}"
+                    data:
+                      brightness_pct: 100
+
+    # Диагностика (выключено по умолчанию)
+    - action: notify.persistent_notification
+      data:
+        title: SPECIAL ON
+        message: |
+          Датчик: {{ trigger_sensor }}
+          Группа(ы): {{ light_group_list }} → 100%
+      enabled: false
+
+    - delay:
+        milliseconds: "{{ step_delay_ms | int }}"

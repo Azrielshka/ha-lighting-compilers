@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 normalize_excel.py
-Новый нормализатор Excel -> канонические данные проекта.
+Excel -> канонический нормализованный слой (parquet).
 
 Что делает:
-1) Читает Excel (исходную таблицу устройств)
-2) Строит 2 датафрейма:
-   - device_rows.parquet: построчный слой
-   - spaces.parquet: агрегированный слой по помещениям (для Lovelace)
+1) Читает лист "Проектная БД"
+2) Строит 3 датасета:
+   - devices.parquet  строка = ОДНО устройство (лампа / датчик / панель)
+   - groups.parquet   агрегат по группам света
+   - spaces.parquet   агрегат по помещениям (для карточек и групп этажей)
 3) Пишет normalized_meta.json (паспорт генерации)
 
-Зачем нужен:
-- все последующие генераторы будут читать нормализованный слой, а не Excel напрямую
-- правила (ffill, group->sensor, уникальность датчиков) фиксируются в одном месте
+Единственное место, где читается Excel. Все генераторы работают с parquet.
+
+Модель данных: docs/internal/data_model.md
+Ключевое правило: устройство принадлежит группе, указанной в ЕГО СОБСТВЕННОЙ строке.
 """
 
 from __future__ import annotations
@@ -23,413 +25,551 @@ setup_project_path()
 import argparse
 import datetime as dt
 import json
-import os
+import sys
+import warnings
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
-
-import pandas as pd
-
-from scripts._lib.canon import NORMALIZED_SCHEMA_VERSION, GENERAL_LIGHT_RULE, ALLOWED_CARD_TYPES
-from scripts._lib.excel_schema import COLUMNS
+from scripts._lib.canon import (
+    ALLOWED_SPACE_TYPES,
+    BLUEPRINTS_BY_FAMILY,
+    MAX_SENSORS_PER_UNIT,
+    NORMALIZED_SCHEMA_VERSION,
+    SCRIPTS_BY_FAMILY,
+    family_for_space_type,
+    general_light_entity,
+    is_blank,
+    is_none_token,
+    lamp_entity,
+    normalize_space_type,
+    panel_entity,
+    parse_addr,
+    script_entity,
+    sensor_illuminance_entity,
+    sensor_motion_entity,
+    zone_light_entity,
+)
+from scripts._lib.excel_schema import COLUMNS, DEVICE_COLUMNS, REQUIRED_COLUMNS, SHEET_NAME
 from scripts._lib.naming import slugify_room
+from scripts._lib.schemas import SCHEMAS
 
-# Корень проекта (на уровень выше папки scripts)
-BASE_DIR = Path(__file__).resolve().parent.parent
+__version__ = "3.0.0"
 
-# ===== CONFIG (для запуска из PyCharm) =====
-DEFAULT_EXCEL_PATH = str(BASE_DIR / "data" / "example.xlsx")
-DEFAULT_OUTPUT_DIR = str(BASE_DIR / "data" / "normalized")
-DEFAULT_SHEET_NAME = None
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-def _ensure_dir(path: str) -> None:
-    """Создаёт папку, если её нет (нужно для data/normalized/*)."""
-    os.makedirs(path, exist_ok=True)
+DEFAULT_EXCEL_PATH = PROJECT_ROOT / "data" / "object_example.xlsx"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data" / "normalized"
+
+# Первая строка данных в Excel: 1 — заголовок.
+FIRST_DATA_ROW = 2
 
 
-def _pick_first_existing(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
+# ============================================================
+# ЧТЕНИЕ EXCEL
+# ============================================================
+
+def read_sheet(excel_path: Path, sheet_name: str = SHEET_NAME) -> pd.DataFrame:
     """
-    Возвращает первое имя колонки из списка, которое реально существует в df.
-    Зачем: устойчивость к изменениям таблицы.
+    Прочитать лист проектной БД.
+
+    keep_default_na=False обязателен: иначе pandas считает строку "None"
+    пропущенным значением, и различие между "устройства нет" и "ячейка не
+    заполнена" исчезает — а на нём держится вся модель (см. data_model.md).
     """
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
+    with warnings.catch_warnings():
+        # openpyxl ругается на выпадающие списки листа ПНР — нам это неинтересно.
+        warnings.filterwarnings("ignore", message=".*Data Validation extension.*")
+        book = pd.ExcelFile(excel_path)
+
+        if sheet_name not in book.sheet_names:
+            raise ValueError(
+                f"в книге нет листа {sheet_name!r}; есть: {', '.join(book.sheet_names)}"
+            )
+
+        df = book.parse(sheet_name=sheet_name, dtype=object,
+                        keep_default_na=False, na_values=[])
+
+    df.columns = [str(c).strip() for c in df.columns]
+
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"в листе нет обязательных колонок: {', '.join(missing)}")
+
+    return df
 
 
-def _ffill_series(s: pd.Series) -> pd.Series:
-    """Безопасный ffill (пустые строки тоже считаем пустыми)."""
-    # Пустые строки -> NaN, чтобы ffill работал предсказуемо
-    s2 = s.replace("", pd.NA)
-    return s2.ffill()
+def _cell(raw: object) -> str:
+    """Ячейка как строка без хвостовых пробелов; пустая -> ''."""
+    return "" if is_blank(raw) else str(raw).strip()
 
 
-def _to_str_nullable(s: pd.Series) -> pd.Series:
-    """Приводит серию к строкам, сохраняя NA (нужно для смешанных типов вроде '22/21')."""
-    return s.apply(lambda x: pd.NA if pd.isna(x) else str(x).strip())
+def _to_int(raw: object) -> Optional[int]:
+    """Число из ячейки Excel: 1, '1', 1.0 -> 1. Мусор -> None."""
+    if is_blank(raw):
+        return None
+    try:
+        return int(float(str(raw).strip()))
+    except (TypeError, ValueError):
+        return None
 
-def _normalize_card_type_per_space(df: pd.DataFrame, space_col: str, card_type_col: str) -> pd.Series:
+
+# ============================================================
+# DEVICES
+# ============================================================
+
+def build_devices(df: pd.DataFrame) -> pd.DataFrame:
     """
-    card_type может быть указан только на первой строке помещения.
-    Протягиваем внутри помещения вниз.
+    Развернуть таблицу в длинный формат: строка = одно устройство.
+
+    Одна строка Excel может дать до трёх устройств (лампа + датчик + панель) —
+    каждое привязано к группе из своей же строки.
+
+    Ячейки с None/нет/- в devices не попадают: отсутствие устройства
+    не является устройством.
     """
-    if card_type_col not in df.columns:
-        return pd.Series([pd.NA] * len(df), index=df.index)
+    records: List[Dict] = []
 
-    tmp = df[[space_col, card_type_col]].copy()
-    tmp[card_type_col] = tmp[card_type_col].replace("", pd.NA)
+    current_space = ""
+    current_type: Optional[str] = None
+    current_block: Optional[str] = None
 
-    # ffill внутри группы space
-    return tmp.groupby(space_col, dropna=False)[card_type_col].ffill()
+    for idx, row in df.iterrows():
+        excel_row = int(idx) + FIRST_DATA_ROW
 
+        # Помещение, тип и блок объявляются на первой строке помещения
+        # и тянутся вниз.
+        space_cell = _cell(row.get(COLUMNS.space))
+        if space_cell:
+            current_space = space_cell
+            current_type = normalize_space_type(row.get(COLUMNS.space_type))
+            current_block = _cell(row.get(COLUMNS.block)) or None
 
-def _build_group_and_sensor_by_rule(
-    df: pd.DataFrame,
-    group_raw_col: Optional[str],
-    sensor_raw_col: Optional[str],
-    group_auto_col: Optional[str],
-    sensor_auto_col: Optional[str],
-) -> Tuple[pd.Series, pd.Series, pd.Series]:
-    """
-    Канон: группа задаётся в "сырых" колонках:
-    - group_id берём из строки, где group_raw не пусто
-    - затем протягиваем вниз до следующей группы
-    - ms_sensor берём из sensor_raw ТОЛЬКО на стартовой строке группы и протягиваем внутри группы
+        if not current_space:
+            continue  # строка до первого помещения — валидатор про неё уже сказал
 
-    Если "сырых" колонок нет — используем auto-колонки как fallback.
+        group_id = _cell(row.get(COLUMNS.group))
+        if not group_id:
+            continue  # устройство не к чему привязать (E12)
 
-    Возвращает:
-    - group_id_series
-    - ms_sensor_series (ffill по группе)
-    - is_group_start (bool) — для диагностики
-    """
-    if group_raw_col and sensor_raw_col:
-        group_start = df[group_raw_col].replace("", pd.NA).notna()
-        group_id = df[group_raw_col].replace("", pd.NA)
-        group_id = group_id.ffill()
+        floor = _to_int(row.get(COLUMNS.floor))
+        dali_bus = _cell(row.get(COLUMNS.dali_bus))
+        room_slug = slugify_room(current_space)
 
-        # датчик берём только на стартовой строке группы
-        sensor_start_values = df[sensor_raw_col].replace("", pd.NA).where(group_start, pd.NA)
-        ms_sensor = sensor_start_values.groupby(group_id, dropna=False).ffill()
+        for kind, column in DEVICE_COLUMNS.items():
+            raw = row.get(column)
 
-        return group_id, ms_sensor, group_start
-
-    # Fallback на auto-колонки (если пользовательская логика уже заложена в Excel)
-    if group_auto_col:
-        group_id = df[group_auto_col].replace("", pd.NA)
-    else:
-        group_id = pd.Series([pd.NA] * len(df), index=df.index)
-
-    if sensor_auto_col:
-        ms_sensor = df[sensor_auto_col].replace("", pd.NA)
-    else:
-        ms_sensor = pd.Series([pd.NA] * len(df), index=df.index)
-
-    group_start = group_id.notna()
-    return group_id, ms_sensor, group_start
-
-
-def _unique_ms_sensors_by_group(groups: List[str], sensors_by_group: List[Optional[str]]) -> Tuple[List[Optional[str]], List[str]]:
-    """
-    Убираем повторы датчиков в пределах помещения:
-    - если датчик уже использовался ранее в карточке, пытаемся оставить None и пишем warning
-    (в будущем можно добавить поиск альтернативы внутри группы, если в данных она появится)
-
-    Возвращает:
-    - sensors_by_group_unique (список той же длины)
-    - warnings (список строк)
-    """
-    used = set()
-    out: List[Optional[str]] = []
-    warnings: List[str] = []
-
-    for g, s in zip(groups, sensors_by_group):
-        if s is None or (isinstance(s, float) and pd.isna(s)):
-            out.append(None)
-            continue
-
-        s_str = str(s).strip()
-        if not s_str:
-            out.append(None)
-            continue
-
-        # Если датчик повторяется — считаем это проблемой и НЕ дублируем в карточке
-        if s_str in used:
-            out.append(None)
-            warnings.append(f"duplicate_ms_sensor: group {g} repeats {s_str}")
-            continue
-
-        used.add(s_str)
-        out.append(s_str)
-
-    return out, warnings
-
-
-def normalize(
-    excel_path: str,
-    output_dir: str = "data/normalized",
-    sheet_name: Optional[str] = None,
-) -> None:
-    """
-    Главная функция:
-    - читает Excel
-    - строит parquet + meta.json
-    """
-    # 1) читаем Excel
-    df = pd.read_excel(excel_path, sheet_name=sheet_name) if sheet_name else pd.read_excel(excel_path)
-
-    # 2) выбираем колонки (устойчиво)
-    space_col = _pick_first_existing(df, [COLUMNS.space_auto, COLUMNS.space_raw])
-    floor_col = _pick_first_existing(df, [COLUMNS.floor_auto, COLUMNS.floor_raw])
-    dali_bus_col = _pick_first_existing(df, [COLUMNS.dali_bus_auto, COLUMNS.dali_bus_raw])
-    button_col = _pick_first_existing(df, [COLUMNS.button_auto, COLUMNS.button_raw])
-    lamp_col = _pick_first_existing(df, [COLUMNS.lamp_raw])
-
-    # "сырые" колонки для канона D->G (в терминах заголовков)
-    group_raw_col = _pick_first_existing(df, [COLUMNS.group_raw])
-    sensor_raw_col = _pick_first_existing(df, [COLUMNS.sensor_raw])
-
-    # auto fallback
-    group_auto_col = _pick_first_existing(df, [COLUMNS.group_auto])
-    sensor_auto_col = _pick_first_existing(df, [COLUMNS.sensor_auto])
-
-    card_type_col = _pick_first_existing(df, [COLUMNS.card_type])
-
-    if not space_col:
-        raise ValueError("Не найдена колонка помещения. Ожидали 'Помещение (авто)' или 'Помещение'.")
-
-    # 3) базовая нормализация space/floor (ffill по листу)
-    df["__space"] = _ffill_series(df[space_col])
-    df["__floor"] = _ffill_series(df[floor_col]) if floor_col else pd.NA
-
-    # floor приводим к int, если возможно
-    df["__floor"] = pd.to_numeric(df["__floor"], errors="coerce").astype("Int64")
-
-    # 4) group_id и ms_sensor по канону
-    group_id, ms_sensor, is_group_start = _build_group_and_sensor_by_rule(
-        df=df,
-        group_raw_col=group_raw_col,
-        sensor_raw_col=sensor_raw_col,
-        group_auto_col=group_auto_col,
-        sensor_auto_col=sensor_auto_col,
-    )
-    df["__group_id"] = group_id
-    df["__ms_sensor_id"] = ms_sensor
-
-    # 5) card_type протягиваем в рамках помещения
-    df["__card_type"] = _normalize_card_type_per_space(df, "__space", card_type_col) if card_type_col else pd.NA
-
-    # Валидация card_type (мягкая): неизвестные оставляем, но пометим в warnings потом
-    # (строгую ошибку не делаем, чтобы не ломать пайплайн)
-    # 6) room_slug
-    df["__room_slug"] = df["__space"].astype(str).map(slugify_room)
-
-    # 7) собираем device_rows
-    device_rows = pd.DataFrame({
-        "row_id": df.index.astype(int) + 1,   # +1, чтобы было ближе к "номеру строки" (условно)
-        "space_raw": df[space_col] if space_col in df.columns else pd.NA,
-        "space": df["__space"],
-        "room_slug": df["__room_slug"],
-        "floor": df["__floor"],
-        "card_type": df["__card_type"],
-        "group_id": df["__group_id"],
-        "ms_sensor_id": df["__ms_sensor_id"],
-        "lamp_id": _to_str_nullable(df[lamp_col]) if lamp_col else pd.Series([pd.NA]*len(df)),
-        "dali_bus": _to_str_nullable(df[dali_bus_col]) if dali_bus_col else pd.Series([pd.NA]*len(df)),
-        "kp_id": _to_str_nullable(df[button_col]) if button_col else pd.Series([pd.NA]*len(df)),
-        "is_group_start": is_group_start,
-    })
-
-    # Приводим ключевые поля к строкам/NA, чтобы parquet-писатель не спотыкался о mixed types
-    for _col in ["space_raw","space","room_slug","card_type","group_id","ms_sensor_id","lamp_id","dali_bus","kp_id"]:
-        if _col in device_rows.columns:
-            device_rows[_col] = _to_str_nullable(device_rows[_col])
-
-    # 8) агрегируем spaces
-    spaces_records: List[Dict] = []
-    warnings_summary: Dict[str, List[str]] = {
-        "spaces_without_card_type": [],
-        "spaces_with_unknown_card_type": [],
-        "spaces_with_duplicate_ms_sensor": [],
-    }
-
-    for space, sdf in device_rows.groupby("space", dropna=False, sort=False):
-        space_str = str(space)
-
-        # Порядок групп: как встретились впервые в таблице
-        groups_order = []
-        seen_groups = set()
-        for g in sdf["group_id"].tolist():
-            if pd.isna(g):
+            if is_blank(raw) or is_none_token(raw):
                 continue
-            g_str = str(g).strip()
-            if not g_str:
+
+            try:
+                addr = parse_addr(raw)
+            except ValueError:
+                # Мусор в ячейке — это ошибка валидации (E03/E14).
+                # Здесь пропускаем: normalize не место для диагностики.
                 continue
-            if g_str not in seen_groups:
-                seen_groups.add(g_str)
-                groups_order.append(g_str)
 
-        # Датчик по группе: берём значение ms_sensor_id на стартовой строке группы (is_group_start=True)
-        group_to_sensor: Dict[str, Optional[str]] = {}
-        for g in groups_order:
-            start_rows = sdf[(sdf["group_id"].astype(str) == g) & (sdf["is_group_start"] == True)]
-            sensor_val = None
-            if not start_rows.empty:
-                raw = start_rows.iloc[0]["ms_sensor_id"]
-                if not pd.isna(raw) and str(raw).strip():
-                    sensor_val = str(raw).strip()
-            group_to_sensor[g] = sensor_val
+            if kind == "lamp":
+                entity_id, entity_id_2 = lamp_entity(addr), None
+            elif kind == "sensor":
+                entity_id, entity_id_2 = sensor_motion_entity(addr), sensor_illuminance_entity(addr)
+            else:
+                entity_id, entity_id_2 = panel_entity(addr), None
 
-        sensors_by_group = [group_to_sensor.get(g) for g in groups_order]
-        sensors_by_group_unique, dupe_warnings = _unique_ms_sensors_by_group(groups_order, sensors_by_group)
+            records.append({
+                "row_id": excel_row,
+                "kind": kind,
+                "addr": str(addr),
+                "addr_floor": addr.floor,
+                "addr_bus": addr.bus,
+                "addr_num": addr.num,
+                "entity_id": entity_id,
+                "entity_id_2": entity_id_2,
+                "group_id": group_id,
+                "space": current_space,
+                "room_slug": room_slug,
+                "floor": floor,
+                "space_type": current_type,
+                "block": current_block,
+                "dali_bus": dali_bus or None,
+            })
 
-        # Приводим датчики к HA entity_id (sensor.<id>) если надо.
-        # Сейчас в таблице датчики вида "1.20.3". Договорённость на будущее:
-        # - если датчик уже начинается с "sensor." — оставляем
-        # - иначе делаем "sensor." + id, заменяя недопустимые символы ('.' -> '_')
-        def to_sensor_entity(x: Optional[str]) -> Optional[str]:
-            if x is None:
-                return None
-            s = str(x).strip()
-            if not s:
-                return None
-            if s.startswith("sensor."):
-                return s
-            # Иначе: датчики в таблице вида "1.20.3" -> sensor.ms_1_20_3
-            clean = s.replace(".", "_").replace("-", "_")
-            return "sensor.ms_" + clean
+    devices = pd.DataFrame.from_records(records, columns=[
+        "row_id", "kind", "addr", "addr_floor", "addr_bus", "addr_num",
+        "entity_id", "entity_id_2", "group_id", "space", "room_slug",
+        "floor", "space_type", "block", "dali_bus",
+    ])
 
-        ms_sensors_by_group = [to_sensor_entity(x) for x in sensors_by_group_unique]
-        ms_sensors_unique = sorted({s for s in ms_sensors_by_group if s}, key=lambda z: z)
+    for col in ("row_id", "addr_floor", "addr_bus", "addr_num", "floor"):
+        devices[col] = devices[col].astype("Int64")
 
-        # card_type берём первый непустой
-        ct = None
-        for v in sdf["card_type"].tolist():
-            if pd.isna(v):
-                continue
-            v_str = str(v).strip()
-            if v_str:
-                ct = v_str
-                break
+    return devices
 
-        warnings: List[str] = []
-        if ct is None:
-            warnings.append("missing_card_type")
-            warnings_summary["spaces_without_card_type"].append(space_str)
-            ct = "generic"
 
-        if ct not in ALLOWED_CARD_TYPES:
-            warnings.append(f"unknown_card_type:{ct}")
-            warnings_summary["spaces_with_unknown_card_type"].append(space_str)
+# ============================================================
+# GROUPS
+# ============================================================
 
-        if dupe_warnings:
-            warnings.extend(dupe_warnings)
-            warnings_summary["spaces_with_duplicate_ms_sensor"].append(space_str)
+def build_groups(devices: pd.DataFrame) -> pd.DataFrame:
+    """
+    Агрегат по группам света.
 
-        room_slug = sdf["room_slug"].iloc[0]
-        floor = sdf["floor"].iloc[0]
-        general_light_entity = GENERAL_LIGHT_RULE.build(room_slug)
+    Порядок групп и устройств внутри — как в таблице: наладчик читает отчёты
+    и YAML сверху вниз и ожидает увидеть тот же порядок, что у себя в Excel.
+    """
+    records: List[Dict] = []
 
-        spaces_records.append({
-            "space": space_str,
-            "room_slug": room_slug,
-            "floor": int(floor) if not pd.isna(floor) else None,
-            "card_type": ct,
-            "groups": groups_order,
-            "groups_count": len(groups_order),
-            "general_light_entity": general_light_entity,
-            # Важно для Lovelace: строго по группе, без повторов
-            "ms_sensors_by_group": ms_sensors_by_group,
-            "ms_sensors_unique": ms_sensors_unique,
-            "warnings": warnings,
+    for group_id, gdf in devices.groupby("group_id", sort=False):
+        first = gdf.iloc[0]
+
+        lamps = gdf[gdf["kind"] == "lamp"]
+        sensors = gdf[gdf["kind"] == "sensor"]
+        panels = gdf[gdf["kind"] == "panel"]
+
+        records.append({
+            "group_id": str(group_id),
+            "space": first["space"],
+            "room_slug": first["room_slug"],
+            "floor": first["floor"],
+            "space_type": first["space_type"],
+            "zone_light_entity": zone_light_entity(str(group_id)),
+            "lamps": lamps["entity_id"].tolist(),
+            "sensors_ms": sensors["entity_id"].tolist(),
+            "sensors_il": sensors["entity_id_2"].tolist(),
+            "panels": panels["entity_id"].tolist(),
+            "lamp_count": len(lamps),
+            "sensor_count": len(sensors),
+            "panel_count": len(panels),
         })
 
-    spaces = pd.DataFrame(spaces_records)
+    groups = pd.DataFrame.from_records(records, columns=[
+        "group_id", "space", "room_slug", "floor", "space_type", "zone_light_entity",
+        "lamps", "sensors_ms", "sensors_il", "panels",
+        "lamp_count", "sensor_count", "panel_count",
+    ])
 
-    # 9) пишем файлы
-    _ensure_dir(output_dir)
-    device_rows_path = os.path.join(output_dir, "device_rows.parquet")
-    spaces_path = os.path.join(output_dir, "spaces.parquet")
-    meta_path = os.path.join(output_dir, "normalized_meta.json")
+    groups["floor"] = groups["floor"].astype("Int64")
+    for col in ("lamp_count", "sensor_count", "panel_count"):
+        groups[col] = groups[col].astype("int64")
 
-    # Parquet
-    # Пишем через pyarrow напрямую (устойчивее, чем pandas.to_parquet в разных окружениях)
-    device_rows_tbl = pa.Table.from_pandas(device_rows, preserve_index=False)
-    spaces_tbl = pa.Table.from_pandas(spaces, preserve_index=False)
+    return groups
 
-    pq.write_table(device_rows_tbl, device_rows_path)
-    pq.write_table(spaces_tbl, spaces_path)
-    # Meta json
+
+# ============================================================
+# SPACES
+# ============================================================
+
+def build_spaces(devices: pd.DataFrame, groups: pd.DataFrame) -> pd.DataFrame:
+    """
+    Агрегат по помещениям: для общих групп, групп этажей и карточек Lovelace.
+
+    has_valid_type=False означает, что помещение не попадёт в карточки,
+    но останется в группах света: лампы в нём физически существуют.
+    """
+    records: List[Dict] = []
+
+    for space, sdf in devices.groupby("space", sort=False):
+        first = sdf.iloc[0]
+        space_type = first["space_type"]
+        room_slug = first["room_slug"]
+
+        # Осторожно: пустой блок приходит из pandas как NaN, а NaN истинный
+        # (bool(float('nan')) is True). Без явной проверки unit_id стал бы NaN.
+        block = first["block"]
+        if pd.isna(block) or not str(block).strip():
+            block = None
+
+        gdf = groups[groups["space"] == space]
+
+        warnings_: List[str] = []
+        if space_type is None:
+            warnings_.append("missing_space_type")
+        elif space_type not in ALLOWED_SPACE_TYPES:
+            warnings_.append(f"unknown_space_type:{space_type}")
+
+        # Единица обслуживания: блок, если задан, иначе само помещение.
+        unit_id = block if block else room_slug
+
+        records.append({
+            "space": str(space),
+            "room_slug": room_slug,
+            "floor": first["floor"],
+            "space_type": space_type,
+            "has_valid_type": space_type in ALLOWED_SPACE_TYPES,
+            "groups": gdf["group_id"].tolist(),
+            "groups_count": len(gdf),
+            "general_light_entity": general_light_entity(room_slug),
+            "zone_light_entities": gdf["zone_light_entity"].tolist(),
+            # Списки по группам: индекс i соответствует groups[i].
+            # Пустой вложенный список = у группы нет датчиков (норма для zal).
+            "sensors_by_group": [list(x) for x in gdf["sensors_ms"]],
+            "panels_by_group": [list(x) for x in gdf["panels"]],
+            "sensors_unique": sorted({s for lst in gdf["sensors_ms"] for s in lst}),
+            "block": block,
+            "unit_id": unit_id,
+            "family": family_for_space_type(space_type),
+            "warnings": warnings_,
+        })
+
+    spaces = pd.DataFrame.from_records(records, columns=[
+        "space", "room_slug", "floor", "space_type", "has_valid_type",
+        "groups", "groups_count", "general_light_entity", "zone_light_entities",
+        "sensors_by_group", "panels_by_group", "sensors_unique",
+        "block", "unit_id", "family", "warnings",
+    ])
+
+    spaces["floor"] = spaces["floor"].astype("Int64")
+    spaces["groups_count"] = spaces["groups_count"].astype("int64")
+
+    return spaces
+
+
+# ============================================================
+# UNITS — ЕДИНИЦЫ ОБСЛУЖИВАНИЯ
+# ============================================================
+
+def build_units(devices: pd.DataFrame, spaces: pd.DataFrame) -> pd.DataFrame:
+    """
+    Собрать единицы обслуживания: то, на что клонируется набор скриптов.
+
+    Один экземпляр скрипта в HA = одна очередь. При тысяче датчиков вызовы
+    копятся и свет отстаёт от человека, поэтому у каждой единицы свой набор
+    скриптов — они друг друга не ждут.
+
+    Единица = помещение, если «Блок» пуст; иначе все помещения одного «Блока».
+
+    Помещения без семейства (class, zal) сюда НЕ попадают: автоматизаций
+    у них нет. class управляется панелью и поддержанием освещённости — это
+    вне нашей области; zal — только панелями.
+    """
+    records: List[Dict] = []
+
+    # Только те, кому нужны автоматизации.
+    automated = spaces[spaces["family"].notna()]
+
+    for unit_id, udf in automated.groupby("unit_id", sort=False):
+        first = udf.iloc[0]
+        family = first["space_type"] and family_for_space_type(first["space_type"])
+
+        unit_spaces = udf["space"].tolist()
+
+        # Датчики единицы — из devices, чтобы сохранить порядок таблицы.
+        udev = devices[
+            (devices["space"].isin(unit_spaces)) & (devices["kind"] == "sensor")
+        ]
+        sensors = udev["entity_id"].tolist()
+
+        zone_lights = [z for lst in udf["zone_light_entities"] for z in lst]
+
+        roles = SCRIPTS_BY_FAMILY.get(family, {})
+        scripts = [script_entity(str(unit_id), role) for role in roles]
+
+        blueprints = BLUEPRINTS_BY_FAMILY.get(family, {})
+
+        warnings_: List[str] = []
+        if len(sensors) > MAX_SENSORS_PER_UNIT:
+            # Предел зашит в сами blueprint'ы: при большем числе датчиков
+            # автоматизация останавливается и пишет warning в лог HA.
+            warnings_.append(f"sensors_over_limit:{len(sensors)}")
+
+        floors = sorted({int(f) for f in udf["floor"] if not pd.isna(f)})
+
+        records.append({
+            "unit_id": str(unit_id),
+            "family": family,
+            "spaces": unit_spaces,
+            "space_type": first["space_type"],
+            "floors": floors,
+            "sensors_ms": sensors,
+            "sensor_count": len(sensors),
+            "zone_lights": zone_lights,
+            "scripts": scripts,
+            "blueprint_on": blueprints.get("on"),
+            "blueprint_off": blueprints.get("off"),
+            "warnings": warnings_,
+        })
+
+    units = pd.DataFrame.from_records(records, columns=[
+        "unit_id", "family", "spaces", "space_type", "floors",
+        "sensors_ms", "sensor_count", "zone_lights", "scripts",
+        "blueprint_on", "blueprint_off", "warnings",
+    ])
+
+    units["sensor_count"] = units["sensor_count"].astype("int64")
+
+    return units
+
+
+# ============================================================
+# ЗАПИСЬ
+# ============================================================
+
+def normalize(
+    excel_path: Path,
+    output_dir: Path,
+    sheet_name: str = SHEET_NAME,
+) -> Dict:
+    """Прочитать Excel и записать нормализованный слой. Возвращает meta."""
+    df = read_sheet(excel_path, sheet_name)
+
+    devices = build_devices(df)
+    groups = build_groups(devices)
+    spaces = build_spaces(devices, groups)
+    units = build_units(devices, spaces)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    paths = {
+        "devices": output_dir / "devices.parquet",
+        "groups": output_dir / "groups.parquet",
+        "spaces": output_dir / "spaces.parquet",
+        "units": output_dir / "units.parquet",
+    }
+
+    # Пишем СТРОГО по объявленной схеме, а не выводим её из данных.
+    # Иначе на объекте без единой панели panels_by_group получил бы тип
+    # list<list<null>> вместо list<list<string>> — и генератор сломался бы
+    # не у нас, а у наладчика. Подробности: scripts/_lib/schemas.py
+    frames = (("devices", devices), ("groups", groups), ("spaces", spaces), ("units", units))
+    for name, frame in frames:
+        table = pa.Table.from_pandas(frame, schema=SCHEMAS[name], preserve_index=False)
+        pq.write_table(table, paths[name])
+
+    # Схема v1 писала device_rows.parquet. Если он остался от прошлого запуска,
+    # генераторы могли бы прочитать устаревшие данные и не заметить этого.
+    stale = output_dir / "device_rows.parquet"
+    if stale.exists():
+        stale.unlink()
+
+    kinds = devices["kind"].value_counts().to_dict()
+
     meta = {
         "schema_version": NORMALIZED_SCHEMA_VERSION,
+        "generator_version": __version__,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "source_file": excel_path,
-        "output_files": {
-            "device_rows": device_rows_path,
-            "spaces": spaces_path,
-        },
+        "source_file": str(excel_path),
+        "sheet_name": sheet_name,
+        "output_files": {k: str(v) for k, v in paths.items()},
         "stats": {
             "excel_rows": int(len(df)),
-            "device_rows": int(len(device_rows)),
+            "devices": int(len(devices)),
+            "lamps": int(kinds.get("lamp", 0)),
+            "sensors": int(kinds.get("sensor", 0)),
+            "panels": int(kinds.get("panel", 0)),
+            "groups": int(len(groups)),
             "spaces": int(len(spaces)),
+            "spaces_without_valid_type": int((~spaces["has_valid_type"]).sum()),
+            "units": int(len(units)),
+            "scripts": int(sum(len(s) for s in units["scripts"])),
+            "automations": int(len(units) * 2),  # ON + OFF на единицу
         },
         "columns": {
-            "device_rows": list(device_rows.columns),
+            "devices": list(devices.columns),
+            "groups": list(groups.columns),
             "spaces": list(spaces.columns),
+            "units": list(units.columns),
         },
-        "warnings_summary": warnings_summary,
         "notes": {
-            "zone_light_rule": "ZONE_LIGHT_i = 'light.' + groups[i-1]",
-            "ms_sensor_rule": "MS sensor taken from column 'Датчик' only on group start rows (where 'Группа' is filled). Duplicates are removed (set to null) in ms_sensors_by_group.",
-            "general_light_rule": "general_light_entity = 'light.' + room_slug + '_obshchii'",
+            "device_binding": "устройство принадлежит группе из своей строки Excel",
+            "sensor_entities": "один адрес датчика -> sensor.ms_* и sensor.il_*",
+            "zone_light_rule": "light.<group_id>",
+            "general_light_rule": "light.<room_slug>_obshchii",
+            "absent_devices": "ячейки None/нет/- в devices не попадают",
         },
     }
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
 
-    print("OK: wrote")
-    print(" -", device_rows_path)
-    print(" -", spaces_path)
-    print(" -", meta_path)
+    meta_path = output_dir / "normalized_meta.json"
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return meta
 
 
-def main() -> None:
-    """
-    CLI-обёртка, чтобы запускать из терминала PyCharm:
-    python scripts/normalize_excel.py --excel data/example.xlsx
-    """
-    parser = argparse.ArgumentParser(description="Normalize Excel table into canonical parquet datasets.")
-    parser.add_argument(
-        "--excel",
-        default=DEFAULT_EXCEL_PATH,
-        help="Path to source Excel file"
+def _print_stats(meta: Dict, output_dir: Path) -> None:
+    s = meta["stats"]
+    print("📊 Нормализовано:")
+    print(f"  Строк Excel:   {s['excel_rows']}")
+    print(f"  Устройств:     {s['devices']}")
+    print(f"    лампы:       {s['lamps']}")
+    print(f"    датчики:     {s['sensors']}  (+{s['sensors']} сущностей освещённости)")
+    print(f"    панели:      {s['panels']}")
+    print(f"  Групп:         {s['groups']}")
+    print(f"  Помещений:     {s['spaces']}")
+    print()
+    print(f"  Единиц обслуживания: {s['units']}")
+    print(f"    скриптов клонируется: {s['scripts']}")
+    print(f"    автоматизаций:        {s['automations']}")
+
+    if s["spaces_without_valid_type"]:
+        print(f"\n⚠ Помещений без корректного типа: {s['spaces_without_valid_type']}")
+        print("  Они попадут в группы света, но не в карточки Lovelace.")
+
+    print(f"\nOK: записано в {output_dir}")
+    for name, path in meta["output_files"].items():
+        print(f" - {Path(path).name}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Нормализовать Excel в канонический parquet-слой.",
     )
-
+    parser.add_argument("--excel", default=str(DEFAULT_EXCEL_PATH), help="Путь к Excel-файлу")
+    parser.add_argument("--out", default=str(DEFAULT_OUTPUT_DIR), help="Папка вывода")
+    parser.add_argument("--sheet", default=SHEET_NAME, help="Имя листа")
     parser.add_argument(
-        "--out",
-        default=DEFAULT_OUTPUT_DIR,
-        help="Output folder"
-    )
-
-    parser.add_argument(
-        "--sheet",
-        default=DEFAULT_SHEET_NAME,
-        help="Excel sheet"
+        "--force",
+        action="store_true",
+        help="Нормализовать даже при блокирующих ошибках в таблице",
     )
     args = parser.parse_args()
 
-    # --- Лог запуска (для удобства отладки) ---
+    excel_path = Path(args.excel)
+    output_dir = Path(args.out)
+
     print("\n=== Normalize Excel ===")
-    print("Excel file :", args.excel)
-    print("Output dir :", args.out)
-    print("Sheet      :", args.sheet)
+    print("Excel  :", excel_path)
+    print("Sheet  :", args.sheet)
+    print("Output :", output_dir)
     print()
 
-    normalize(excel_path=args.excel, output_dir=args.out, sheet_name=args.sheet)
+    if not excel_path.exists():
+        print(f"❌ Файл не найден: {excel_path}")
+        return 2
+
+    # Проверяем таблицу перед нормализацией. Шаг validate остаётся отдельным
+    # и самостоятельным, но молча нормализовать заведомо битую таблицу нельзя:
+    # ошибки всплывут уже в Home Assistant.
+    from validate_excel import validate  # локальный импорт: normalize не зависит от CLI валидатора
+
+    findings, _ = validate(excel_path, args.sheet)
+    errors = [f for f in findings if f.severity == "error"]
+
+    if errors:
+        print(f"❌ В таблице {len(errors)} блокирующих ошибок — нормализация отменена.")
+        print("   Запустите validate_excel.py, чтобы увидеть полный список.\n")
+        for f in errors[:10]:
+            where = f"строка {f.row}: " if f.row else ""
+            print(f"   [{f.code}] {where}{f.message}")
+        if len(errors) > 10:
+            print(f"   … ещё {len(errors) - 10}")
+
+        if not args.force:
+            print("\n   Обойти проверку: --force (на свой страх)")
+            return 1
+
+        print("\n⚠ --force: нормализуем несмотря на ошибки\n")
+
+    try:
+        meta = normalize(excel_path, output_dir, args.sheet)
+    except ValueError as exc:
+        print(f"❌ {exc}")
+        return 1
+
+    _print_stats(meta, output_dir)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

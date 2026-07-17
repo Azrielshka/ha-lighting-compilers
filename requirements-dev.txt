@@ -1,0 +1,7 @@
+# Dev-зависимости (Linux VM разработчика).
+# Целевая машина наладчика ставит requirements.txt — там ещё PySide6 и pyinstaller,
+# которые для запуска и тестов скриптов не нужны.
+
+-r requirements.txt
+
+pytest>=8.0

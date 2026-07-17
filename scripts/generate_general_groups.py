@@ -1,252 +1,140 @@
-# generate_general_groups.py
-# ------------------------------------------------------------
-# v2.0.1
-# Генератор общих групп света (general light groups)
-#
-# Источник данных: нормализованный parquet слой
-#   data/normalized/device_rows.parquet
-#
-# Выход:
-#   data/light_groups/lights_general_groups.yaml
-#
-# Логика:
-# - для каждого помещения (room_slug/space) собрать список подгрупп (group_id)
-# - сгенерировать одну общую группу: <room_slug>_obshchii
-#   entities:
-#     - light.<group_id_0>
-#     - light.<group_id_1>
-# ------------------------------------------------------------
+# -*- coding: utf-8 -*-
+"""
+generate_general_groups.py
+Генератор общих групп помещений.
+
+Вход:  data/normalized/spaces.parquet
+Выход: data/light_groups/lights_general_groups.yaml
+
+Каждое помещение получает одну общую группу, объединяющую его зоны:
+
+    light.<room_slug>_obshchii  ->  light.<group_id_1>, light.<group_id_2>, ...
+
+Имя собирается ТОЛЬКО из названия помещения:
+
+    103_Вестибюль -> 103_vestibiul -> 103_vestibiul_obshchii
+
+Тип помещения (space_type) в имени НЕ участвует и на генерацию не влияет:
+общую группу получают все помещения — коридоры, залы, тамбуры.
+"""
 
 from __future__ import annotations
 
 from _lib.bootstrap import setup_project_path
 setup_project_path()
 
+import argparse
+import sys
 from pathlib import Path
 from typing import List
 
-import pandas as pd
+from scripts._lib.canon import GENERAL_LIGHT_RULE
+from scripts._lib.filters import (
+    Filters,
+    add_filter_args,
+    apply_filters,
+    filters_from_args,
+    print_filter_report,
+)
+from scripts._lib.normalized import NormalizedLayerError, load_dataset
+from scripts._lib.yaml_render import LightGroup, render_document
 
-# Канон проекта (единые правила нейминга)
-from scripts._lib.canon import GENERAL_LIGHT_RULE, HA_LIGHT_DOMAIN
+__version__ = "3.0.0"
 
-
-__version__ = "2.0.1"
-
-# === НАСТРОЙКИ ===
-
-# Корень проекта (чтобы запуск из PyCharm/терминала работал одинаково)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Вход: нормализованные строки устройств
-DEVICE_ROWS_PARQUET = PROJECT_ROOT / "data" / "normalized" / "device_rows.parquet"
+DEFAULT_NORMALIZED_DIR = PROJECT_ROOT / "data" / "normalized"
+DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "light_groups" / "lights_general_groups.yaml"
 
-# Выход: папка и файл
-OUTPUT_DIR = PROJECT_ROOT / "data" / "light_groups"
-OUTPUT_PATH = OUTPUT_DIR / "lights_general_groups.yaml"
-
-# Фильтры (оставляем как в других генераторах)
-
-# Ограничить генерацию только перечисленными пространствами.
-# Рекомендуется указывать room_slug (стабильный), но можно и space.
-SPACES_FILTER: List[str] = []  # например ["403_kabinet_medits", "402_kabinet"]
-
-# Исключить все пространства определённых этажей (берём floor из parquet)
-EXCLUDE_FLOORS: List[int] = []  # например [4] чтобы исключить весь 4-й этаж
-
-# Исключить пространства, в названии которых встречаются подстроки (без учёта регистра)
-EXCLUDE_SPACE_CONTAINS: List[str] = ["koridor"]  # например ["sklad", "server"]
+ROOT_KEY = "lights_general_group"
 
 
-# === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-
-def _space_key(row: pd.Series) -> str:
+def general_object_id(room_slug: str) -> str:
     """
-    Ключ помещения для группировки/фильтров.
-    Берём room_slug (стабильный), если его нет — space (человекочитаемое).
+    object_id общей группы: <room_slug>_obshchii
+
+    В YAML это и name, и unique_id. Домен добавляет Home Assistant,
+    получая light.<room_slug>_obshchii — то же, что лежит в
+    spaces.general_light_entity.
     """
-    rs = row.get("room_slug", None)
-    sp = row.get("space", None)
-
-    v = rs if rs is not None and str(rs).strip() else sp
-    return "" if v is None else str(v).strip()
+    return f"{room_slug}{GENERAL_LIGHT_RULE.suffix}"
 
 
-def load_device_rows(path: Path) -> pd.DataFrame:
-    """
-    Загрузить device_rows.parquet в DataFrame.
-    """
-    if not path.exists():
-        raise FileNotFoundError(f"Parquet не найден: {path}")
+def build_yaml(spaces_df, filters: Filters) -> str:
+    """Собрать YAML общих групп из spaces.parquet."""
+    total_spaces = len(spaces_df)
+    filtered, excluded = apply_filters(spaces_df, filters)
 
-    return pd.read_parquet(path)
+    print_filter_report(
+        "Общие группы помещений",
+        filters,
+        total=total_spaces,
+        kept=len(filtered),
+        excluded=excluded,
+    )
 
+    if filtered.empty:
+        print("\n⚠ После фильтров не осталось помещений — YAML будет пустым.")
+        return render_document(ROOT_KEY, [], "Нет данных для генерации общих групп")
 
-def build_general_groups(df: pd.DataFrame) -> str:
-    """
-    Собрать YAML-текст с общими группами по помещениям.
+    groups: List[LightGroup] = []
 
-    Ожидаемые колонки:
-      - group_id
-      - room_slug / space
-      - floor (желательно, для EXCLUDE_FLOORS)
+    for _, row in filtered.iterrows():
+        zones = list(row["zone_light_entities"])
 
-    Выход:
-      lights_general_group:
-        light:
-        #Общая группа для <space>
-          - platform: group
-            name: "<room_slug>_obshchii"
-            unique_id: "<room_slug>_obshchii"
-            entities:
-              - light.<group_id_0>
-              - light.<group_id_1>
-    """
-    total_rows = len(df)
-
-    # --- проверка контракта данных ---
-    required_cols = ["group_id"]
-    for c in required_cols:
-        if c not in df.columns:
-            raise ValueError(f"В device_rows.parquet нет обязательной колонки: '{c}'")
-
-    df = df.copy()
-
-    # ключ помещения для группировки/фильтров
-    df["__space_key"] = df.apply(_space_key, axis=1)
-
-    # room_slug отдельно — он нужен, чтобы собрать стабильное имя общей группы
-    if "room_slug" in df.columns:
-        df["__room_slug"] = df["room_slug"].fillna("").astype(str).str.strip()
-    else:
-        df["__room_slug"] = ""
-
-    # group_id как строка
-    df["__group"] = df["group_id"].fillna("").astype(str).str.strip()
-
-    # floor для фильтра по этажам
-    if "floor" in df.columns:
-        df["__floor"] = pd.to_numeric(df["floor"], errors="coerce")
-    else:
-        df["__floor"] = pd.NA
-
-    # Базовая фильтрация: нужны space_key + group_id
-    df = df[(df["__space_key"] != "") & (df["__group"] != "")]
-    rows_after_basic = len(df)
-
-    spaces_before_filters = list(dict.fromkeys(df["__space_key"]))
-
-    # --- фильтры пользователя ---
-
-    # 1) SPACES_FILTER
-    if SPACES_FILTER:
-        df = df[df["__space_key"].isin(SPACES_FILTER)]
-
-    df = df.copy()
-
-    # 2) EXCLUDE_FLOORS
-    if EXCLUDE_FLOORS:
-        floors = set(int(x) for x in EXCLUDE_FLOORS)
-        df = df[~df["__floor"].apply(lambda x: (not pd.isna(x)) and int(x) in floors)]
-
-    # 3) EXCLUDE_SPACE_CONTAINS
-    if EXCLUDE_SPACE_CONTAINS:
-        subs = [s.lower() for s in EXCLUDE_SPACE_CONTAINS]
-
-        def space_allowed(space_name: str) -> bool:
-            s = str(space_name).lower()
-            return not any(sub in s for sub in subs)
-
-        df = df[df["__space_key"].apply(space_allowed)]
-
-    rows_after_filters = len(df)
-
-    if df.empty:
-        print("⚠ После всех фильтров не осталось строк. Общие группы не будут сгенерированы.")
-        print(f"  Всего строк в parquet:                 {total_rows}")
-        print(f"  После базовой фильтрации (space+group): {rows_after_basic}")
-        return "# Нет данных для генерации общих групп\n"
-
-    # Уникальные пары (помещение, подгруппа)
-    df_pairs = df[["__space_key", "__room_slug", "__group"]].drop_duplicates()
-    spaces_after_filters = list(dict.fromkeys(df_pairs["__space_key"]))
-    groups_after_filters = list(dict.fromkeys(df_pairs["__group"]))
-    excluded_spaces = [s for s in spaces_before_filters if s not in spaces_after_filters]
-
-    # --- отчёт ---
-    print("📊 Статистика по общим группам света:")
-    print(f"  Версия:                                 {__version__}")
-    print(f"  Всего строк в parquet:                  {total_rows}")
-    print(f"  После базовой фильтрации (space+group): {rows_after_basic}")
-    print(f"  После всех фильтров (строк):            {rows_after_filters}")
-    print(f"  Уникальных пространств:                 {len(spaces_after_filters)}")
-    print(f"  Уникальных подгрупп:                    {len(groups_after_filters)}")
-    if excluded_spaces:
-        print(f"  Пространства, исключённые фильтрами:    {len(excluded_spaces)} шт")
-    else:
-        print("  Пространства, исключённые фильтрами:    нет")
-
-    # --- генерация YAML ---
-    lines: List[str] = []
-    lines.append("lights_general_group:")
-    lines.append("  light:")
-
-    # Группируем по помещению (в порядке появления)
-    for space_key, df_space in df_pairs.groupby("__space_key", sort=False):
-        space_key_str = str(space_key).strip()
-        if not space_key_str:
+        # Помещение без зон — ошибка таблицы (E09), сюда дойти не должно.
+        if not zones:
+            print(f"  ⚠ помещение {row['space']} без групп — пропущено")
             continue
 
-        # room_slug нужен для стабильного object_id общей группы
-        # Если room_slug пуст (нежелательно), fallback на space_key
-        room_slug = (
-            df_space["__room_slug"].iloc[0]
-            if "__room_slug" in df_space.columns and str(df_space["__room_slug"].iloc[0]).strip()
-            else space_key_str
-        )
+        object_id = general_object_id(str(row["room_slug"]))
 
-        # object_id общей группы: "<room_slug>_obshchii"
-        # (чтобы entity_id стал "light.<room_slug>_obshchii")
-        general_object_id = f"{room_slug}{GENERAL_LIGHT_RULE.suffix}"
+        groups.append(LightGroup(
+            unique_id=object_id,
+            name=object_id,
+            entities=zones,
+            comment=f"Общая группа для {row['space']}",
+        ))
 
-        # Комментарий к блоку
-        lines.append(f"  #Общая группа для {space_key_str}")
+    zone_total = sum(len(g.entities) for g in groups)
+    print(f"  Общих групп:          {len(groups)}")
+    print(f"  Зон в них:            {zone_total}")
 
-        lines.append("    - platform: group")
-        lines.append(f'      name: "{general_object_id}"')
-        lines.append(f'      unique_id: "{general_object_id}"')
-        lines.append("      entities:")
-
-        # Все подгруппы этого помещения: light.<group_id>
-        for group_name in df_space["__group"]:
-            group_name_str = str(group_name).strip()
-            if not group_name_str:
-                continue
-            lines.append(f"        - {HA_LIGHT_DOMAIN}.{group_name_str}")
-
-        # пустая строка между группами
-        lines.append("")
-
-    # убрать пустой хвост
-    while lines and lines[-1] == "":
-        lines.pop()
-
-    return "\n".join(lines) + "\n"
+    return render_document(ROOT_KEY, groups, "Нет данных для генерации общих групп")
 
 
-# === ТОЧКА ВХОДА ===
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Сгенерировать YAML общих групп помещений из нормализованного слоя.",
+    )
+    parser.add_argument("--normalized", default=str(DEFAULT_NORMALIZED_DIR),
+                        help="Папка с parquet")
+    parser.add_argument("--out", default=str(DEFAULT_OUTPUT_PATH),
+                        help="Куда записать YAML")
+    add_filter_args(parser)
+    args = parser.parse_args()
 
-def main() -> None:
-    df = load_device_rows(DEVICE_ROWS_PARQUET)
-    yaml_text = build_general_groups(df)
+    output_path = Path(args.out)
 
-    # создаём папку data/light_groups если её нет
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    print("\n=== Generate General Groups ===")
+    print("Источник:", args.normalized)
+    print("Выход   :", output_path)
+    print()
 
-    # записываем YAML
-    OUTPUT_PATH.write_text(yaml_text, encoding="utf-8")
-    print(f"Готово! Файл с общими группами записан в: {OUTPUT_PATH.resolve()}")
+    try:
+        spaces_df = load_dataset(Path(args.normalized), "spaces")
+    except NormalizedLayerError as exc:
+        print(f"❌ {exc}")
+        return 2
+
+    yaml_text = build_yaml(spaces_df, filters_from_args(args))
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(yaml_text, encoding="utf-8")
+
+    print(f"\nOK: {output_path}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

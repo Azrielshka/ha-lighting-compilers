@@ -36,8 +36,30 @@ dist/
 data/normalized/
 data/light_groups/
 data/old group/
-data/lovelace_cards_generated.txt
+data/lovelace/
+data/backups/
 data/lovelace_cards_report.json
+data/validation_report.json
+data/areas/
+data/scripts/
+data/automations/
+data/blueprints/
+
+# =========================
+# Handoff для стороннего разработчика (собирается, не версионируется)
+# =========================
+handoff/
+handoff.zip
+
+# =========================
+# Секреты (доступ к Home Assistant)
+# =========================
+.env
+
+# =========================
+# Tests
+# =========================
+.pytest_cache/
 
 # =========================
 # Local / temporary
@@ -50,8 +72,9 @@ data/lovelace_cards_report.json
 # =========================
 data/*.xlsx
 
-# но оставить пример:
+# но оставить примеры (на них держатся тесты):
 !data/example.xlsx
+!data/object_example.xlsx
 
 # =========================
 # Legacy / мусор
