@@ -29,7 +29,6 @@ launcher/ui/theme.py
 
 from __future__ import annotations
 
-from PySide6.QtGui import QBrush, QColor, QPainter, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication
 
 # ------------------------------------------------------------
@@ -70,51 +69,24 @@ ERROR = "#b91c1c"
 SUCCESS = "#15803d"
 WARNING = "#b45309"
 
-# ------------------------------------------------------------
-# Скан-линии подложки
-# ------------------------------------------------------------
-SCANLINE = "#ece2e7"     # чуть темнее BG: линия должна угадываться, не читаться
-SCANLINE_PITCH = 4       # шаг в пикселях
-
 # Моноширинные по убыванию предпочтения. Consolas — Windows, DejaVu Sans Mono —
 # Linux (на нём же гоняются скриншоты), Courier New — универсальный запасной.
 MONO = '"Consolas", "DejaVu Sans Mono", "Courier New", monospace'
 
 
-def _scanline_brush() -> QBrush:
-    """Плитка скан-линий: 1px линия с шагом 4px.
-
-    ⚠ Плиткой, а не градиентом QSS. У qlineargradient координаты ОТНОСИТЕЛЬНЫЕ
-    (0..1 от размера виджета), поэтому `spread:repeat` даёт полосы, толщина
-    которых растёт вместе с окном: волосяные линии в маленьком окне и жирные
-    ленты в развёрнутом. Проверено рендером на двух высотах.
-
-    Плитка задаётся в пикселях и от размера окна не зависит вовсе. Рисуется в
-    коде — значит ни файла-ресурса, ни --add-data в сборке EXE.
-    """
-    pix = QPixmap(SCANLINE_PITCH, SCANLINE_PITCH)
-    pix.fill(QColor(BG))
-
-    painter = QPainter(pix)
-    painter.setPen(QColor(SCANLINE))
-    painter.drawLine(0, SCANLINE_PITCH - 1, SCANLINE_PITCH, SCANLINE_PITCH - 1)
-    painter.end()
-
-    return QBrush(pix)
-
 
 QSS = f"""
 /* ---------- база ---------- */
-/* ⚠ background здесь НЕ задаём намеренно: подложку окна рисует плитка
-   скан-линий из палитры (_scanline_brush), а правило QSS её перекрыло бы.
-   Виджеты без своего фона прозрачны — сквозь них плитка и видна. */
 QWidget {{
+    background: {BG};
     color: {TEXT};
 }}
 
+QMainWindow, QDialog {{
+    background: {BG};
+}}
+
 /* ---------- секции: карточка, рейка сверху, полоса слева ---------- */
-/* Панель непрозрачно белая: скан-линии живут в промежутках между панелями и
-   под текст не лезут. Читаемость важнее жанра. */
 QGroupBox {{
     background: {PANEL};
     border: 1px solid {BORDER};
@@ -303,13 +275,5 @@ def apply_theme(app: QApplication) -> None:
     """
     app.setStyle("Fusion")   # одинаковая база на Windows и Linux: нативный
                              # стиль Windows игнорирует часть QSS-правил
-
-    # Плитка ДО стилей и через палитру, а не через QSS: в QSS нет способа
-    # замостить фон картинкой из памяти — только url(файл), а файл означает
-    # --add-data. Роль Window получают QMainWindow и QDialog; виджеты без
-    # своего фона прозрачны, поэтому плитка видна в промежутках между панелями.
-    palette = app.palette()
-    palette.setBrush(QPalette.Window, _scanline_brush())
-    app.setPalette(palette)
 
     app.setStyleSheet(QSS)

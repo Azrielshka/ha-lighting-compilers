@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from launcher.ui.theme import ACCENT, TEXT_MUTED, WARNING
+from launcher.ui.widgets import BracketGroupBox
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -83,7 +84,7 @@ class DeployDialog(QDialog):
     # Что отправлять
     # ------------------------------------------------------------
     def _build_targets_group(self, config: Dict) -> QGroupBox:
-        group = QGroupBox("Что отправить".upper())
+        group = BracketGroupBox("Что отправить".upper())
         layout = QVBoxLayout()
         group.setLayout(layout)
 
@@ -103,7 +104,7 @@ class DeployDialog(QDialog):
     # SSH — файлы
     # ------------------------------------------------------------
     def _build_ssh_group(self, config: Dict) -> QGroupBox:
-        group = QGroupBox("SSH — файлы".upper())
+        group = BracketGroupBox("SSH — файлы".upper())
         layout = QGridLayout()
         layout.setHorizontalSpacing(10)
         group.setLayout(layout)
@@ -150,7 +151,7 @@ class DeployDialog(QDialog):
     # HA — пространства
     # ------------------------------------------------------------
     def _build_ha_group(self, config: Dict) -> QGroupBox:
-        group = QGroupBox("Home Assistant — WebSocket".upper())
+        group = BracketGroupBox("Home Assistant — WebSocket".upper())
         layout = QGridLayout()
         layout.setHorizontalSpacing(10)
         group.setLayout(layout)

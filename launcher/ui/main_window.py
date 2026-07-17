@@ -55,9 +55,12 @@ from PySide6.QtWidgets import (
 # ------------------------------------------------------------
 # Импорт сервисов launcher
 # ------------------------------------------------------------
+from launcher import __version__
 from launcher.services.process_runner import ProcessRunner
 from launcher.services.config_store import ConfigStore
 from launcher.ui.deploy_dialog import DeployDialog
+from launcher.ui.decals import window_icon
+from launcher.ui.widgets import BracketGroupBox, HeaderBar
 
 
 # ------------------------------------------------------------
@@ -80,6 +83,7 @@ class LauncherWindow(QMainWindow):
         # Базовые настройки окна
         # ------------------------------------------------------------
         self.setWindowTitle("HA Lighting Compilers — Launcher")
+        self.setWindowIcon(window_icon())   # без неё в панели задач заглушка Qt
         self.resize(1100, 700)
 
         # ------------------------------------------------------------
@@ -172,6 +176,13 @@ class LauncherWindow(QMainWindow):
         central_widget.setLayout(root_layout)
 
         # ------------------------------------------------------------
+        # Шапка: имя, версия, декаль
+        # ------------------------------------------------------------
+        root_layout.addWidget(
+            HeaderBar("HA Lighting Compilers", f"v{__version__}")
+        )
+
+        # ------------------------------------------------------------
         # Верхний блок конфигурации
         # ------------------------------------------------------------
         config_group = self._build_config_group()
@@ -238,7 +249,7 @@ class LauncherWindow(QMainWindow):
         рядом с кнопкой, которая его читает.
         """
 
-        group = QGroupBox("Project Configuration".upper())
+        group = BracketGroupBox("Project Configuration".upper())
 
         layout = QGridLayout()
         layout.setHorizontalSpacing(10)
@@ -318,7 +329,7 @@ class LauncherWindow(QMainWindow):
         Создаёт блок с кнопками операций launcher.
         """
 
-        group = QGroupBox("Operations".upper())
+        group = BracketGroupBox("Operations".upper())
         group.setMinimumWidth(260)
         group.setMaximumWidth(320)
 
@@ -432,7 +443,7 @@ class LauncherWindow(QMainWindow):
         Создаёт окно логов.
         """
 
-        group = QGroupBox("Execution Log".upper())
+        group = BracketGroupBox("Execution Log".upper())
 
         layout = QVBoxLayout()
         group.setLayout(layout)
