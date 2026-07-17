@@ -93,18 +93,26 @@ def build_space_subview(title: str, room_slug: str, card: dict,
 
 
 def build_service_stub(spec: Dict[str, str]) -> dict:
-    """Пустая заготовка сервисной страницы: заголовок, иконка, пустая секция.
+    """Пустая заготовка сервисной страницы: заголовок, иконка, пустой каркас.
 
     Наполняет её владелец. Мы создаём её только затем, чтобы кнопка с Главной
     не уводила в «view not found» на объекте, где страницы ещё нет.
+
+    Тип раздела берём из канона: `panel` — «Панель (1 карточка)», у неё карточки
+    лежат прямо в `cards`, секций у неё нет вовсе. Положи ей `sections` —
+    получится раздел, который HA отрисует пустым.
     """
-    return {
+    stub = {
         "title": spec["title"],
         "path": spec["path"],
         "icon": spec["icon"],
-        "type": "sections",
-        "sections": [{"type": "grid", "cards": []}],
+        "type": spec["view_type"],
     }
+    if spec["view_type"] == "panel":
+        stub["cards"] = []
+    else:
+        stub["sections"] = [{"type": "grid", "cards": []}]
+    return stub
 
 
 def service_stubs() -> List[dict]:

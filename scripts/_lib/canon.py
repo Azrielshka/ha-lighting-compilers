@@ -510,18 +510,25 @@ def floor_nav_entity(floor: int) -> str:
 #
 # `title` — полный: это заголовок самой страницы, он живёт во вкладке, где
 # места сколько угодно.
+# `view_type` — тип самого раздела заготовки:
+#   panel    — «Панель (1 карточка)»: одна карточка во всю ширину
+#   sections — разделы с сеткой
+# Задаётся здесь, потому что высевает страницу деплой, а не владелец: тип он
+# потом сменит только руками через UI.
 SERVICE_VIEWS: Tuple[Dict[str, str], ...] = (
     {
         "path": "raspisanie",
         "title": "Настройка расписания",
         "heading": "📆 Расписание",
         "icon": "mdi:calendar-clock",
+        "view_type": "panel",
     },
     {
         "path": "konfiguratsiia",
         "title": "Настройка конфигурации",
         "heading": "🔧 Конфигурация",
         "icon": "mdi:cog",
+        "view_type": "sections",
     },
 )
 

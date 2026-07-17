@@ -269,8 +269,29 @@ def test_seed_after_merge_keeps_main_first():
 
 
 def test_stub_is_empty_but_valid_view():
-    """Заготовка — пустой sections-view: владельцу есть куда класть карточки."""
+    """Заготовка пуста, но каркас соответствует своему типу.
+
+    У панели карточки лежат прямо в `cards`, секций у неё нет; у sections —
+    наоборот. Перепутать каркас с типом = раздел, который HA отрисует пустым
+    и без всяких подсказок почему.
+    """
     for stub in V.service_stubs():
-        assert stub["type"] == "sections"
-        assert stub["sections"][0]["cards"] == []
         assert stub["title"] and stub["icon"]
+
+        if stub["type"] == "panel":
+            assert stub["cards"] == []
+            assert "sections" not in stub
+        else:
+            assert stub["sections"][0]["cards"] == []
+            assert "cards" not in stub
+
+
+def test_schedule_page_is_a_panel():
+    """Расписание — «Панель (1 карточка)» (решение владельца 2026-07-17).
+
+    Тип задаём мы: страницу высевает деплой, и сменить тип владелец сможет
+    только руками через UI — а наполненную страницу мы больше не трогаем.
+    """
+    schedule = next(s for s in V.service_stubs() if s["path"] == "raspisanie")
+
+    assert schedule["type"] == "panel"
