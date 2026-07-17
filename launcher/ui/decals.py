@@ -117,21 +117,33 @@ LUCIDE_ICONS = {
 _STRIP_ORDER = ["scan-line", "cpu", "circuit-board", "network", "radar"]
 
 
+# Размеры декали. Иконки Lucide нарисованы в сетке 24x24 — отсюда масштаб.
+DECAL_W, DECAL_H = 202, 34
+_ICON = 18                       # видимый размер иконки
+_STEP = 38                       # шаг цепочки
+_SCALE = _ICON / 24              # Lucide рисует в 24x24
+
+
 def _build_strip() -> str:
     parts = []
+    y = (DECAL_H - _ICON) / 2
     for i, name in enumerate(_STRIP_ORDER):
-        x = 8 + i * 50
+        x = 4 + i * _STEP
         colour = ACCENT if name == "radar" else CYAN
+        # ⚠ stroke-width делим на масштаб: иначе линия ужмётся вместе с иконкой
+        # и цепочка выцветет в еле видимую паутину.
         parts.append(
-            f'<g transform="translate({x} 10)" fill="none" stroke="{colour}" '
-            f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
+            f'<g transform="translate({x} {y}) scale({_SCALE:.4f})" fill="none" '
+            f'stroke="{colour}" stroke-width="{1.6 / _SCALE:.2f}" '
+            f'stroke-linecap="round" stroke-linejoin="round" '
             f'opacity="0.75">{LUCIDE_ICONS[name]}</g>')
         if i < len(_STRIP_ORDER) - 1:
-            parts.append(f'<path d="M{x + 28} 22 H{x + 46}" stroke="{CYAN}" '
+            parts.append(f'<path d="M{x + _ICON + 3} {DECAL_H / 2} '
+                         f'H{x + _STEP - 3}" stroke="{CYAN}" '
                          f'stroke-width="0.8" opacity="0.35"/>')
 
-    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 44">'
-            + "".join(parts) + "</svg>")
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="0 0 {DECAL_W} {DECAL_H}">' + "".join(parts) + "</svg>")
 
 
 # Декаль шапки. Выбрана владельцем из четырёх вариантов (docs/design/decals/):
@@ -156,12 +168,21 @@ ICON_SVG = f"""
 
 
 def render_svg(svg: str, width: int, height: int, ratio: float = 1.0) -> QPixmap:
-    """Отрисовать SVG-строку в QPixmap заданного размера.
+    """Отрисовать SVG-строку в QPixmap размером width x height ЛОГИЧЕСКИХ пикселей.
 
-    ⚠ ratio — devicePixelRatio экрана. Рисуем в физических пикселях и помечаем
-    результат, иначе на масштабе Windows 125/150% вектор отрисуется в
-    логическом размере и растянется — то есть будет мылить ровно там, где SVG
-    и затевался ради чёткости.
+    ⚠ ratio — devicePixelRatio экрана. Холст заводим в физических пикселях
+    (width * ratio), иначе на масштабе Windows 125/150% вектор отрисуется в
+    логическом размере и его растянут — то есть замылят ровно там, где SVG и
+    затевался ради чёткости.
+
+    ⚠ А вот РИСУЕМ в логический прямоугольник (width, height), без ratio.
+    setDevicePixelRatio уже перевёл систему координат painter'а в логические:
+    умножишь ещё раз — и масштаб применится ДВАЖДЫ. Рисунок раздуется и
+    обрежется по краю холста, причём тем сильнее, чем крупнее масштаб экрана.
+
+    Именно это и случилось у владельца при 150%: из пяти иконок было видно три
+    с хвостиком и только верхние две трети их высоты. У меня на 100% всё
+    выглядело правильно — ratio 1.0 умножение прячет.
     """
     renderer = QSvgRenderer(QByteArray(svg.strip().encode("utf-8")))
     if not renderer.isValid():
@@ -173,7 +194,7 @@ def render_svg(svg: str, width: int, height: int, ratio: float = 1.0) -> QPixmap
 
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
-    renderer.render(painter, QRectF(0, 0, width * ratio, height * ratio))
+    renderer.render(painter, QRectF(0, 0, width, height))
     painter.end()
 
     return pixmap

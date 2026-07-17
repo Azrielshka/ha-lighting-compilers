@@ -108,8 +108,8 @@ def test_svg_parses(name):
     assert renderer.isValid(), f"{name} не разобрался"
 
 
-@pytest.mark.parametrize("name,w,h", [("HEADER_SVG", 260, 44), ("ICON_SVG", 64, 64)])
-def test_svg_actually_draws_something(name, w, h):
+@pytest.mark.parametrize("name", ["HEADER_SVG", "ICON_SVG"])
+def test_svg_actually_draws_something(name):
     """Не «разобрался», а НАРИСОВАЛ.
 
     isValid() проходит и у разметки, которая ничего не рисует: перепутанный
@@ -118,6 +118,10 @@ def test_svg_actually_draws_something(name, w, h):
     """
     _qt()
     from launcher.ui import decals
+
+    # Размеры берём из модуля здесь, а не в параметрах: параметры собираются на
+    # импорте, а импорт decals тянет PySide6 — без него сбор тестов упал бы.
+    w, h = (decals.DECAL_W, decals.DECAL_H) if name == "HEADER_SVG" else (64, 64)
 
     image = decals.render_svg(getattr(decals, name), w, h).toImage()
     painted = sum(1 for y in range(image.height()) for x in range(image.width())
@@ -296,3 +300,45 @@ def test_no_icons_from_sources_we_rejected():
             # Упоминание в объяснении «почему не берём» — нормально;
             # ссылка на скачивание — нет.
             assert f"{name}.com" not in text, f"{path.name}: ссылка на {name}"
+
+
+@pytest.mark.parametrize("ratio", [1.0, 1.25, 1.5, 2.0])
+def test_svg_is_not_scaled_twice(ratio):
+    """Рисунок при любом масштабе экрана занимает ту же долю холста.
+
+    Тот самый баг, который поймал владелец, а не я: setDevicePixelRatio уже
+    переводит координаты painter'а в логические, а я вдобавок рисовал в
+    прямоугольник width * ratio — масштаб применялся ДВАЖДЫ. Рисунок раздувался
+    и обрезался по краю: при 150% из пяти иконок было видно три с хвостиком и
+    только верхние две трети их высоты.
+
+    У меня на 100% всё выглядело правильно — ratio 1.0 умножение прячет.
+    Поэтому проверяем именно НЕединичные масштабы: 125% и 150% на ноутбуках
+    Windows встречаются чаще, чем 100%.
+    """
+    _qt()
+    from launcher.ui import decals
+
+    def coverage(r: float) -> tuple:
+        image = decals.render_svg(decals.HEADER_SVG,
+                                  decals.DECAL_W, decals.DECAL_H, r).toImage()
+        cols = [x for x in range(image.width())
+                if any(image.pixelColor(x, y).alpha() > 0
+                       for y in range(image.height()))]
+        rows = [y for y in range(image.height())
+                if any(image.pixelColor(x, y).alpha() > 0
+                       for x in range(image.width()))]
+        assert cols and rows, "рисунок пуст"
+        return max(cols) / image.width(), max(rows) / image.height()
+
+    base_w, base_h = coverage(1.0)
+    got_w, got_h = coverage(ratio)
+
+    assert abs(got_w - base_w) < 0.03, (
+        f"при масштабе {ratio} рисунок занимает {got_w:.0%} ширины вместо "
+        f"{base_w:.0%} — масштаб применён дважды, картинка обрежется"
+    )
+    assert abs(got_h - base_h) < 0.03, (
+        f"при масштабе {ratio} рисунок занимает {got_h:.0%} высоты вместо "
+        f"{base_h:.0%} — масштаб применён дважды, картинка обрежется"
+    )
