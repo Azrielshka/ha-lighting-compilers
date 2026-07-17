@@ -51,6 +51,14 @@ This project follows Semantic Versioning.
   а не в `automations.yaml`: туда HA пишет автоматизации, созданные через UI.
 - **`scripts/generate_areas.py`** — пространства и этажи Home Assistant.
   Шаг офлайновый: готовит задание, в HA не пишет.
+- **`scripts/generate_helpers.py`** — вспомогательные объекты одним пакетом
+  (`includes/packages/lighting-compilers.yaml`): `input_number.vacant_delay`
+  (`initial: 10`, `mode: box`, 0–300 с), `input_button.but_back`,
+  `input_boolean.regim_auto_<N>` на этаж, 4 пресета зала и
+  `input_select.nav_floor_<N>` с опциями-помещениями этажа. Раньше их заводил
+  наладчик руками, и забытый всплывал уже на объекте. Пайплайн создаёт **сам
+  объект, но не логику за ним** — исключение `vacant_delay` и `nav_floor_<N>`,
+  их читает наш код. В `Build All` (шаг 7 из 9).
 - **Area на каждый этаж** (`Весь <N> этаж`) — нужна карточке `type: area` на
   Главной: она показывает только Area, карточки для Floor в HA нет. Идут в
   конце списка, чтобы не сдвигать порядок помещений из таблицы. Комнатным
@@ -98,12 +106,12 @@ This project follows Semantic Versioning.
 - **`scripts/_lib/normalized.py`** — чтение слоя со сверкой схемы.
 - **`scripts/_lib/filters.py`**, **`_lib/yaml_render.py`** — общая логика,
   которая была скопирована в трёх генераторах дословно.
-- **Тесты** — 384, включая приёмочные на реальной фикстуре и проверку
+- **Тесты** — 396, включая приёмочные на реальной фикстуре и проверку
   замкнутости иерархии (лампы → зоны → общая группа → этаж; автоматизация →
   скрипт → blueprint).
 - **Тип помещения `Hall`** и `sensor.il_*` (датчик освещённости) в каноне.
 - Launcher: кнопки `Validate`, `Areas`, `Scripts`, `Automations`, галочка
-  `Strict`, «Открыть папку с результатами». `Build All` — 8 шагов, офлайновый.
+  `Strict`, «Открыть папку с результатами». `Build All` — 9 шагов, офлайновый.
 
 ### Fixed
 
@@ -124,13 +132,15 @@ This project follows Semantic Versioning.
 
 ### Known limitations
 
-Система собрана, но на объекте не заработает, пока не появятся две вещи —
-обе вне пайплайна по решению владельца:
+Система собрана, но на объекте свет не включится, пока не появится одна вещь
+вне пайплайна:
 
-- **`input_number.vacant_delay`** никто не создаёт → OFF-триггер вернёт
-  `unknown` → свет не будет гаснуть.
 - **JSON Zone Manager** собирается вручную → `get_sensor_config` вернёт
-  `found: false` → свет не будет включаться.
+  `found: false` → свет не будет включаться. Помощником не является — шагом
+  `generate_helpers.py` не закрывается.
+
+`input_number.vacant_delay` из этого списка **ушёл**: с 2026-07-17 его создаёт
+`generate_helpers.py` со значением по умолчанию.
 
 Карточки типов `zal` и `recreation` требуют HACS-карт (mushroom, card_mod):
 без них view отрисуется с ошибкой. Пресеты зала (`input_boolean`) владелец

@@ -376,11 +376,76 @@ BLUEPRINTS_BY_FAMILY: Dict[str, Dict[str, str]] = {
 # В use_blueprint путь считается от config/blueprints/automation/.
 BLUEPRINT_DIR: str = "zone_manager"
 
+# ============================================================
+# Вспомогательные объекты (helpers)
+# ============================================================
+#
+# Их создаёт generate_helpers.py -> includes/packages/lighting-compilers.yaml.
+# Пайплайн создаёт САМ ОБЪЕКТ, но не логику за ним: input_boolean — это
+# выключатель, а что он включает, описывают автоматизации владельца.
+# Исключение — vacant_delay и навигационные input_select: их читает наш код.
+#
+# ⚠ entity_id берётся из КЛЮЧА в YAML (`vacant_delay:` -> input_number.
+# vacant_delay), поэтому предсказуем. Через UI он выводится из отображаемого
+# имени — ловушка, на которой мы уже обжигались с группами этажа.
+
 # input_number с задержкой перехода в vacant. Один на объект.
-# ⚠ Пайплайн его НЕ создаёт (договорённость с владельцем, 2026-07-13).
-# Без него OFF-автоматизации соберутся, но триггер не сработает:
-# `for: seconds: {{ states(...) }}` вернёт unknown, и свет не будет гаснуть.
+# На него ссылается КАЖДАЯ OFF-автоматизация.
 VACANT_DELAY_ENTITY: str = "input_number.vacant_delay"
+VACANT_DELAY_ID: str = "vacant_delay"
+VACANT_DELAY_DEFAULT: int = 10     # секунд, согласовано с владельцем 2026-07-17
+VACANT_DELAY_MIN: int = 0
+VACANT_DELAY_MAX: int = 300        # 5 минут — задержка гашения света
+VACANT_DELAY_STEP: int = 1
+
+# ⚠ `initial` у input_number задаёт значение при КАЖДОМ старте HA, а не только
+# при создании: «If you set a valid value for initial this integration will
+# start with the state set to that value. Otherwise, it will restore the state
+# it had before Home Assistant stopping» (доки input_number).
+#
+# Ставим осознанно: значение принадлежит пайплайну, как и группы света —
+# хотите другое, меняете константу и передеплоиваете. Цена — правка в UI живёт
+# до перезапуска. Взамен навсегда закрыт `unknown` на чистом объекте, из-за
+# которого `for: seconds` ломался и свет не гас (главный известный долг).
+
+BACK_BUTTON_ID: str = "but_back"
+BACK_BUTTON_ENTITY: str = f"input_button.{BACK_BUTTON_ID}"
+
+# Пресеты зала. Захардкожены в templates/lovelace/zal/wrapper.yaml (зал один
+# на объект, имена произвольные). Список здесь — чтобы helpers их создал.
+# ⚠ Два места обязаны совпадать; стережёт тест test_zal_presets_match_template:
+# правите wrapper — правьте и здесь, иначе карточка сошлётся в пустоту.
+ZAL_PRESETS: Dict[str, str] = {
+    "rezhim_tetra": "Режим театра",
+    "polnaia_iarkost": "Максимальная яркость",
+    "priglushennoe_osveshchenie": "Приглушенный свет",
+    "rezhim_meropriiatiia": "Режим мероприятия",
+}
+
+
+def floor_auto_mode_id(floor: int) -> str:
+    """regim_auto_1 — object_id помощника режима этажа."""
+    return f"regim_auto_{int(floor)}"
+
+
+def floor_auto_mode_entity(floor: int) -> str:
+    """input_boolean.regim_auto_1 — бейдж режима на этажном view."""
+    return f"input_boolean.{floor_auto_mode_id(floor)}"
+
+
+def floor_nav_id(floor: int) -> str:
+    """nav_floor_1 — object_id списка выбора помещения."""
+    return f"nav_floor_{int(floor)}"
+
+
+def floor_nav_entity(floor: int) -> str:
+    """input_select.nav_floor_1 — список выбора помещения на Главной.
+
+    Его опции генерируются из того же списка помещений, что и карта
+    «имя → слаг» в markdown-кнопке перехода. Заполнять опции руками нельзя:
+    расхождение на один символ молча ломает навигацию.
+    """
+    return f"input_select.{floor_nav_id(floor)}"
 
 
 # Какие входы принимает blueprint каждого семейства.

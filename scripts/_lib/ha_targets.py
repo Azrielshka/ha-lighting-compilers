@@ -93,6 +93,7 @@ class Plan:
 # Галочки деплоя. Порядок задаёт порядок в отчётах и в UI.
 TARGETS: Tuple[str, ...] = (
     "lights",
+    "helpers",
     "scripts",
     "automations",
     "blueprints",
@@ -102,6 +103,7 @@ TARGETS: Tuple[str, ...] = (
 
 TARGET_TITLES: Dict[str, str] = {
     "lights": "Группы света",
+    "helpers": "Вспомогательные объекты",
     "scripts": "Скрипты",
     "automations": "Автоматизации",
     "blueprints": "Blueprint'ы",
@@ -149,6 +151,16 @@ def build_plan(
                 remote=f"{root}/includes/packages/{remote_name}",
                 target="lights",
             ))
+
+    if "helpers" in targets:
+        # Помощники — тоже пакет, рядом с группами света. Имя файла задал
+        # владелец; из конвенции `zm_` оно выпадает, но «lighting-compilers»
+        # однозначно наше, так что деплой чужого всё равно не тронет.
+        files.append(FileTarget(
+            local=data_dir / "helpers" / "lighting-compilers.yaml",
+            remote=f"{root}/includes/packages/lighting-compilers.yaml",
+            target="helpers",
+        ))
 
     if "scripts" in targets:
         files.append(FileTarget(
@@ -208,6 +220,7 @@ def missing_pipeline_steps(plan: Plan) -> List[str]:
         "lights": "generate_lights_groups.py / generate_general_groups.py / generate_floor_groups.py",
         "scripts": "generate_scripts.py",
         "automations": "generate_automations.py",
+        "helpers": "generate_helpers.py",
         "blueprints": "generate_automations.py",
         "areas": "generate_areas.py",
         "lovelace": "generate_lovelace_cards.py",

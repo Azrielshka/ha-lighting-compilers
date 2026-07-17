@@ -68,6 +68,11 @@ def data_dir(tmp_path) -> Path:
         encoding="utf-8",
     )
 
+    (root / "helpers").mkdir()
+    (root / "helpers" / "lighting-compilers.yaml").write_text(
+        "lighting_compilers:\n  input_number:\n    vacant_delay:\n      initial: 10\n",
+        encoding="utf-8")
+
     # Views дашборда: файл на view, как их кладёт generate_lovelace_cards.py.
     (root / "lovelace").mkdir()
     (root / "lovelace" / "zm-floor-1.yaml").write_text(
@@ -124,16 +129,27 @@ def test_blueprints_keep_their_names(data_dir):
     assert all("blueprints/automation/zone_manager" in f.remote for f in plan.files)
 
 
+# Файлы, которые едут на HA без префикса zm_. Список закрытый и явный:
+# каждое имя должно быть однозначно опознаваемо как наше.
+OWN_FILES_WITHOUT_PREFIX = {
+    "lighting-compilers.yaml",   # пакет помощников, имя задал владелец
+}
+
+
 def test_all_remote_files_are_prefixed_or_blueprints(data_dir):
     """
-    Префикс zm_ — гарантия, что деплой перезапишет только своё и не тронет
-    файлы наладчика.
+    Деплой обязан перезаписывать только своё и не трогать файлы наладчика.
+
+    Гарантия — узнаваемое имя: префикс `zm_` либо явное исключение из
+    закрытого списка выше. Исключения перечислены поимённо специально: любой
+    новый файл без `zm_` обязан пройти через осознанное решение, а не
+    просочиться незаметно.
     """
     plan = build_plan(data_dir, list(TARGETS))
 
     for f in plan.files:
         name = f.remote.rsplit("/", 1)[1]
-        assert name.startswith("zm_"), name
+        assert name.startswith("zm_") or name in OWN_FILES_WITHOUT_PREFIX, name
 
 
 def test_areas_are_not_a_file_target(data_dir):

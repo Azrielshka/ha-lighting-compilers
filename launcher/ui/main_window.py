@@ -122,6 +122,7 @@ class LauncherWindow(QMainWindow):
             "general": "scripts/generate_general_groups.py",
             "floor": "scripts/generate_floor_groups.py",
             "areas": "scripts/generate_areas.py",
+            "helpers": "scripts/generate_helpers.py",
             "scripts": "scripts/generate_scripts.py",
             "automations": "scripts/generate_automations.py",
             "lovelace": "scripts/generate_lovelace_cards.py",
@@ -151,6 +152,7 @@ class LauncherWindow(QMainWindow):
             "general",
             "floor",
             "areas",
+            "helpers",
             "scripts",
             "automations",
         ]
@@ -206,7 +208,7 @@ class LauncherWindow(QMainWindow):
         # Стартовые строки в лог
         # ------------------------------------------------------------
         self.append_log("Launcher готов")
-        self.append_log("Pipeline: validate → normalize → lights → general → floor → areas → scripts → automations")
+        self.append_log("Pipeline: validate → normalize → lights → general → floor → areas → helpers → scripts → automations")
         self.append_log("Build All работает офлайн: в Home Assistant ничего не пишет")
         self.append_log("Build All останавливается, если таблица не прошла проверку")
         self.append_log("Lovelace собирает карточки в файл; в Build All не входит (вставка в дашборд вручную)")
@@ -304,15 +306,27 @@ class LauncherWindow(QMainWindow):
             "К HA не подключается: создание — на шаге деплоя."
         )
 
+        # Офлайн: помощники одним пакетом (vacant_delay, режимы этажей,
+        # пресеты зала, списки навигации).
+        self.btn_helpers = QPushButton("7. Generate Helpers")
+        self.btn_helpers.setToolTip(
+            "Вспомогательные объекты HA одним пакетом:\n"
+            "data/helpers/lighting-compilers.yaml.\n\n"
+            "input_number.vacant_delay — без него свет не гаснет.\n"
+            "input_select.nav_floor_<N> — списки помещений для навигации.\n"
+            "Пресеты зала и режимы этажей — объекты создаются, логику за ними\n"
+            "описывают ваши автоматизации."
+        )
+
         # Клоны шаблонных скриптов: свой набор на каждую единицу обслуживания.
-        self.btn_scripts = QPushButton("7. Generate Scripts")
+        self.btn_scripts = QPushButton("8. Generate Scripts")
         self.btn_scripts.setToolTip(
             "Клонирует шаблоны из templates/scripts/ по единицам обслуживания.\n"
             "Один экземпляр скрипта в HA — одна очередь, поэтому у каждой единицы свой набор."
         )
 
         # Экземпляры blueprint'ов: по две автоматизации на единицу (ON и OFF).
-        self.btn_automations = QPushButton("8. Generate Automations")
+        self.btn_automations = QPushButton("9. Generate Automations")
         self.btn_automations.setToolTip(
             "По две автоматизации на единицу обслуживания (ON и OFF).\n"
             "Плюс копии blueprint'ов в data/blueprints/ для деплоя.\n\n"
@@ -350,6 +364,7 @@ class LauncherWindow(QMainWindow):
         layout.addWidget(self.btn_general)
         layout.addWidget(self.btn_floor)
         layout.addWidget(self.btn_areas)
+        layout.addWidget(self.btn_helpers)
         layout.addWidget(self.btn_scripts)
         layout.addWidget(self.btn_automations)
 
@@ -438,6 +453,9 @@ class LauncherWindow(QMainWindow):
         )
         self.btn_areas.clicked.connect(
             lambda: self._run_single_operation("areas")
+        )
+        self.btn_helpers.clicked.connect(
+            lambda: self._run_single_operation("helpers")
         )
         self.btn_scripts.clicked.connect(
             lambda: self._run_single_operation("scripts")
@@ -607,6 +625,7 @@ class LauncherWindow(QMainWindow):
         self.btn_general.setEnabled(not is_running)
         self.btn_floor.setEnabled(not is_running)
         self.btn_areas.setEnabled(not is_running)
+        self.btn_helpers.setEnabled(not is_running)
         self.btn_scripts.setEnabled(not is_running)
         self.btn_automations.setEnabled(not is_running)
         self.btn_lovelace.setEnabled(not is_running)
