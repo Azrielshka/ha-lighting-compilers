@@ -40,7 +40,14 @@ from typing import List, Optional
 
 import yaml
 
-from scripts._lib.ha_views import diff_summary, merge_views, order_views
+from scripts._lib.ha_views import (
+    diff_summary,
+    merge_views,
+    order_views,
+    seed_summary,
+    seed_views,
+    service_stubs,
+)
 
 from scripts._lib.ha_ssh import (
     HASSHClient,
@@ -155,6 +162,12 @@ def _print_lovelace_plan(plan: Plan, title: str) -> None:
     print(f"    ✓ этажных views: {len(floors)}, subview пространств: {len(spaces)}")
     print(f"      канал: WebSocket → конфиг дашборда (не файлы в /config)")
     print(f"      свои views заменяются, ваши сохраняются; нужен АДМИН-токен")
+
+    # Без подключения к HA мы не знаем, что там уже есть: показываем заготовки
+    # как «если нет». Живой деплой пропустит существующие.
+    stubs = ", ".join(s["path"] for s in service_stubs())
+    print(f"      заготовки сервисных страниц: {stubs}")
+    print(f"      создаются, только если их ещё нет; наполненные не трогаются")
     print()
 
 
@@ -319,7 +332,17 @@ def deploy_lovelace(lovelace_dir: Path, ws: WSConfig, dashboard: str) -> int:
         print(f"  - наших удалится:        {summary['remove']} "
               f"(помещение исчезло из таблицы)")
 
-    config["views"] = merge_views(existing, ours)
+    # Заготовки сервисных страниц: досеваем только отсутствующие. Они без
+    # префикса zm-, то есть с точки зрения слияния — чужие, и переписать их мы
+    # не имеем права: их наполняет владелец.
+    stubs = service_stubs()
+    seeded = seed_summary(existing, stubs)
+    for path in seeded["seed"]:
+        print(f"  + заготовка страницы:    {path} (пустая, наполняете вы)")
+    for path in seeded["keep"]:
+        print(f"  = страница на месте:     {path} (не трогаем)")
+
+    config["views"] = seed_views(merge_views(existing, ours), stubs)
     client.save_dashboard_config(dashboard, config)
 
     print(f"\n  ✔ Записано: {len(ours)} наших views, "

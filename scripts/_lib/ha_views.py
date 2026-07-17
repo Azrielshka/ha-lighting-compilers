@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+from scripts._lib.canon import SERVICE_VIEWS
+
 
 # Префикс пути наших views. Аналог префикса `zm_` у файлов деплоя: по нему
 # и только по нему деплой отличает своё от чужого.
@@ -87,6 +89,48 @@ def build_space_subview(title: str, room_slug: str, card: dict,
             "column_span": space_column_span(space_type),
             "cards": [card],
         }],
+    }
+
+
+def build_service_stub(spec: Dict[str, str]) -> dict:
+    """Пустая заготовка сервисной страницы: заголовок, иконка, пустая секция.
+
+    Наполняет её владелец. Мы создаём её только затем, чтобы кнопка с Главной
+    не уводила в «view not found» на объекте, где страницы ещё нет.
+    """
+    return {
+        "title": spec["title"],
+        "path": spec["path"],
+        "icon": spec["icon"],
+        "type": "sections",
+        "sections": [{"type": "grid", "cards": []}],
+    }
+
+
+def service_stubs() -> List[dict]:
+    return [build_service_stub(spec) for spec in SERVICE_VIEWS]
+
+
+def seed_views(existing: List[dict], stubs: List[dict]) -> List[dict]:
+    """Досеять заготовки, которых на дашборде ещё нет. Существующие — не трогать.
+
+    Посев, а не генерация: страница принадлежит владельцу с момента создания,
+    поэтому второй раз мы к ней не прикасаемся — иначе регенерация карточек
+    стирала бы то, что он туда занёс.
+
+    Идёт ПОСЛЕ merge_views и в хвост, а не в начало: наши zm-views стоят на
+    фиксированной позиции, и досев не должен их двигать.
+    """
+    paths = {str(v.get("path", "")) for v in existing}
+    return list(existing) + [s for s in stubs if s["path"] not in paths]
+
+
+def seed_summary(existing: List[dict], stubs: List[dict]) -> Dict[str, List[str]]:
+    """Что покажет dry-run: что высеем, а что уже на месте и останется нетронутым."""
+    paths = {str(v.get("path", "")) for v in existing}
+    return {
+        "seed": [s["path"] for s in stubs if s["path"] not in paths],
+        "keep": [s["path"] for s in stubs if s["path"] in paths],
     }
 
 

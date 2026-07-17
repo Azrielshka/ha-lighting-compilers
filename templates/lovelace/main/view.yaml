@@ -6,6 +6,7 @@
 #                       узнавать Главную и наплодит дубли.
 #   [[TITLE]]         — заголовок объекта (флаг --title)
 #   [[FLOOR_BLOCKS]]  — блок на каждый этаж (_blocks/main_floor_block.yaml)
+#   [[SERVICE_BLOCKS]] — блок на сервисную страницу (_blocks/main_service_block.yaml)
 #
 # Главная обязана быть ПЕРВЫМ view дашборда: на первый view открывается
 # дашборд, и на него же ведёт кнопка «назад» с этажных view. Порядок держит
@@ -37,3 +38,14 @@ sections:
         heading_style: title
         heading: Управление этажами
       [[FLOOR_BLOCKS]]
+  # Секция «Сервис»: ширина 1 колонка (12), у блоков columns: 6 — два в ряд.
+  # У секции этажей column_span: 2, то есть 24 колонки, — не перепутайте:
+  # число в grid_options считается от ширины СВОЕЙ секции, и те же 6 колонок
+  # дали бы здесь четверть ширины вместо половины.
+  - type: grid
+    column_span: 1
+    cards:
+      - type: heading
+        heading_style: title
+        heading: Сервис
+      [[SERVICE_BLOCKS]]

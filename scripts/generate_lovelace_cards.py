@@ -39,6 +39,7 @@ import yaml
 
 from scripts._lib import ha_views as V
 from scripts._lib.canon import (
+    SERVICE_VIEWS,
     TECHNICAL_SPACE_TYPES,
     floor_area_id,
     floor_icon,
@@ -289,8 +290,34 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
     view = view.replace("[[PATH]]", V.MAIN_PATH)
     view = view.replace("[[TITLE]]", title)
     view = _splice(view, "[[FLOOR_BLOCKS]]", "\n".join(blocks))
+    view = _splice(view, "[[SERVICE_BLOCKS]]",
+                   build_service_blocks(templates_dir, dashboard))
 
     return yaml.safe_load(view)
+
+
+def build_service_blocks(templates_dir: Path, dashboard: str) -> str:
+    """Кнопки сервисных страниц: расписание, конфигурация.
+
+    Штучные, из таблицы не выводятся, — поэтому список в каноне, а вид в
+    шаблоне. Путь берём из канона, а не из шаблона: по нему же деплой высевает
+    саму страницу, и разойдись эти два конца — кнопка уводила бы в
+    «view not found».
+    """
+    tpl = _strip_header_comments(
+        _read(templates_dir / "_blocks" / "main_service_block.yaml"))
+
+    blocks: List[str] = []
+    for spec in SERVICE_VIEWS:
+        block = tpl
+        block = block.replace("[[SERVICE_HEADING]]", spec["heading"])
+        block = block.replace("[[SERVICE_ICON]]", spec["icon"])
+        block = block.replace("[[SERVICE_BUTTON]]", spec["button"])
+        block = block.replace("[[SERVICE_PATH]]", spec["path"])
+        block = block.replace("[[DASHBOARD]]", dashboard)
+        blocks.append(block)
+
+    return "\n".join(blocks)
 
 
 def build_floor_view(templates_dir: Path, floor: int, cards: List[dict],

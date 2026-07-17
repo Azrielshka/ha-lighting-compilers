@@ -186,3 +186,91 @@ def test_merge_keeps_main_first_on_regeneration():
 
     assert once == twice
     assert twice[0]["path"] == V.MAIN_PATH
+
+
+# ============================================================
+# Заготовки сервисных страниц: посев, а не генерация
+# ============================================================
+
+def _filled(path: str) -> dict:
+    """Страница, которую владелец уже наполнил."""
+    return {
+        "title": "Настройка расписания",
+        "path": path,
+        "type": "sections",
+        "sections": [{"type": "grid", "cards": [{"type": "markdown",
+                                                 "content": "моё расписание"}]}],
+    }
+
+
+def test_service_stubs_are_not_ours():
+    """Заготовки НАМЕРЕННО без префикса zm-.
+
+    Дай им префикс — и merge_views выкинул бы их вместе с нашими, а на место
+    наполненной владельцем страницы легла бы пустая. Это не придирка к стилю:
+    правило «zm- значит перезаписываем» держит всю безопасность слияния.
+    """
+    for stub in V.service_stubs():
+        assert not V.is_ours(stub), (
+            f"заготовка {stub['path']} с префиксом {V.VIEW_PREFIX}: "
+            f"регенерация карточек сотрёт то, что владелец в неё занёс"
+        )
+
+
+def test_seed_creates_missing_pages():
+    result = V.seed_views(_foreign(), V.service_stubs())
+    paths = [v["path"] for v in result]
+
+    for stub in V.service_stubs():
+        assert stub["path"] in paths
+    # чужие на месте и первыми: досев идёт в хвост
+    assert paths[:3] == ["home", "energy", "errors"]
+
+
+def test_seed_never_touches_a_page_that_exists():
+    """Главное свойство посева: наполненную страницу мы не трогаем никогда.
+
+    Ради этого от префикса zm- и отказались. Сломается — владелец потеряет
+    расписание при очередном деплое карточек и не поймёт, куда оно делось.
+    """
+    stub = V.service_stubs()[0]
+    existing = _foreign() + [_filled(stub["path"])]
+
+    result = V.seed_views(existing, V.service_stubs())
+
+    survivor = next(v for v in result if v["path"] == stub["path"])
+    assert survivor == _filled(stub["path"])
+    assert len([v for v in result if v["path"] == stub["path"]]) == 1
+
+
+def test_seed_is_idempotent():
+    stubs = V.service_stubs()
+    once = V.seed_views(_foreign(), stubs)
+    twice = V.seed_views(once, stubs)
+
+    assert once == twice
+
+
+def test_seed_summary_tells_dry_run_what_will_happen():
+    stub = V.service_stubs()[0]
+    summary = V.seed_summary(_foreign() + [_filled(stub["path"])], V.service_stubs())
+
+    assert summary["keep"] == [stub["path"]]
+    assert summary["seed"] == [s["path"] for s in V.service_stubs()[1:]]
+
+
+def test_seed_after_merge_keeps_main_first():
+    """Досев идёт в хвост и не двигает наши views с фиксированной позиции."""
+    ours = V.order_views([{"path": V.MAIN_PATH}, {"path": V.floor_view_path(1)}])
+
+    result = V.seed_views(V.merge_views(_foreign(), ours), V.service_stubs())
+
+    assert result[0]["path"] == V.MAIN_PATH
+
+
+def test_stub_is_empty_but_valid_view():
+    """Заготовка — пустой sections-view: владельцу есть куда класть карточки."""
+    for stub in V.service_stubs():
+        assert stub["type"] == "sections"
+        assert stub["sections"][0]["cards"] == []
+        assert stub["title"] and stub["icon"]

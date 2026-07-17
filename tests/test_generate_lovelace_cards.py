@@ -582,3 +582,78 @@ def test_main_nav_button_keeps_card_mod(object_layer, tmp_path):
 
     assert "ha-markdown$" in style
     assert "display: block" in style["ha-markdown$"]
+
+
+# ============================================================
+# Сервисные кнопки на Главной
+# ============================================================
+
+def _service_section(main: dict) -> dict:
+    return main["sections"][1]
+
+
+def test_service_section_has_a_block_per_page(object_layer, tmp_path):
+    from scripts._lib.canon import SERVICE_VIEWS
+
+    section = _service_section(_main_view(_generate(object_layer, tmp_path)))
+    blocks = [c for c in section["cards"] if c.get("type") == "vertical-stack"]
+
+    assert len(blocks) == len(SERVICE_VIEWS)
+    headings = [b["cards"][0]["heading"] for b in blocks]
+    assert headings == [s["heading"] for s in SERVICE_VIEWS]
+
+
+def test_service_button_leads_to_a_page_that_will_exist(object_layer, tmp_path):
+    """Кнопка ведёт туда, куда деплой реально высевает страницу.
+
+    Сверяем с фактическими заготовками ha_views, а не с каноном: канон
+    подтвердил бы путь и у страницы, которой никто не создаёт. На этом уже
+    обожглись плиткой тех.помещений.
+    """
+    from scripts._lib import ha_views as V
+
+    seeded = {f"/{DASHBOARD}/{s['path']}" for s in V.service_stubs()}
+    section = _service_section(_main_view(_generate(object_layer, tmp_path)))
+    blocks = [c for c in section["cards"] if c.get("type") == "vertical-stack"]
+
+    for block in blocks:
+        path = block["cards"][1]["tap_action"]["navigation_path"]
+        assert path in seeded, (
+            f"кнопка ведёт на {path}, а высеваются только {sorted(seeded)}"
+        )
+
+
+def test_service_button_stays_inside_our_dashboard(object_layer, tmp_path):
+    """Путь строится от --dashboard, а не от захардкоженного /lovelace/.
+
+    В образце с объекта кнопки вели на дефолтный дашборд — на другом объекте
+    такой ссылки просто нет.
+    """
+    section = _service_section(_main_view(_generate(object_layer, tmp_path)))
+    blocks = [c for c in section["cards"] if c.get("type") == "vertical-stack"]
+
+    for block in blocks:
+        path = block["cards"][1]["tap_action"]["navigation_path"]
+        assert path.startswith(f"/{DASHBOARD}/")
+
+
+def test_service_blocks_have_no_editor_leftovers(object_layer, tmp_path):
+    """Ни media-source картинок, ни metadata, ни инертных grid_options внутри.
+
+    Картинки нет в репозитории и на чистом объекте — вышло бы битое
+    изображение. grid_options внутри vertical-stack не действуют: их получают
+    только прямые дети секции.
+    """
+    section = _service_section(_main_view(_generate(object_layer, tmp_path)))
+    blocks = [c for c in section["cards"] if c.get("type") == "vertical-stack"]
+
+    for block in blocks:
+        assert "grid_options" in block          # на корне — действует
+        for card in block["cards"]:
+            assert "grid_options" not in card   # внутри — инертны
+            assert card["type"] != "picture"
+        assert "metadata" not in _yaml_text(block)
+
+
+def _yaml_text(node) -> str:
+    return yaml.safe_dump(node, allow_unicode=True)
