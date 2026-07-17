@@ -20,6 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List
 
+from launcher.ui.theme import ACCENT, TEXT_MUTED, WARNING
+
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -81,7 +83,7 @@ class DeployDialog(QDialog):
     # Что отправлять
     # ------------------------------------------------------------
     def _build_targets_group(self, config: Dict) -> QGroupBox:
-        group = QGroupBox("Что отправить")
+        group = QGroupBox("Что отправить".upper())
         layout = QVBoxLayout()
         group.setLayout(layout)
 
@@ -101,7 +103,7 @@ class DeployDialog(QDialog):
     # SSH — файлы
     # ------------------------------------------------------------
     def _build_ssh_group(self, config: Dict) -> QGroupBox:
-        group = QGroupBox("SSH — файлы (add-on «Advanced SSH & Web Terminal»)")
+        group = QGroupBox("SSH — файлы".upper())
         layout = QGridLayout()
         layout.setHorizontalSpacing(10)
         group.setLayout(layout)
@@ -115,6 +117,12 @@ class DeployDialog(QDialog):
         self.ssh_port = QSpinBox()
         self.ssh_port.setRange(1, 65535)
         self.ssh_port.setValue(int(config.get("ssh_port", 22)))
+        # Без стрелок: порт набирают, а не крутят — до 8123 щёлкать никто не
+        # станет. Заодно снимает неразрешимую проблему: Qt перестаёт рисовать
+        # нативную стрелку, как только стилизуешь ::up-button, а нарисовать свою
+        # можно только картинкой — то есть ресурсом и --add-data в сборке.
+        # Валидация диапазона и .value() остаются при нём.
+        self.ssh_port.setButtonSymbols(QSpinBox.NoButtons)
         layout.addWidget(self.ssh_port, 1, 1)
 
         layout.addWidget(QLabel("Пользователь:"), 2, 0)
@@ -142,7 +150,7 @@ class DeployDialog(QDialog):
     # HA — пространства
     # ------------------------------------------------------------
     def _build_ha_group(self, config: Dict) -> QGroupBox:
-        group = QGroupBox("Home Assistant — пространства и карточки (WebSocket)")
+        group = QGroupBox("Home Assistant — WebSocket".upper())
         layout = QGridLayout()
         layout.setHorizontalSpacing(10)
         group.setLayout(layout)
@@ -163,7 +171,10 @@ class DeployDialog(QDialog):
             "Для карточек нужен токен АДМИНИСТРАТОРА: запись конфига дашборда "
             "обычному пользователю запрещена."
         )
-        hint.setStyleSheet("color: gray;")
+        # Без переноса длинная строка про админ-токен обрезалась по краю
+        # диалога — а это ровно та подсказка, из-за которой деплой падает.
+        hint.setWordWrap(True)
+        hint.setStyleSheet(f"color: {TEXT_MUTED};")
         layout.addWidget(hint, 2, 1)
 
         # Дашборд показываем, но не редактируем: он живёт в главном окне.
@@ -176,7 +187,7 @@ class DeployDialog(QDialog):
         dashboard = str(config.get("ha_dashboard", "")).strip()
         layout.addWidget(QLabel("Дашборд:"), 3, 0)
         self.dashboard_value = QLabel(dashboard or "— не задан, см. главное окно —")
-        self.dashboard_value.setStyleSheet("color: gray;")
+        self.dashboard_value.setStyleSheet(f"color: {TEXT_MUTED};")
         self.dashboard_value.setToolTip(
             "Задаётся в главном окне: он нужен и генерации карточек, и деплою."
         )
@@ -198,8 +209,13 @@ class DeployDialog(QDialog):
             "⚠ Рестарт Home Assistant деплой НЕ делает — перезапустите вручную.\n"
             "   Без рестарта изменения не применятся."
         )
+        # Янтарный, а не акцент: это ПРЕДУПРЕЖДЕНИЕ, и читаться оно должно как
+        # предупреждение, а не как элемент оформления. Острые углы и полоса
+        # слева — под общую геометрию; цвет — семантический, из палитры.
         label.setStyleSheet(
-            "background: #fff3cd; color: #856404; padding: 8px; border-radius: 4px;"
+            f"background: #fdf6e3; color: {WARNING};"
+            f" border-left: 3px solid {WARNING}; border-radius: 0px;"
+            f" padding: 8px 10px;"
         )
         return label
 
