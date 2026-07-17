@@ -32,7 +32,7 @@ from pathlib import Path
 # ------------------------------------------------------------
 # Импорты Qt
 # ------------------------------------------------------------
-from PySide6.QtCore import QEventLoop, QUrl
+from PySide6.QtCore import QEventLoop, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
@@ -45,6 +45,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QTextEdit,
     QGroupBox,
     QSizePolicy,
@@ -327,15 +328,32 @@ class LauncherWindow(QMainWindow):
     def _build_operations_group(self) -> QGroupBox:
         """
         Создаёт блок с кнопками операций launcher.
+
+        ⚠ Кнопки живут в прокручиваемой области, и это не удобство, а защита от
+        обрезки текста.
+
+        Их четырнадцать, и без прокрутки панель требовала себе 689px по высоте.
+        Вместе с конфигурацией и шапкой окно просило 1016px — больше, чем есть у
+        ноутбучного экрана. Оконный менеджер ужимал окно ниже его же минимума,
+        layout сплющивал кнопки, и от подписи оставалась горизонтальная полоска
+        по центру. На большом мониторе всё выглядело прекрасно — потому и
+        всплыло только у владельца.
+
+        Прокрутка снимает у панели право диктовать окну высоту: не влезло —
+        прокрутил. На большом экране полосы прокрутки просто нет.
         """
 
         group = BracketGroupBox("Operations".upper())
-        group.setMinimumWidth(260)
-        group.setMaximumWidth(320)
+        # Минимум НЕ задаём: его выведет прокручиваемая область из содержимого
+        # (см. ниже). Прибитые 260 как раз и не учитывали полосу прокрутки.
+        group.setMaximumWidth(360)
 
+        # Кнопки собираем в отдельный виджет — его и отдадим прокрутке.
+        buttons = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(10)
-        group.setLayout(layout)
+        layout.setContentsMargins(0, 0, 0, 0)
+        buttons.setLayout(layout)
 
         # 1. Проверка таблицы — первый шаг пайплайна.
         self.btn_validate = QPushButton("[01] VALIDATE EXCEL")
@@ -432,6 +450,35 @@ class LauncherWindow(QMainWindow):
         layout.addWidget(self.btn_clear_log)
 
         layout.addStretch(1)
+
+        # Кнопки не должны сжиматься НИЖЕ своей высоты: именно это и обрезало
+        # текст. Прибиваем минимум — тогда при нехватке места layout не
+        # сплющивает их, а прокрутка честно показывает, что не влезло.
+        for button in buttons.findChildren(QPushButton):
+            button.setMinimumHeight(button.sizeHint().height())
+
+        scroll = QScrollArea()
+        scroll.setWidget(buttons)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)   # рамку рисует сама панель
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # Ширину выводим из содержимого, а не назначаем на глаз: полоса
+        # прокрутки съедает свои пиксели у виджета внутри, и подпись флажка
+        # «Strict» упиралась в неё и обрезалась. Прибавляем её ширину явно —
+        # тогда панель раздвинется ровно настолько, насколько нужно.
+        scroll.setMinimumWidth(
+            buttons.sizeHint().width()
+            + scroll.verticalScrollBar().sizeHint().width()
+        )
+        # Прозрачная подложка: иначе поверх белой карточки ляжет серый прямоугольник.
+        scroll.setStyleSheet("QScrollArea { background: transparent; }")
+        buttons.setStyleSheet("background: transparent;")
+
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
+        group.setLayout(outer)
 
         return group
 

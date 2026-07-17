@@ -163,3 +163,63 @@ def test_version_is_shown_and_honest():
 
     main_window = (UI_DIR / "main_window.py").read_text(encoding="utf-8")
     assert "HeaderBar(" in main_window and "__version__" in main_window
+
+
+# ============================================================
+# Окно обязано влезать в ноутбучный экран
+# ============================================================
+
+def test_window_fits_a_small_laptop_screen():
+    """Минимум окна не должен превышать высоту ноутбучного экрана.
+
+    Тот самый баг: панель Operations с четырнадцатью кнопками требовала себе
+    689px, окно — 1016px. На большом мониторе всё прекрасно; на ноутбуке
+    оконный менеджер ужимает окно ниже его же минимума, layout сплющивает
+    кнопки, и от подписи остаётся полоска по центру.
+
+    1366x768 — типовой экран наладчика. За вычетом заголовка окна и панели
+    задач остаётся около 700px, берём их с небольшим запасом.
+    """
+    app = _qt()
+    from launcher.ui.main_window import LauncherWindow
+    from launcher.ui.theme import apply_theme
+
+    apply_theme(app)
+    window = LauncherWindow()
+
+    assert window.minimumSizeHint().height() <= 720, (
+        f"окно требует {window.minimumSizeHint().height()}px по высоте — "
+        f"на экране 768px оно не поместится, и кнопки сплющит"
+    )
+
+
+def test_buttons_never_squash_below_their_text():
+    """Кнопки не сжимаются ниже своей высоты ни на каком размере окна.
+
+    Прокрутка обязана показывать, что не влезло, а не layout — сплющивать.
+    """
+    app = _qt()
+    from PySide6.QtWidgets import QCheckBox, QPushButton
+
+    from launcher.ui.main_window import LauncherWindow
+    from launcher.ui.theme import apply_theme
+
+    apply_theme(app)
+    window = LauncherWindow()
+    window.show()
+
+    for height in (1016, 768, 620):
+        window.resize(1100, height)
+        app.processEvents()
+
+        squashed = [b.text() for b in window.findChildren(QPushButton)
+                    if b.height() < b.sizeHint().height()]
+        assert not squashed, f"при высоте {height}px сплющены: {squashed}"
+
+        # Полоса прокрутки съедает ширину у виджета внутри — на этом
+        # обрезалась подпись флажка «Strict».
+        clipped = [c.text() for c in window.findChildren(QCheckBox)
+                   if c.width() < c.sizeHint().width()]
+        assert not clipped, f"при высоте {height}px обрезаны: {clipped}"
+
+    window.close()
