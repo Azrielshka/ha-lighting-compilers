@@ -327,19 +327,19 @@ class LauncherWindow(QMainWindow):
         group.setLayout(layout)
 
         # 1. Проверка таблицы — первый шаг пайплайна.
-        self.btn_validate = QPushButton("[ 1 ]  VALIDATE EXCEL")
+        self.btn_validate = QPushButton("[01] VALIDATE EXCEL")
 
         # Строгий режим: предупреждения считаются ошибками.
         # Влияет и на отдельный запуск Validate, и на его шаг в Build All.
         self.strict_checkbox = QCheckBox("Strict (предупреждения = ошибки)")
 
-        self.btn_normalize = QPushButton("[ 2 ]  NORMALIZE EXCEL")
-        self.btn_lights = QPushButton("[ 3 ]  LIGHTS GROUPS")
-        self.btn_general = QPushButton("[ 4 ]  GENERAL GROUPS")
-        self.btn_floor = QPushButton("[ 5 ]  FLOOR GROUPS")
+        self.btn_normalize = QPushButton("[02] NORMALIZE EXCEL")
+        self.btn_lights = QPushButton("[03] LIGHTS GROUPS")
+        self.btn_general = QPushButton("[04] GENERAL GROUPS")
+        self.btn_floor = QPushButton("[05] FLOOR GROUPS")
 
         # Офлайн: готовит data/areas/areas.yaml, в Home Assistant не пишет.
-        self.btn_areas = QPushButton("[ 6 ]  AREAS && FLOORS")
+        self.btn_areas = QPushButton("[06] AREAS && FLOORS")
         self.btn_areas.setToolTip(
             "Готовит пространства и этажи для Home Assistant в файл data/areas/areas.yaml.\n"
             "К HA не подключается: создание — на шаге деплоя."
@@ -347,7 +347,7 @@ class LauncherWindow(QMainWindow):
 
         # Офлайн: помощники одним пакетом (vacant_delay, режимы этажей,
         # пресеты зала, списки навигации).
-        self.btn_helpers = QPushButton("[ 7 ]  HELPERS")
+        self.btn_helpers = QPushButton("[07] HELPERS")
         self.btn_helpers.setToolTip(
             "Вспомогательные объекты HA одним пакетом:\n"
             "data/helpers/lighting-compilers.yaml.\n\n"
@@ -358,14 +358,14 @@ class LauncherWindow(QMainWindow):
         )
 
         # Клоны шаблонных скриптов: свой набор на каждую единицу обслуживания.
-        self.btn_scripts = QPushButton("[ 8 ]  SCRIPTS")
+        self.btn_scripts = QPushButton("[08] SCRIPTS")
         self.btn_scripts.setToolTip(
             "Клонирует шаблоны из templates/scripts/ по единицам обслуживания.\n"
             "Один экземпляр скрипта в HA — одна очередь, поэтому у каждой единицы свой набор."
         )
 
         # Экземпляры blueprint'ов: по две автоматизации на единицу (ON и OFF).
-        self.btn_automations = QPushButton("[ 9 ]  AUTOMATIONS")
+        self.btn_automations = QPushButton("[09] AUTOMATIONS")
         self.btn_automations.setToolTip(
             "По две автоматизации на единицу обслуживания (ON и OFF).\n"
             "Плюс копии blueprint'ов в data/blueprints/ для деплоя.\n\n"
@@ -373,26 +373,26 @@ class LauncherWindow(QMainWindow):
         )
 
         # Не входит в Build All: карточки вставляются в дашборд вручную.
-        self.btn_lovelace = QPushButton("[ + ]  LOVELACE CARDS")
+        self.btn_lovelace = QPushButton("[ +] LOVELACE CARDS")
         self.btn_lovelace.setToolTip(
             "Собирает карточки помещений в data/lovelace_cards_generated.txt.\n"
             "В Build All не входит — вставка в дашборд вручную.\n"
             "Типы zal/recreation требуют кастом-карт (mushroom/card_mod)."
         )
 
-        self.btn_build_all = QPushButton("[ ▶ ]  BUILD ALL")
+        self.btn_build_all = QPushButton("[ ▶] BUILD ALL")
 
         # Единственный шаг, который трогает живую систему на объекте.
         # В Build All НЕ входит: только по явному действию наладчика.
-        self.btn_deploy = QPushButton("[ ↑ ]  DEPLOY → HOME ASSISTANT")
+        self.btn_deploy = QPushButton("[ ↑] DEPLOY → HOME ASSISTANT")
         self.btn_deploy.setToolTip(
             "Доставка конфигурации на Home Assistant.\n"
             "Dry-run показывает план; LIVE отправляет.\n\n"
             "⚠ Рестарт HA деплой не делает — перезапустите вручную."
         )
 
-        self.btn_open_output = QPushButton("[ · ]  Открыть папку")
-        self.btn_clear_log = QPushButton("[ · ]  Очистить лог")
+        self.btn_open_output = QPushButton("[ ·] Открыть папку")
+        self.btn_clear_log = QPushButton("[ ·] Очистить лог")
 
         layout.addWidget(self.btn_validate)
         layout.addWidget(self.strict_checkbox)

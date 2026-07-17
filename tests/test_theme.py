@@ -44,6 +44,17 @@ def _strip_comments(qss: str) -> str:
     return re.sub(r"/\*.*?\*/", "", qss, flags=re.DOTALL)
 
 
+def _rules() -> list:
+    """Все правила QSS парами (селектор, тело).
+
+    ⚠ Тело режем до `}}`, а не до `}`: в исходнике f-строки скобки правила
+    удвоены, а одиночные — подстановки вроде `{BG}`.
+    """
+    qss = _strip_comments(_qss_block())
+    return [(sel, body)
+            for sel, body in re.findall(r"([^\n{]+?)\s*\{\{(.*?)\}\}", qss, re.DOTALL)]
+
+
 def _rule_body(selector: str) -> str:
     """Тело правила: от селектора до закрывающей `}}`.
 
@@ -102,20 +113,52 @@ def test_the_only_spinbox_has_its_buttons_off():
 # Семантика важнее акцента
 # ============================================================
 
+def _colours() -> dict:
+    return dict(re.findall(r"^([A-Z_]+) = \"(#[0-9a-f]{6})\"", _source(), re.MULTILINE))
+
+
 def test_accent_never_collides_with_state_colours():
-    """Ошибка/успех/предупреждение обязаны отличаться от акцента.
+    """Ошибка/успех/предупреждение обязаны отличаться от обоих акцентов.
 
     Инженер читает состояние периферийным зрением. Совпади акцент с красным —
-    и «всё хорошо» станет неотличимо от «упало». Пурпур ACCENT и красный ERROR
-    оба красноватые, поэтому ещё и разведены по местам применения: акцент живёт
-    в хроме, красный — в тексте лога и статусах.
+    и «всё хорошо» станет неотличимо от «упало».
     """
-    src = _source()
-    colours = dict(re.findall(r"^([A-Z_]+) = \"(#[0-9a-f]{6})\"", src, re.MULTILINE))
+    colours = _colours()
 
-    assert colours["ACCENT"] != colours["ERROR"]
-    assert colours["ACCENT"] != colours["SUCCESS"]
-    assert colours["ACCENT"] != colours["WARNING"]
+    for accent in ("ACCENT", "CYAN"):
+        for state in ("ERROR", "SUCCESS", "WARNING"):
+            assert colours[accent] != colours[state], f"{accent} == {state}"
+
+    assert colours["ACCENT"] != colours["CYAN"]
+
+
+def test_action_colour_is_used_only_for_action():
+    """Пурпур — только интерактив; всё статичное носит циан.
+
+    Ради этого свойства два цвета и заводились: в покое окно холодное, пурпур
+    вспыхивает ровно там, где вы трогаете. Покрась им что-нибудь статичное — и
+    правило исчезнет, а вместе с ним ответ на вопрос «где я сейчас».
+    Циан не проверяем: он и есть цвет по умолчанию для структуры.
+    """
+    interaction = (":hover", ":pressed", ":focus", ":checked", ":default")
+
+    offenders = []
+    for selector, body in _rules():
+        if "{ACCENT" not in body:
+            continue
+        if any(state in selector for state in interaction):
+            continue
+        # selection-* — тоже действие: выделение делает пользователь.
+        if all(line.strip().startswith("selection-")
+               for line in body.splitlines()
+               if "{ACCENT" in line):
+            continue
+        offenders.append(selector.strip())
+
+    assert not offenders, (
+        "пурпур (цвет действия) применён к статике: " + ", ".join(offenders) +
+        ". Статичное носит CYAN — иначе оба цвета станут шумом."
+    )
 
 
 def test_disabled_state_is_described():
@@ -230,3 +273,46 @@ def test_qt_parses_our_qss_without_a_single_complaint():
         qInstallMessageHandler(None)
 
     assert not complaints, "Qt не понял наш QSS:\n" + "\n".join(sorted(set(complaints)))
+
+
+def test_scanlines_are_a_pixmap_not_a_gradient():
+    """Подложка мостится плиткой в пикселях, а не градиентом QSS.
+
+    У qlineargradient координаты ОТНОСИТЕЛЬНЫЕ (0..1 от размера виджета), и
+    spread:repeat даёт полосы, толщина которых растёт вместе с окном: волоски в
+    маленьком окне, жирные ленты в развёрнутом. Проверено рендером на двух
+    высотах — потому и плитка.
+    """
+    # Только сам QSS и без комментариев: в объяснении выше spread:repeat
+    # упомянут как то, чего мы НЕ делаем, и поиск по файлу ловил бы его.
+    assert "spread:repeat" not in _strip_comments(_qss_block()), (
+        "полосы градиентом поедут от размера окна — мостите плиткой QPixmap"
+    )
+    assert "QPixmap(SCANLINE_PITCH, SCANLINE_PITCH)" in _source()
+    assert "setBrush(QPalette.Window" in _source()
+
+
+def test_scanline_tile_is_seamless():
+    """Плитка обязана стыковаться: линия ровно одна на шаг, по краю.
+
+    Нарисуй её посередине или в две строки — на стыках пойдут сдвоенные полосы
+    и муар, который на глаз читается как битый рендер.
+    """
+    try:
+        from PySide6.QtGui import QColor
+    except ImportError as e:
+        pytest.skip(f"GUI-зависимость недоступна: {e}")
+    from launcher.ui import theme
+
+    try:
+        image = theme._scanline_brush().texture().toImage()
+    except Exception as e:                      # нет QGuiApplication — не беда
+        pytest.skip(f"нужен QGuiApplication: {e}")
+
+    assert image.width() == theme.SCANLINE_PITCH
+    assert image.height() == theme.SCANLINE_PITCH
+
+    line = QColor(theme.SCANLINE).rgb()
+    rows = [image.pixel(0, y) for y in range(image.height())]
+    assert rows.count(line) == 1, "на шаг должна приходиться ровно одна линия"
+    assert rows[-1] == line, "линия по нижнему краю — иначе стык даст сдвоенную"

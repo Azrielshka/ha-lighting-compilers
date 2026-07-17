@@ -29,50 +29,97 @@ launcher/ui/theme.py
 
 from __future__ import annotations
 
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QBrush, QColor, QPainter, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication
 
 # ------------------------------------------------------------
-# Палитра. Контраст с фоном проверен: акцент 6.1:1, текст 14:1.
+# Палитра. Контраст с фоном проверен: акценты 6.1:1 и 4.9:1, текст 14:1.
 # ------------------------------------------------------------
-BG = "#f7f4f6"          # тёплый светлый — фон окна
+BG = "#f7f4f6"          # тёплый светлый — подложка окна
 PANEL = "#ffffff"        # карточки групп
 BORDER = "#d8c9d2"       # тонкие рамки
 BORDER_STRONG = "#b9a3b0"
 TEXT = "#241a20"         # почти чёрный, тёплый
 TEXT_MUTED = "#6b5c65"   # пояснения; на светлом «gray» слишком блёкл
-ACCENT = "#be185d"       # пурпур — только хром
-ACCENT_HOVER = "#9d174d"
-ACCENT_SOFT = "#fce7f0"  # заливка активного/наведённого
 DISABLED_BG = "#efeaed"
 DISABLED_TEXT = "#a99aa2"
+
+# ------------------------------------------------------------
+# Два акцента, и у каждого СВОЯ РАБОТА.
+#
+# Два цвета без правила — украшательство; с правилом — информация.
+#   CYAN   = структура: заголовки секций, рейка, полоса панели, рамка в покое.
+#   ACCENT = действие:  наведение, нажатие, фокус, отмеченный флажок, выделение.
+#
+# Отсюда свойство, ради которого это и затевалось: в покое окно холодное, и
+# пурпур вспыхивает ровно там, где вы трогаете. Смешаете роли — оба цвета
+# станут шумом, и «где я сейчас» придётся искать глазами.
+#
+# ⚠ Ни один из них не «неон»: на светлом фоне акцент обязан быть тёмным, иначе
+# нечитаем (неоновый циан #22d3ee на белом даёт 1.7:1). Светиться можно только
+# в темноте — это физика контраста, а не вопрос подбора оттенка.
+# ------------------------------------------------------------
+CYAN = "#0e7490"         # структура
+CYAN_SOFT = "#dceef3"
+ACCENT = "#be185d"       # действие
+ACCENT_HOVER = "#9d174d"
+ACCENT_SOFT = "#fce7f0"
 
 # Семантика. Тёмные варианты — под светлый фон.
 ERROR = "#b91c1c"
 SUCCESS = "#15803d"
 WARNING = "#b45309"
 
+# ------------------------------------------------------------
+# Скан-линии подложки
+# ------------------------------------------------------------
+SCANLINE = "#ece2e7"     # чуть темнее BG: линия должна угадываться, не читаться
+SCANLINE_PITCH = 4       # шаг в пикселях
+
 # Моноширинные по убыванию предпочтения. Consolas — Windows, DejaVu Sans Mono —
 # Linux (на нём же гоняются скриншоты), Courier New — универсальный запасной.
 MONO = '"Consolas", "DejaVu Sans Mono", "Courier New", monospace'
 
 
+def _scanline_brush() -> QBrush:
+    """Плитка скан-линий: 1px линия с шагом 4px.
+
+    ⚠ Плиткой, а не градиентом QSS. У qlineargradient координаты ОТНОСИТЕЛЬНЫЕ
+    (0..1 от размера виджета), поэтому `spread:repeat` даёт полосы, толщина
+    которых растёт вместе с окном: волосяные линии в маленьком окне и жирные
+    ленты в развёрнутом. Проверено рендером на двух высотах.
+
+    Плитка задаётся в пикселях и от размера окна не зависит вовсе. Рисуется в
+    коде — значит ни файла-ресурса, ни --add-data в сборке EXE.
+    """
+    pix = QPixmap(SCANLINE_PITCH, SCANLINE_PITCH)
+    pix.fill(QColor(BG))
+
+    painter = QPainter(pix)
+    painter.setPen(QColor(SCANLINE))
+    painter.drawLine(0, SCANLINE_PITCH - 1, SCANLINE_PITCH, SCANLINE_PITCH - 1)
+    painter.end()
+
+    return QBrush(pix)
+
+
 QSS = f"""
 /* ---------- база ---------- */
+/* ⚠ background здесь НЕ задаём намеренно: подложку окна рисует плитка
+   скан-линий из палитры (_scanline_brush), а правило QSS её перекрыло бы.
+   Виджеты без своего фона прозрачны — сквозь них плитка и видна. */
 QWidget {{
-    background: {BG};
     color: {TEXT};
 }}
 
-QMainWindow, QDialog {{
-    background: {BG};
-}}
-
-/* ---------- секции: карточка с акцентной полосой слева ---------- */
+/* ---------- секции: карточка, рейка сверху, полоса слева ---------- */
+/* Панель непрозрачно белая: скан-линии живут в промежутках между панелями и
+   под текст не лезут. Читаемость важнее жанра. */
 QGroupBox {{
     background: {PANEL};
     border: 1px solid {BORDER};
-    border-left: 3px solid {ACCENT};
+    border-top: 2px solid {CYAN};
+    border-left: 3px solid {CYAN};
     border-radius: 0px;
     margin-top: 18px;
     padding: 14px 12px 12px 12px;
@@ -90,7 +137,7 @@ QGroupBox::title {{
     left: 10px;
     padding: 0px 6px;
     background: {BG};
-    color: {ACCENT};
+    color: {CYAN};
     font-family: {MONO};
     font-size: 11px;
     font-weight: 700;
@@ -129,15 +176,20 @@ QLineEdit:disabled, QSpinBox:disabled {{
    потерял системные hover/pressed/disabled. Описываем руками все состояния.
    :disabled здесь не косметика: лаунчер гасит кнопки на время работы
    пайплайна (_set_running_state), и без правила они выглядели бы нажимаемыми. */
+/* text-align: left — не косметика. При центрировании подпись каждой кнопки
+   встаёт по своей ширине, и номера [01]..[09] НЕ собираются в колонку: они
+   пляшут по горизонтали и выглядят оторванными от текста. Слева + моноширинный
+   = ровный столбец номеров, который и читается как прибор.
+   letter-spacing здесь тоже нет: в подписи из скобок и заглавных он разгоняет
+   номер и текст так, что они перестают выглядеть одной строкой. */
 QPushButton {{
     background: {PANEL};
-    border: 1px solid {BORDER_STRONG};
+    border: 1px solid {BORDER};
     border-radius: 0px;
-    padding: 7px 12px;
+    padding: 7px 10px;
     font-family: {MONO};
     font-size: 12px;
-    letter-spacing: 1px;
-    text-align: center;
+    text-align: left;
 }}
 
 QPushButton:hover {{
@@ -230,10 +282,12 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
     height: 0px;
 }}
 
+/* Подсказка носит циан: она информация, а не действие. Всплывает по
+   наведению, но сама ничего не делает — трогают не её. */
 QToolTip {{
     background: {TEXT};
     color: {BG};
-    border: 1px solid {ACCENT};
+    border: 1px solid {CYAN};
     border-radius: 0px;
     padding: 4px 6px;
 }}
@@ -243,10 +297,19 @@ QToolTip {{
 def apply_theme(app: QApplication) -> None:
     """Применить оформление ко всему приложению разом.
 
-    Один вызов на QApplication: QSS наследуется всеми окнами, включая диалог
-    Deploy. Красить окна поодиночке — значит однажды забыть новое и получить
-    светлое пятно поверх оформленного.
+    Один вызов на QApplication: и палитра, и QSS наследуются всеми окнами,
+    включая диалог Deploy. Красить окна поодиночке — значит однажды забыть
+    новое и получить светлое пятно поверх оформленного.
     """
     app.setStyle("Fusion")   # одинаковая база на Windows и Linux: нативный
                              # стиль Windows игнорирует часть QSS-правил
+
+    # Плитка ДО стилей и через палитру, а не через QSS: в QSS нет способа
+    # замостить фон картинкой из памяти — только url(файл), а файл означает
+    # --add-data. Роль Window получают QMainWindow и QDialog; виджеты без
+    # своего фона прозрачны, поэтому плитка видна в промежутках между панелями.
+    palette = app.palette()
+    palette.setBrush(QPalette.Window, _scanline_brush())
+    app.setPalette(palette)
+
     app.setStyleSheet(QSS)
