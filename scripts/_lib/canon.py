@@ -380,7 +380,7 @@ BLUEPRINT_DIR: str = "zone_manager"
 # Вспомогательные объекты (helpers)
 # ============================================================
 #
-# Их создаёт generate_helpers.py -> includes/packages/lighting-compilers.yaml.
+# Их создаёт generate_helpers.py -> includes/packages/zm_lighting-compilers.yaml.
 # Пайплайн создаёт САМ ОБЪЕКТ, но не логику за ним: input_boolean — это
 # выключатель, а что он включает, описывают автоматизации владельца.
 # Исключение — vacant_delay и навигационные input_select: их читает наш код.

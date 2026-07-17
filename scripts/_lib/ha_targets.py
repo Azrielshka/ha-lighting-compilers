@@ -153,12 +153,10 @@ def build_plan(
             ))
 
     if "helpers" in targets:
-        # Помощники — тоже пакет, рядом с группами света. Имя файла задал
-        # владелец; из конвенции `zm_` оно выпадает, но «lighting-compilers»
-        # однозначно наше, так что деплой чужого всё равно не тронет.
+        # Помощники — тоже пакет, рядом с группами света.
         files.append(FileTarget(
             local=data_dir / "helpers" / "lighting-compilers.yaml",
-            remote=f"{root}/includes/packages/lighting-compilers.yaml",
+            remote=f"{root}/includes/packages/zm_lighting-compilers.yaml",
             target="helpers",
         ))
 

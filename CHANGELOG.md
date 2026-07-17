@@ -52,7 +52,7 @@ This project follows Semantic Versioning.
 - **`scripts/generate_areas.py`** — пространства и этажи Home Assistant.
   Шаг офлайновый: готовит задание, в HA не пишет.
 - **`scripts/generate_helpers.py`** — вспомогательные объекты одним пакетом
-  (`includes/packages/lighting-compilers.yaml`): `input_number.vacant_delay`
+  (`includes/packages/zm_lighting-compilers.yaml`): `input_number.vacant_delay`
   (`initial: 10`, `mode: box`, 0–300 с), `input_button.but_back`,
   `input_boolean.regim_auto_<N>` на этаж, 4 пресета зала и
   `input_select.nav_floor_<N>` с опциями-помещениями этажа. Раньше их заводил

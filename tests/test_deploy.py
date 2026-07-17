@@ -129,27 +129,16 @@ def test_blueprints_keep_their_names(data_dir):
     assert all("blueprints/automation/zone_manager" in f.remote for f in plan.files)
 
 
-# Файлы, которые едут на HA без префикса zm_. Список закрытый и явный:
-# каждое имя должно быть однозначно опознаваемо как наше.
-OWN_FILES_WITHOUT_PREFIX = {
-    "lighting-compilers.yaml",   # пакет помощников, имя задал владелец
-}
-
-
 def test_all_remote_files_are_prefixed_or_blueprints(data_dir):
     """
-    Деплой обязан перезаписывать только своё и не трогать файлы наладчика.
-
-    Гарантия — узнаваемое имя: префикс `zm_` либо явное исключение из
-    закрытого списка выше. Исключения перечислены поимённо специально: любой
-    новый файл без `zm_` обязан пройти через осознанное решение, а не
-    просочиться незаметно.
+    Префикс zm_ — гарантия, что деплой перезапишет только своё и не тронет
+    файлы наладчика. Исключений нет: правило без дыр проверяется одной строкой.
     """
     plan = build_plan(data_dir, list(TARGETS))
 
     for f in plan.files:
         name = f.remote.rsplit("/", 1)[1]
-        assert name.startswith("zm_") or name in OWN_FILES_WITHOUT_PREFIX, name
+        assert name.startswith("zm_"), name
 
 
 def test_areas_are_not_a_file_target(data_dir):
