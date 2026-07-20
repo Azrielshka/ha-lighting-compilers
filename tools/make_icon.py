@@ -35,6 +35,16 @@ sys.path.insert(0, str(ROOT))
 # Без дисплея: на раннере GitHub Actions его нет.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+# ⚠ Вывод в UTF-8 принудительно. В CI stdout — труба, и Python берёт кодировку
+# из локали (на windows-latest это cp1252). Печать «OK: ... байт» роняла шаг
+# сборки с UnicodeEncodeError — иконка при этом уже была собрана. Так упал
+# первый прогон тега v3.0.0.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 
 from launcher.ui.decals import ICON_SVG, render_svg  # noqa: E402

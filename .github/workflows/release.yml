@@ -22,6 +22,15 @@ jobs:
     permissions:
       contents: write
 
+    # ⚠ Весь вывод проекта русский, с эмодзи, а stdout в CI — труба: Python
+    # берёт кодировку из локали (cp1252) и падает на первом же print.
+    # Сборка v3.0.0 умерла именно так. Скрипты чинят это и сами
+    # (scripts/_lib/bootstrap.py, tools/make_icon.py), но здесь ставим ещё и
+    # режим UTF-8 на весь job: дешевле, чем ловить это по одному шагу.
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
