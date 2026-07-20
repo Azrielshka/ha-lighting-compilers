@@ -79,6 +79,17 @@ jobs:
           copy requirements.txt release\requirements.txt
           copy README_RELEASE.txt release\INSTALL.txt
 
+          REM Шпаргалка команд и образец .env — для работы из CLI.
+          REM Без них инженер, ушедший из GUI в консоль, не узнает ни списка
+          REM команд, ни формата переменных, которые читает deploy.py.
+          REM
+          REM ⚠ env.example кладём БЕЗ ведущей точки. Причин две: Compress-Archive
+          REM по маске release\* может не взять точечный файл, а Проводник Windows
+          REM не даёт создать «.env» переименованием. Инженер копирует его в .env
+          REM сам — как это сделать, написано в INSTALL.txt.
+          copy bash_command.txt release\bash_command.txt
+          copy .env.example release\env.example
+
           REM Обязательство ISC: текст лицензии Lucide едет с продуктом.
           REM В самом EXE он тоже есть (decals.LUCIDE_NOTICE) — это копия
           REM для человека, который откроет архив.
