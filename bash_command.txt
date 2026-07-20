@@ -1,85 +1,144 @@
-# bash_command.txt — команды для тестирования/отладки ha-lighting-compilers
-# Запускай из КОРНЯ проекта (там где лежат папки scripts/ и data/)
+# bash_command.txt — шпаргалка команд ha-lighting-compilers
+#
+# Запускать из КОРНЯ проекта (там, где лежат scripts/ и data/).
+# Команды под Windows-машину наладчика; на Linux-VM разработчика пути к python
+# другие (.venv/bin/python вместо .venv/Scripts/python.exe).
+#
+# ⚠ Все примеры с python подразумевают python ИЗ .venv. Если venv не
+# активирован, пишите путь явно:
+#     .venv\Scripts\python.exe scripts\validate_excel.py
 
 # ------------------------------------------------------------
-# 0) БАЗОВАЯ ПРОВЕРКА ОКРУЖЕНИЯ
+# 0) ОКРУЖЕНИЕ
 # ------------------------------------------------------------
 
-# Где мы находимся + статус git
 pwd
 git status
 
-# Проверка Python (должен быть .venv)
-where python
+# Проверить, что python берётся из .venv, а не системный
+where python                       # Windows
+which python                       # Linux
+
+# Установка зависимостей.
+# ⚠ Именно "<python из venv> -m pip", а не голый pip: иначе пакеты уедут
+# не в то окружение, и лаунчер их не найдёт.
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# Для тестов нужен ещё requirements-dev.txt
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 
 # ------------------------------------------------------------
-# 1) СТРУКТУРА ДАННЫХ
+# 1) ТАБЛИЦЫ И ДАННЫЕ
 # ------------------------------------------------------------
 
-# Быстро посмотреть структуру data/
 ls -la data
 ls -la data/normalized
-ls -la data/light_groups
+
+# В репозитории две таблицы:
+#   data/object_example.xlsx  — рабочая фикстура v3, на ней всё гоняется
+#   data/example.xlsx         — исторический артефакт v1, пайплайн v3 на нём
+#                               НЕ работает (валидатор скажет «нет листа
+#                               "Проектная БД"») — это ожидаемо
 
 # ------------------------------------------------------------
-# 2) NORMALIZE (две модели запуска)
+# 2) ПАЙПЛАЙН — 9 ШАГОВ
 # ------------------------------------------------------------
+#
+# Каждый шаг запускается отдельно и работает с тем, что уже лежит в
+# data/normalized/. Excel читает только шаг 2.
 
-# 2.1 Через CLI (с явным Excel)
-python scripts/normalize_excel.py --excel "data/Тестовая таблица.xlsx"
+# 1. Проверка таблицы. На ошибках пайплайн стоит.
+#    Коды возврата: 0 — можно генерировать, 1 — блокирующие ошибки, 2 — нет файла
+python scripts/validate_excel.py --excel data/object_example.xlsx
+python scripts/validate_excel.py --strict          # предупреждения = ошибки
 
-# 2.2 Через DEFAULT_EXCEL_PATH внутри скрипта
+# 2. Нормализация: Excel -> devices/groups/spaces/units.parquet
+#    Без --excel берётся DEFAULT_EXCEL_PATH = data/object_example.xlsx
+python scripts/normalize_excel.py --excel data/object_example.xlsx
 python scripts/normalize_excel.py
 
-# Проверка, что parquet созданы
-ls -la data/normalized
-
-# ------------------------------------------------------------
-# 3) ГЕНЕРАЦИЯ YAML ГРУПП
-# ------------------------------------------------------------
-
-# Подгруппы света
+# 3-5. Группы света
 python scripts/generate_lights_groups.py
-sed -n '1,80p' data/light_groups/lights_group.yaml
-
-# Общие группы помещений
 python scripts/generate_general_groups.py
-sed -n '1,80p' data/light_groups/lights_general_groups.yaml
-
-# Группы этажей
 python scripts/generate_floor_groups.py
-grep -n "этаж" data/light_groups/lights_floor_groups.yaml | head -n 20
 
-# ------------------------------------------------------------
-# 4) LOVELACE
-# ------------------------------------------------------------
+# 6-9. Пространства, помощники, скрипты, автоматизации
+python scripts/generate_areas.py
+python scripts/generate_helpers.py
+python scripts/generate_scripts.py
+python scripts/generate_automations.py
 
-# Генерация карточек
-python scripts/generate_lovelace_cards_v2.py
-
-# Просмотр результата
-sed -n '1,120p' data/lovelace_cards_generated.txt
-
-# Найти конкретное помещение
-grep -n "### 403" data/lovelace_cards_generated.txt | head -n 20
-
-# ------------------------------------------------------------
-# 5) FULL PIPELINE (CLI)
-# ------------------------------------------------------------
-
-# Полный пересбор
-python scripts/normalize_excel.py --excel "data/Тестовая таблица.xlsx" && \
+# Полный прогон одной строкой (то же, что кнопка Build All)
+python scripts/validate_excel.py --excel data/object_example.xlsx && \
+python scripts/normalize_excel.py --excel data/object_example.xlsx && \
 python scripts/generate_lights_groups.py && \
 python scripts/generate_general_groups.py && \
 python scripts/generate_floor_groups.py && \
-python scripts/generate_lovelace_cards_v2.py
+python scripts/generate_areas.py && \
+python scripts/generate_helpers.py && \
+python scripts/generate_scripts.py && \
+python scripts/generate_automations.py
 
 # ------------------------------------------------------------
-# 6) LAUNCHER (DEV)
+# 3) КАРТОЧКИ LOVELACE — вне Build All
+# ------------------------------------------------------------
+#
+# Экспорт в .txt с копипастом руками (метод v1) упразднён: карточки
+# раскладываются по views дашборда и уезжают деплоем.
+
+python scripts/generate_lovelace_cards.py \
+  --dashboard dashboard-tets --title "Колледж Химки"
+
+ls -la data/lovelace/                  # файл на view: zm-main, zm-floor-N, zm-space-*
+
+# ------------------------------------------------------------
+# 4) ПОСМОТРЕТЬ РЕЗУЛЬТАТ
 # ------------------------------------------------------------
 
-# Запуск launcher из Python
-python main.py
+sed -n '1,80p' data/light_groups/lights_group.yaml
+sed -n '1,80p' data/light_groups/lights_general_groups.yaml
+grep -n "этаж" data/light_groups/lights_floor_groups.yaml | head -20
+
+# Нормализованный слой (parquet — бинарь, глазами не открыть)
+python scripts/show_normalized.py                  # паспорт + devices/groups/spaces
+python scripts/show_normalized.py --space 102      # помещение целиком
+python scripts/show_normalized.py --group 102_1    # группа + строки Excel
+python scripts/show_normalized.py --devices --full
+
+# ⚠ units.parquet просмотрщик не показывает — только через pandas:
+#     import pandas as pd; pd.read_parquet('data/normalized/units.parquet')
+
+# ------------------------------------------------------------
+# 5) ДЕПЛОЙ НА ОБЪЕКТ — единственное, что трогает живую систему
+# ------------------------------------------------------------
+
+# Разведка канала на новом объекте
+python scripts/check_sftp.py --host 192.168.x.x --user root --key ~/.ssh/ключ
+
+# ⚠ ПЕРЕД первым деплоем карточек — снимок дашборда.
+# lovelace/config/save перезаписывает дашборд ЦЕЛИКОМ.
+python scripts/backup_dashboard.py --url http://192.168.x.x:8123 --token ТОКЕН
+
+# Dry-run: показывает план, ничего не отправляет
+python scripts/deploy.py --host 192.168.x.x --user root --key ~/.ssh/ключ
+
+# LIVE
+python scripts/deploy.py --live --host 192.168.x.x --user root --key ~/.ssh/ключ \
+  --url http://192.168.x.x:8123 --token ТОКЕН --dashboard dashboard-tets
+
+# ⚠ Рестарт Home Assistant деплой НЕ делает. Файлы приедут, но не применятся,
+#   пока не перезапустите вручную. Карточек и пространств это не касается.
+# ⚠ Для карточек нужен токен АДМИНИСТРАТОРА.
+
+# ------------------------------------------------------------
+# 6) ЛАУНЧЕР И ТЕСТЫ
+# ------------------------------------------------------------
+
+python launcher/main.py
+
+python -m pytest tests/ -q
+python -m pytest tests/test_generate_helpers.py -q      # один файл
+python -m pytest tests/ -q -k "helpers or lovelace"     # по имени
 
 # ------------------------------------------------------------
 # 7) EXE — НЕ СОБИРАЕМ РУКАМИ
@@ -89,7 +148,7 @@ python main.py
 #
 #     git tag v3.0.1 && git push origin v3.0.1
 #
-# -> сборка на чистой windows-latest -> GitHub Release с ZIP.
+# -> сборка на чистой windows-latest -> публичный GitHub Release с ZIP.
 #
 # Правило: тег -> EXE, других EXE не бывает. Собранный локально приходит с
 # чьей-то машины в неизвестном состоянии, и сказать, из чего он, нечем —
@@ -106,48 +165,33 @@ python main.py
 #     pyinstaller --onefile --noconsole --icon build/launcher.ico launcher/main.py --name launcher
 
 # ------------------------------------------------------------
-# 9) GIT / DIFF
+# 8) GIT
 # ------------------------------------------------------------
 
-# Посмотреть изменения
 git diff
-
-# Добавить изменения
 git add .
-
-# Коммит
 git commit -m "wip: local changes"
-
-# Пуш
 git push
-
-# ------------------------------------------------------------
-# 10) УСТАНОВКА ЗАВИСИМОСТЕЙ
-# ------------------------------------------------------------
-
-pip install -r requirements.txt
-
-# ------------------------------------------------------------
-# 11) БЫСТРАЯ ДИАГНОСТИКА
-# ------------------------------------------------------------
-
-# Проверка наличия .venv
-ls -la .venv
-
-# Проверка python внутри venv
-ls -la .venv/Scripts
 
 # ------------------------------------------------------------
 # ПРИМЕЧАНИЯ
 # ------------------------------------------------------------
-
-# 1. normalize_excel.py поддерживает:
-#    - запуск с параметром --excel
-#    - запуск без параметров (через DEFAULT_EXCEL_PATH)
-
-# 2. Launcher использует:
-#    <project_root>/.venv/Scripts/python.exe
-
-# 3. Build All в UI = последовательный запуск всех скриптов
-
-# 4. EXE может работать медленнее из-за распаковки PyInstaller
+#
+# 1. Лаунчер запускает те же скрипты через <project_root>/.venv/Scripts/python.exe.
+#    Build All = последовательный запуск шагов 1-9; карточки и деплой в него
+#    НЕ входят.
+#
+# 2. Build All офлайновый: в Home Assistant не пишет ничего.
+#
+# 3. Фильтры. У ВСЕХ генераторов есть --spaces, --exclude-floors,
+#    --exclude-space-contains. А вот --floors (взять только эти этажи) есть
+#    НЕ у всех: у generate_lights_groups и generate_general_groups его нет —
+#    они работают по зонам, а не по этажам.
+#
+#    Пути: у всех --out; --normalized у всех, КРОМЕ generate_lovelace_cards —
+#    там --spaces-parquet (он читает один датасет, а не слой целиком).
+#
+#    Полный список у любого: <скрипт> --help.
+#
+# 4. Помощники и группы едут на HA с префиксом zm_ (файлы) и zm- (views
+#    дашборда). По нему деплой отличает своё от вашего.

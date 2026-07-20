@@ -31,12 +31,22 @@ sys.path.insert(0, str(ROOT))
 from PySide6.QtWidgets import QApplication          # noqa: E402
 
 from launcher.ui.theme import ACCENT, CYAN, apply_theme   # noqa: E402
-from launcher.ui.decals import render_svg                  # noqa: E402
-from launcher.ui.widgets import HeaderBar                  # noqa: E402
+from launcher import __version__                             # noqa: E402
+from launcher.ui.decals import DECAL_H, DECAL_W, render_svg  # noqa: E402
+from launcher.ui.widgets import HeaderBar                    # noqa: E402
 
 OUT = Path(__file__).parent
-W, H = 260, 44
 
+# Размер берём из приложения, а не задаём свой: иначе черновики рисуются в
+# одном масштабе, а шапка — в другом, и сравнивать нечего. Так уже разъехалось,
+# когда шапку уменьшили с 64 до 46px.
+W, H = DECAL_W, DECAL_H
+
+
+# ⚠ Черновики 1-3 рисовались под прежний холст 260x44 (шапка была 64px).
+# Сейчас холст 202x34, и координаты в них не пересчитаны: в цепочку они
+# укладываются, но выглядят плотнее, чем задумывались. Переделывать не стали —
+# варианты отклонены, папка осталась как запись о том, из чего выбирали.
 
 # ============================================================
 # 1. Спектр: столбцы разной высоты
@@ -134,53 +144,16 @@ def _radar() -> str:
 # ⚠ ISC требует приложить к продукту текст лицензии и копирайт. Это не CC0:
 # «бесплатно» тут не значит «без обязательств». Выберете этот вариант —
 # в репозиторий и в сборку поедет NOTICE.
-LUCIDE = {
-    "circuit-board": ('<rect width="18" height="18" x="3" y="3" rx="2"/>'
-                      '<path d="M11 9h4a2 2 0 0 0 2-2V3"/>'
-                      '<circle cx="9" cy="9" r="2"/>'
-                      '<path d="M7 21v-4a2 2 0 0 1 2-2h4"/>'
-                      '<circle cx="15" cy="15" r="2"/>'),
-    "cpu": ('<rect width="16" height="16" x="4" y="4" rx="2"/>'
-            '<rect width="6" height="6" x="9" y="9" rx="1"/>'
-            '<path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/>'
-            '<path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/>'
-            '<path d="M9 2v2"/><path d="M9 20v2"/>'),
-    "network": ('<rect x="16" y="16" width="6" height="6" rx="1"/>'
-                '<rect x="2" y="16" width="6" height="6" rx="1"/>'
-                '<rect x="9" y="2" width="6" height="6" rx="1"/>'
-                '<path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/>'
-                '<path d="M12 12V8"/>'),
-    "scan-line": ('<path d="M3 7V5a2 2 0 0 1 2-2h2"/>'
-                  '<path d="M17 3h2a2 2 0 0 1 2 2v2"/>'
-                  '<path d="M21 17v2a2 2 0 0 1-2 2h-2"/>'
-                  '<path d="M7 21H5a2 2 0 0 1-2-2v-2"/>'
-                  '<path d="M7 12h10"/>'),
-    "radar": ('<path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/>'
-              '<path d="M4 6h.01"/>'
-              '<path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/>'
-              '<path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/>'
-              '<path d="M12 18h.01"/>'
-              '<path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/>'
-              '<circle cx="12" cy="12" r="2"/>'
-              '<path d="m13.41 10.59 5.66-5.66"/>'),
-}
-
-
 def _icon_strip() -> str:
-    order = ["scan-line", "cpu", "circuit-board", "network", "radar"]
-    parts = []
-    for i, name in enumerate(order):
-        x = 8 + i * 50
-        colour = ACCENT if name == "radar" else CYAN
-        parts.append(
-            f'<g transform="translate({x} 10) scale(1)" fill="none" '
-            f'stroke="{colour}" stroke-width="1.6" stroke-linecap="round" '
-            f'stroke-linejoin="round" opacity="0.75">{LUCIDE[name]}</g>')
-        if i < len(order) - 1:
-            parts.append(f'<path d="M{x + 28} 22 H{x + 46}" stroke="{CYAN}" '
-                         f'stroke-width="0.8" opacity="0.35"/>')
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}">'
-            + "".join(parts) + "</svg>")
+    """Вариант 4 — берём ПРЯМО из приложения, а не собираем заново.
+
+    ⚠ Раньше здесь лежала своя копия раскладки с координатами под холст
+    260x44. Когда шапку уменьшили до 202x34, копия про это не узнала: цепочка
+    вылезла за холст, и у радара обрезался хвост. Показывать в черновиках не то,
+    что в продукте, — худшее, что может делать папка вариантов.
+    """
+    from launcher.ui.decals import HEADER_SVG
+    return HEADER_SVG
 
 
 VARIANTS = {
@@ -203,7 +176,7 @@ def main() -> None:
         render_svg(svg, W, H, 3.0).save(str(OUT / f"{name}.png"))
 
         # Он же в настоящей шапке, 1:1 — вот это и есть предмет выбора.
-        header = HeaderBar("HA Lighting Compilers", "v3.0.0-dev")
+        header = HeaderBar("HA Lighting Compilers", f"v{__version__}")
         header.findChildren(type(header))  # noqa: B018
         label = header.layout().itemAt(2).widget()
         label.setPixmap(render_svg(svg, W, H, 1.0))
