@@ -122,8 +122,49 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 Один адрес датчика порождает **две** сущности: `sensor.ms_*` и `sensor.il_*`.
 `il_` появляется у любых датчиков и будет использоваться в автоматизациях.
 
-Группы (`light.<group_id>` и `light.<room_slug>_obshchii`) создаём мы сами —
-это единственные сущности, которых без нас в HA не будет.
+## Что создаём мы, а не интеграция
+
+Всё, что ниже, без нас в Home Assistant не появится.
+
+| Объект | Правило | Пример | Кто генерирует |
+|---|---|---|---|
+| Группа зоны | `light.<group_id>` | `light.102_1` | `generate_lights_groups` |
+| Общая группа помещения | `light.<room_slug>_obshchii` | `light.103_vestibiul_obshchii` | `generate_general_groups` |
+| Группа этажа | `light.ves_<N>_i_etazh` | `light.ves_1_i_etazh` | `generate_floor_groups` |
+| Группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `light.tekh_pom_1_i_etazh` | `generate_floor_groups` |
+| Area этажа | `ves_<N>_etazh` | `ves_1_etazh` | `generate_areas` |
+| Задержка гашения | `input_number.vacant_delay` | | `generate_helpers` |
+| Кнопка «назад» | `input_button.but_back` | | `generate_helpers` |
+| Режим этажа | `input_boolean.regim_auto_<N>` | `input_boolean.regim_auto_1` | `generate_helpers` |
+| Навигация по этажу | `input_select.nav_floor_<N>` | `input_select.nav_floor_1` | `generate_helpers` |
+| Пресеты зала | `input_boolean.<preset>` | `input_boolean.rezhim_tetra` | `generate_helpers` |
+
+Все правила — в `canon.py`; генераторы их не выводят сами.
+
+## ⚠ `unique_id` — это НЕ `entity_id`
+
+Самый дорогой капкан проекта: на нём уже обожглись, и он повторяем.
+
+У YAML-платформы `light: - platform: group` идентификатор сущности выводится из
+**отображаемого имени** через slugify. `unique_id` только регистрирует запись в
+реестре и на `entity_id` не влияет никак:
+
+```yaml
+- platform: group
+  name: "Весь 1-й этаж"      # -> light.ves_1_i_etazh   <- вот это entity_id
+  unique_id: floor_1_all     # -> в реестр, и только
+```
+
+`light.floor_1_all` **не существует**. Бейдж, сославшийся на него, молча висел
+в пустоте и показывал «сущность недоступна».
+
+То же и с Areas: `area_id` генерирует HA из имени, задать его при создании
+нельзя. Поэтому `canon.floor_area_id()` выводит его из того же имени, которое
+само же и создаёт.
+
+**Правило:** ссылаться на наши группы только через билдеры канона
+(`floor_light_entity`, `tech_light_entity`, `general_light_entity`), никогда —
+через `unique_id`.
 
 `room_slug` — транслит русского названия помещения. Это единственное место, где
 пайплайн зависит от русского текста: переименование помещения в таблице
@@ -390,8 +431,11 @@ panels_by_group  = [["event.kp_1_2_1"], ["event.kp_1_2_2"]]
 5. Колонки `(авто)` — исчезли, fallback-логика `_pick_first_existing` больше
    не нужна для них.
 6. `generic` и `nearest_variant` fallback — упразднены.
-7. `MS_SENSOR_i` в шаблонах карточек индексировался по группам. С 0..N датчиков
-   на группу это правило нужно пересматривать вместе с новыми шаблонами.
+7. ~~`MS_SENSOR_i` в шаблонах карточек индексировался по группам~~ —
+   **закрыто.** Шаблоны v3 (`templates/lovelace/`) берут датчики из
+   `sensors_by_group`: 0 датчиков → пустая ячейка, >1 → стопкой в одной.
+   Плейсхолдера `MS_SENSOR_i` в шаблонах больше нет.
 
 Старый `data/example.xlsx` остаётся в репозитории как исторический артефакт.
-Пайплайн v2 на нём не работает — это ожидаемо.
+Пайплайн v3 на нём не работает — валидатор скажет «нет листа "Проектная БД"»,
+и это ожидаемое поведение.

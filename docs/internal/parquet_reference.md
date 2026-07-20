@@ -271,6 +271,16 @@ pa.Table.from_pandas(frame, schema=SCHEMAS[name], preserve_index=False)
 
 Не читайте parquet напрямую. Используйте `scripts/_lib/normalized.py`:
 
+Нужен один датасет — `load_dataset` (так делает большинство генераторов):
+
+```python
+from scripts._lib.normalized import load_dataset
+
+spaces = load_dataset(Path("data/normalized"), "spaces")
+```
+
+Нужны несколько сразу — `load_normalized`:
+
 ```python
 from scripts._lib.normalized import load_normalized
 
@@ -280,9 +290,15 @@ layer.spaces
 layer.devices
 ```
 
-Он проверяет, что файл соответствует объявленной схеме, и внятно ругается на
-parquet, собранный старой версией `normalize_excel.py`, — вместо того чтобы
-дать генератору странно себя повести.
+⚠ `load_normalized` отдаёт **три** датасета из четырёх: `units` в
+`NormalizedLayer` не входит. Нужны единицы обслуживания — только
+`load_dataset(path, "units")`, как это делают `generate_scripts` и
+`generate_automations`.
+
+Оба проверяют, что файл соответствует объявленной схеме, и внятно ругаются на
+parquet, собранный старой версией `normalize_excel.py`
+(`NormalizedLayerError`), — вместо того чтобы дать генератору странно себя
+повести.
 
 ---
 
@@ -297,7 +313,16 @@ python scripts/show_normalized.py --group 102_1   # группа + строки 
 python scripts/show_normalized.py --devices --full
 ```
 
-Или в Python Console:
+⚠ **`units.parquet` просмотрщик не показывает.** Обзор выводит паспорт и три
+датасета — `devices`, `groups`, `spaces`; флага для единиц обслуживания у
+`show_normalized.py` нет вовсе. Пока смотреть только так:
+
+```python
+import pandas as pd
+pd.read_parquet('data/normalized/units.parquet')
+```
+
+Или в Python Console — любой датасет:
 
 ```python
 import pandas as pd
