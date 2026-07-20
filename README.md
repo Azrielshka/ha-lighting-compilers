@@ -187,8 +187,18 @@ python -m venv .venv
 первым нашлось в PATH, обычно системное. Установка пройдёт, а лаунчер скажет,
 что модуля нет.
 
-`requirements-dev.txt` подключает `requirements.txt` целиком, так что PySide6 и
-pyinstaller ставятся и разработчику тоже.
+Три файла зависимостей — по тому, кому что нужно:
+
+| Файл | Что внутри | Кому |
+|---|---|---|
+| `requirements.txt` | pandas, pyarrow, openpyxl, PyYAML, paramiko, websockets | рантайм скриптов; **едет в релизный архив** |
+| `requirements-gui.txt` | PySide6 | лаунчер из исходников и сборка EXE |
+| `requirements-dev.txt` | оба выше + pytest + pyinstaller | разработка и CI |
+
+⚠ **PySide6 в `requirements.txt` намеренно нет.** Ни один скрипт его не
+импортирует; пользователю релизного архива он не нужен — оконная библиотека
+уже внутри `launcher.exe`. Держали его там до 2026-07-20, и каждый объект качал
+0.62 ГБ Qt впустую. Вернёте — вернёте и это.
 
 ```bash
 python -m pytest tests/ -q          # тесты

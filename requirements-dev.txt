@@ -1,7 +1,10 @@
-# Dev-зависимости (Linux VM разработчика).
-# Целевая машина наладчика ставит requirements.txt — там ещё PySide6 и pyinstaller,
-# которые для запуска и тестов скриптов не нужны.
+# Всё для разработки и сборки: рантайм + GUI + тесты + PyInstaller.
+#
+# Ставится на машине разработчика и на раннере GitHub Actions.
+# Пользователю релизного архива нужен только requirements.txt.
 
 -r requirements.txt
+-r requirements-gui.txt
 
 pytest>=8.0
+pyinstaller>=6.0    # сборка EXE; в рантайме не нужен

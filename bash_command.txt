@@ -22,10 +22,21 @@ which python                       # Linux
 # Установка зависимостей.
 # ⚠ Именно "<python из venv> -m pip", а не голый pip: иначе пакеты уедут
 # не в то окружение, и лаунчер их не найдёт.
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+#
+# Три файла — по тому, кому что нужно:
+#   requirements.txt       рантайм скриптов (~330 МБ). Едет в релизный архив
+#   requirements-gui.txt   PySide6: лаунчер из исходников и сборка EXE
+#   requirements-dev.txt   всё выше + pytest + pyinstaller
+#
+# ⚠ PySide6 в requirements.txt НЕТ намеренно: скрипты его не импортируют, а у
+# пользователя архива он уже внутри launcher.exe. Не возвращайте — это 0.62 ГБ
+# на каждый объект впустую.
 
-# Для тестов нужен ещё requirements-dev.txt
+# Разработка (обычный случай):
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+
+# Только прогнать скрипты, без окна:
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 
 # ------------------------------------------------------------
 # 1) ТАБЛИЦЫ И ДАННЫЕ

@@ -31,8 +31,12 @@ jobs:
         with:
           python-version: '3.11'
 
+      # ⚠ Именно -dev: requirements.txt теперь ТОЛЬКО рантайм скриптов, в нём нет
+      # ни PySide6, ни pyinstaller. Раннеру нужны оба: первый PyInstaller
+      # упаковывает в EXE, вторым он собирает. Поставите requirements.txt —
+      # сборка упадёт на «pyinstaller: command not found».
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       # Версия в шапке лаунчера обязана совпасть с тегом.
       #
