@@ -41,6 +41,7 @@ data/backups/
 data/lovelace_cards_report.json
 data/validation_report.json
 data/areas/
+data/helpers/
 data/scripts/
 data/automations/
 data/blueprints/
