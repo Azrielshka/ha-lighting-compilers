@@ -8,4 +8,4 @@
 # (.github/workflows/release.yml), но менять здесь — всё равно вручную.
 #
 # Порядок: правим здесь -> коммит -> тег vX.Y.Z -> GitHub Actions соберёт EXE.
-__version__ = "3.0.0"
+__version__ = "3.1.0"
