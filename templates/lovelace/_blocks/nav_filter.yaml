@@ -31,3 +31,15 @@
       grid_options:
         columns: full
     [[FILTER_TILES]]
+    # ⚠ ВРЕМЕННОЕ: второй фильтр — тот же набор типов одним списком.
+    # Стоит рядом с плитками намеренно: их и сравниваем. Условия видимости
+    # складываются по И, поэтому каждый фильтр глушится своим «Все»:
+    # булевы на «Все» -> рулит список; список на «Все» -> рулят плитки.
+    - type: tile
+      entity: "[[FILTER_SELECT]]"
+      icon: mdi:filter-menu
+      features_position: bottom
+      features:
+        - type: select-options
+      grid_options:
+        columns: full

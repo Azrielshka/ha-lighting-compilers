@@ -49,6 +49,7 @@ from scripts._lib.canon import (
     floor_icon,
     floor_light_entity,
     floor_nav_entity,
+    nav_pick_entity,
     nav_type_all_entity,
     nav_type_entity,
     space_label,
@@ -331,6 +332,7 @@ def build_nav_filter(templates_dir: Path) -> str:
         tile = tile.replace("[[FILTER_ICON]]", icon)
         tiles.append(tile)
 
+    panel = panel.replace("[[FILTER_SELECT]]", nav_pick_entity())
     return _splice(panel, "[[FILTER_TILES]]", "\n".join(tiles))
 
 
@@ -413,6 +415,25 @@ def build_compact_card(block: dict, heading: str, general_light: str,
                 {"condition": "state", "entity": nav_type_entity(space_type), "state": "on"},
             ],
         }]
+
+        # ⚠ ВРЕМЕННОЕ (2026-07-20): второе условие — фильтр-список, заведённый
+        # для сравнения с плитками. Условия верхнего уровня складываются по И,
+        # поэтому карточка видна, только если её пропустили ОБА фильтра.
+        # Каждый глушится своим «Все»:
+        #     булевы на «Все» -> рулит список
+        #     список на «Все» -> рулят плитки
+        #
+        # Здесь хватает ОДНОГО условия вместо `or`: сущность одна, а `state`
+        # принимает список значений.
+        #
+        # Убирая проигравший вариант, снимите отсюда соответствующий блок —
+        # иначе карточки останутся привязаны к сущности, которой больше нет,
+        # и этаж окажется пустым.
+        card["visibility"].append({
+            "condition": "state",
+            "entity": nav_pick_entity(),
+            "state": [NAV_TYPE_ALL_LABEL, NAV_TYPE_LABELS[space_type]],
+        })
 
     return card
 

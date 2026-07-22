@@ -45,7 +45,9 @@ from scripts._lib.canon import (
     NAV_TYPE_ALL_ID,
     NAV_TYPE_ALL_LABEL,
     NAV_TYPE_ICONS,
+    NAV_PICK_ID,
     NAV_TYPE_LABELS,
+    nav_pick_options,
     nav_type_id,
     BACK_BUTTON_ID,
     NAV_PLACEHOLDER,
@@ -150,6 +152,18 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     # Заглушка первой опцией и она же initial: при загрузке ничего не выбрано.
     # В карту перехода она не попадает — см. canon.NAV_PLACEHOLDER.
     selects: Dict[str, Dict] = {}
+
+    # ⚠ ВРЕМЕННОЕ (2026-07-20): второй фильтр тем же набором типов, но списком.
+    # Заведён, чтобы сравнить на объекте два вида управления — семь плиток
+    # против одного селекта. После сравнения один из двух уходит; убирая
+    # проигравший, снимите и соответствующее условие в build_compact_card.
+    selects[NAV_PICK_ID] = {
+        "name": "Фильтр: тип помещения",
+        "options": nav_pick_options(),
+        "initial": nav_pick_options()[0],   # «Все помещения» — фильтр не сужает
+        "icon": "mdi:filter-menu",
+    }
+
     for floor in floors:
         selects[floor_nav_id(floor)] = {
             "name": f"Помещения {floor} этажа",

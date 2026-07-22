@@ -44,6 +44,18 @@ def _payload(layer: Path, filters: Filters = None) -> dict:
     return H.build_payload(load_dataset(layer, "spaces"), filters or Filters())
 
 
+def _floor_navs(package: dict) -> dict:
+    """Списки навигации по этажам — только они.
+
+    ⚠ Не «все input_select». В пакете теперь есть и nav_type_pick — фильтр по
+    типу помещения, заведённый для сравнения с плитками. Он не про этажи, у
+    него другие опции и другой initial. Тесты, проверявшие «все селекты»,
+    упали именно на нём: интересовали их всегда только этажные.
+    """
+    return {k: v for k, v in package["input_select"].items()
+            if k.startswith("nav_floor_")}
+
+
 def _package(layer: Path) -> dict:
     """Пакет так, как его увидит Home Assistant: после разбора YAML."""
     doc = yaml.safe_load(H.render_yaml(_payload(layer)))
@@ -90,7 +102,7 @@ def test_vacant_delay_has_initial_on_purpose(object_layer):
 # ============================================================
 
 def test_nav_select_per_floor_with_room_options(object_layer):
-    selects = _package(object_layer)["input_select"]
+    selects = _floor_navs(_package(object_layer))
 
     assert set(selects) == {"nav_floor_1", "nav_floor_2"}
     assert selects["nav_floor_2"]["options"] == [NAV_PLACEHOLDER, "208 Входной тамбур"]
@@ -106,14 +118,14 @@ def test_nav_starts_with_nothing_selected(object_layer):
     У input_select пустого состояния не бывает: оно всегда одна из options.
     Поэтому «ничего не выбрано» = заглушка первой опцией, она же initial.
     """
-    for select in _package(object_layer)["input_select"].values():
+    for select in _floor_navs(_package(object_layer)).values():
         assert select["options"][0] == NAV_PLACEHOLDER
         assert select["initial"] == NAV_PLACEHOLDER
 
 
 def test_placeholder_is_not_a_room_name(object_layer):
     """Заглушка не должна совпасть с именем помещения — оно стало бы недостижимо."""
-    for select in _package(object_layer)["input_select"].values():
+    for select in _floor_navs(_package(object_layer)).values():
         rooms = select["options"][1:]
         assert NAV_PLACEHOLDER not in rooms
 
@@ -226,7 +238,9 @@ def test_no_helpers_without_floors(tmp_path):
     N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
 
     payload = _payload(out)
-    assert payload["input_select"] == {}
+    # Списков ПО ЭТАЖАМ нет. Фильтр типов (nav_type_pick) остаётся: он от
+    # этажей не зависит и нужен панели, которая одна на объект.
+    assert not any(k.startswith("nav_floor_") for k in payload["input_select"])
     assert not any(k.startswith("regim_auto_") for k in payload["input_boolean"])
 
 
