@@ -132,6 +132,7 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Общая группа помещения | `light.<room_slug>_obshchii` | `light.103_vestibiul_obshchii` | `generate_general_groups` |
 | Группа этажа | `light.ves_<N>_i_etazh` | `light.ves_1_i_etazh` | `generate_floor_groups` |
 | Группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `light.tekh_pom_1_i_etazh` | `generate_floor_groups` |
+| Группа всего объекта | `light.ves_obekt` | | `generate_floor_groups` |
 | Area этажа | `ves_<N>_etazh` | `ves_1_etazh` | `generate_areas` |
 | Задержка гашения | `input_number.vacant_delay` | | `generate_helpers` |
 | Кнопка «назад» | `input_button.but_back` | | `generate_helpers` |
@@ -143,6 +144,38 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Пресеты зала | `input_boolean.<preset>` | `input_boolean.rezhim_tetra` | `generate_helpers` |
 
 Все правила — в `canon.py`; генераторы их не выводят сами.
+
+## Иерархия групп света — четыре уровня
+
+```
+лампы  ->  зона (light.<group_id>)
+       ->  общая группа помещения (light.<room_slug>_obshchii)
+       ->  группа этажа (light.ves_<N>_i_etazh)
+       ->  весь объект (light.ves_obekt)
+```
+
+Группа объекта собрана **вложенно**: её `entities` — это группы этажей, а не
+общие группы помещений. Решение владельца 2026-07-20, допущения приняты явно.
+
+⚠ **Техгруппы (`light.tekh_pom_<N>_i_etazh`) в объект НЕ входят.** Они
+подмножество этажных: одно и то же техпомещение состоит и там, и там. Возьми
+кто-нибудь «все группы из файла `lights_floor_groups.yaml`» скопом —
+техпомещения посчитались бы дважды. Ошибка тихая: группа светится, а состав
+глазами не виден.
+
+⚠ **Яркость объекта — среднее от средних по этажам**, а не среднее по лампам:
+`group/light.py` считает её через `reduce_attribute` от значений участников, а у
+этажной группы это уже усреднённая величина. При разном числе помещений на
+этажах цифра смещена. Вкл/выкл при этом точен, и на Главной группа выведена
+бейджем, где ползунка нет. Понадобится честная яркость — состав придётся
+сделать плоским, из общих групп помещений.
+
+⚠ **Помещение без этажа в группу объекта не попадёт** — оно не попало ни в одну
+этажную. Случай виден в отчёте шага: `generate_floor_groups` печатает про такие
+помещения предупреждение.
+
+Проверка целостности иерархии — `tests/test_generators.py::test_no_dangling_entities`
+и `tests/test_object_group.py`.
 
 ⏳ `nav_type_pick` помечен как временный: он заведён для сравнения двух видов
 управления фильтром (семь плиток против одного списка) и после сравнения один

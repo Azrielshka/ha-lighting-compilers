@@ -79,6 +79,7 @@ ha-lighting-compilers/
 | общая группа помещения | `light.<room_slug>_obshchii` | `generate_general_groups` |
 | группа этажа | `light.ves_<N>_i_etazh` | `generate_floor_groups` |
 | группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `generate_floor_groups` |
+| группа всего объекта | `light.ves_obekt` — вложенно, из групп этажей | `generate_floor_groups` |
 | Area этажа | `ves_<N>_etazh` | `generate_areas` |
 | помощники | `input_number.vacant_delay`, `input_button.but_back`, `input_boolean.regim_auto_<N>`, `input_select.nav_floor_<N>`, пресеты зала | `generate_helpers` |
 | фильтр навигации | `input_boolean.nav_type_all` + шесть `nav_type_<тип>`; временно ещё `input_select.nav_type_pick` | `generate_helpers` |
