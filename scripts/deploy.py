@@ -199,8 +199,21 @@ def _print_areas_plan(plan: Plan, title: str) -> None:
         floor = f"этаж {area['floor']}" if "floor" in area else "без этажа"
         print(f"      + {area['name']:28} [{aliases}]  {floor}")
 
+    # Разметка для Оркестратора здания. В dry-run реестр сущностей не
+    # запрашивался, поэтому назначений здесь ровно столько, сколько Areas
+    # со светом, — при живом деплое часть окажется уже назначенной.
+    if areas_plan.labels_to_create or areas_plan.assignments:
+        print(f"    Меток:       {len(areas_plan.labels_to_create)}")
+        for label in areas_plan.labels_to_create:
+            print(f"      + {label}")
+        print(f"    Назначений света: {len(areas_plan.assignments)}")
+        print("      (по одной световой сущности на Area)")
+
     print("\n    ⚠ Создаются по WebSocket, не файлами. Идемпотентно:")
     print("      существующие пропускаются по имени.")
+    print("    ⚠ Свет назначится только тем сущностям, что уже есть в реестре")
+    print("      HA. На первом деплое групп там ещё нет — перезапустите HA")
+    print("      и повторите деплой.")
     print()
 
 
@@ -281,10 +294,26 @@ def deploy_areas(areas_file: Path, ws: WSConfig) -> int:
         payload,
         existing_areas=existing["areas"],
         existing_floors=existing["floors"],
+        existing_labels=list(existing.get("labels") or {}),
+        existing_area_labels=existing.get("area_labels"),
+        entity_areas=existing.get("entity_areas"),
     )
 
+    # Сущностей может не быть в реестре — это штатно на первом деплое: пакеты
+    # групп света только положены на диск, а Home Assistant мы не
+    # перезапускаем (решение владельца). Говорим об этом до выхода по
+    # is_empty, иначе на повторном деплое сообщение потерялось бы.
+    if areas_plan.entities_missing:
+        print(f"  ⚠ не найдены в реестре HA: {len(areas_plan.entities_missing)} сущностей")
+        for entity in areas_plan.entities_missing[:5]:
+            print(f"      {entity}")
+        if len(areas_plan.entities_missing) > 5:
+            print(f"      … и ещё {len(areas_plan.entities_missing) - 5}")
+        print("    Это не ошибка. Перезапустите Home Assistant и повторите")
+        print("    деплой — назначения доедут вторым проходом.\n")
+
     if areas_plan.is_empty:
-        print("  Всё уже создано — пропускаем (идемпотентность).\n")
+        print("  Всё уже создано и размечено — пропускаем (идемпотентность).\n")
         return 0
 
     for name in areas_plan.floors_existing + areas_plan.areas_existing:
@@ -293,7 +322,10 @@ def deploy_areas(areas_file: Path, ws: WSConfig) -> int:
     stats = client.apply(areas_plan)
 
     print(f"  + этажей создано:      {stats['floors_created']}")
-    print(f"  + пространств создано: {stats['areas_created']}\n")
+    print(f"  + пространств создано: {stats['areas_created']}")
+    print(f"  + меток создано:       {stats['labels_created']}")
+    print(f"  + Areas размечено:     {stats['areas_labeled']}")
+    print(f"  + света назначено:     {stats['entities_assigned']}\n")
 
     return 0
 

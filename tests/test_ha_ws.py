@@ -244,7 +244,10 @@ def test_apply_creates_floors_before_areas():
 
     stats = client.apply(plan)
 
-    assert stats == {"floors_created": 1, "areas_created": 1}
+    # Сверяем только создание: разметку для Оркестратора (метки, назначение
+    # света) проверяет test_ba_registry.py, и её счётчики здесь не при чём.
+    assert stats["floors_created"] == 1
+    assert stats["areas_created"] == 1
 
     creates = [c for c in fake.sent if c["type"].endswith("/create")]
     assert creates[0]["type"] == "config/floor_registry/create"

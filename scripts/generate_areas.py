@@ -33,12 +33,17 @@ from typing import Dict, List
 import pandas as pd
 
 from scripts._lib.canon import (
+    BA_FLOOR_AREA_LABEL,
     area_aliases,
     area_name,
+    ba_type_label,
     floor_area_id,
     floor_area_name,
     floor_icon,
+    floor_light_entity,
     floor_name,
+    general_light_entity,
+    normalize_space_type,
 )
 from scripts._lib.filters import (
     Filters,
@@ -65,11 +70,22 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
 
         {
           "floors": [{"level": 1, "name": "1 этаж", "icon": "mdi:home-floor-1"}],
-          "areas":  [{"name": "101_Тамбур", "aliases": ["101_tambur"], "floor": 1}]
+          "areas":  [{"name": "101_Тамбур", "aliases": ["101_tambur"], "floor": 1,
+                      "light": "light.101_tambur_obshchii",
+                      "labels": ["ba_type_special"]}]
         }
 
     Привязка area -> floor хранится уровнем этажа, а не floor_id: id выдаёт
     сам Home Assistant при создании, и знать его заранее мы не можем.
+
+    Поля light и labels — для Оркестратора здания (см. канон, раздел меток).
+    light назначается сущности при деплое (config/entity_registry/update),
+    labels — самой Area. Оба поля необязательны: без Оркестратора они просто
+    размечают реестр и никому не мешают.
+
+    ⚠ light строим билдерами канона, а НЕ из unique_id группы: у YAML-групп
+    entity_id выводится из отображаемого имени через slugify, а unique_id лишь
+    регистрирует запись в реестре. Подробнее — data_model.md.
     """
     total = len(spaces_df)
     filtered, excluded = apply_filters(spaces_df, filters)
@@ -89,10 +105,23 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     # Порядок — как в таблице.
     for _, row in filtered.iterrows():
         space = str(row["space"])
+        room_slug = str(row["room_slug"])
+
         area: Dict = {
             "name": area_name(space),
-            "aliases": area_aliases(str(row["room_slug"])),
+            "aliases": area_aliases(room_slug),
+            # Ровно одна световая сущность на Area — общий свет помещения.
+            # Зонные группы и отдельные лампы сюда не попадают намеренно.
+            "light": general_light_entity(room_slug),
         }
+
+        space_type = normalize_space_type(row.get("space_type"))
+        if space_type:
+            area["labels"] = [ba_type_label(space_type)]
+        else:
+            # Тип не проставлен — метку не выдумываем. Оркестратор без неё
+            # просто не применит профиль по типу; это лучше, чем неверный.
+            print(f"  ⚠ у помещения {space} не указан тип — Area будет без метки типа")
 
         floor = row["floor"]
 
@@ -123,11 +152,18 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     # сущность принадлежит ровно одной Area, но групповые светильники этажа
     # устройства не имеют, интеграция их никуда не разложит, и попадут они
     # только сюда (руками владельца).
+    # Метка ba_floor_area отличает агрегатную Area от комнатной. Опознавать по
+    # имени нельзя: area_id выводится из имени при создании, а переименование
+    # в интерфейсе HA его не меняет — связь по имени разъедется. Без метки
+    # Оркестратор отправил бы команду и на этажную группу, и на каждое
+    # помещение этажа: то самое двойное воздействие, только с другой стороны.
     floor_areas = [
         {
             "name": floor_area_name(f["level"]),
             "aliases": [floor_area_id(f["level"])],
             "floor": f["level"],
+            "light": floor_light_entity(f["level"]),
+            "labels": [BA_FLOOR_AREA_LABEL],
         }
         for f in floors
     ]
@@ -154,6 +190,13 @@ def render_yaml(payload: Dict) -> str:
         "# name    — как помещение будет называться в HA (из колонки «Название помещения»)",
         "# aliases — транслит, чтобы помещение находилось и по нему",
         "# floor   — уровень этажа; сам floor_id выдаёт Home Assistant при создании",
+        "# light   — какую световую сущность назначить в эту Area (ровно одну)",
+        "# labels  — метки для Оркестратора здания",
+        "#",
+        "# ⚠ light назначится только той сущности, которая уже есть в реестре HA.",
+        "# На ПЕРВОМ деплое групп света там ещё нет: пакеты только положены на",
+        "# диск, а Home Assistant деплой не перезапускает. Это не ошибка —",
+        "# перезапустите HA и повторите деплой, назначения доедут вторым проходом.",
         "",
     ]
 
@@ -183,6 +226,14 @@ def render_yaml(payload: Dict) -> str:
 
         if "floor" in area:
             lines.append(f"    floor: {area['floor']}")
+
+        if area.get("light"):
+            lines.append(f"    light: {area['light']}")
+
+        labels = area.get("labels") or []
+        if labels:
+            joined = ", ".join(labels)
+            lines.append(f"    labels: [{joined}]")
 
     return "\n".join(lines) + "\n"
 
