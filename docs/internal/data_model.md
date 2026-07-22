@@ -136,10 +136,23 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Задержка гашения | `input_number.vacant_delay` | | `generate_helpers` |
 | Кнопка «назад» | `input_button.but_back` | | `generate_helpers` |
 | Режим этажа | `input_boolean.regim_auto_<N>` | `input_boolean.regim_auto_1` | `generate_helpers` |
+| Фильтр: показать всё | `input_boolean.nav_type_all` | | `generate_helpers` |
+| Фильтр: тип помещения | `input_boolean.nav_type_<тип>` | `input_boolean.nav_type_korridor` | `generate_helpers` |
+| Фильтр списком ⏳ | `input_select.nav_type_pick` | | `generate_helpers` |
 | Навигация по этажу | `input_select.nav_floor_<N>` | `input_select.nav_floor_1` | `generate_helpers` |
 | Пресеты зала | `input_boolean.<preset>` | `input_boolean.rezhim_tetra` | `generate_helpers` |
 
 Все правила — в `canon.py`; генераторы их не выводят сами.
+
+⏳ `nav_type_pick` помечен как временный: он заведён для сравнения двух видов
+управления фильтром (семь плиток против одного списка) и после сравнения один
+из двух уходит. Подробности и предупреждения — `decisions.md`.
+
+⚠ **Ключи фильтра — те же строки, что `ALLOWED_SPACE_TYPES`.** Карточка
+помещения ссылается на помощника своего типа; разъедься они на символ, фильтр
+молча перестал бы её показывать. Стережёт `test_every_space_type_has_a_label`:
+новый тип помещения без подписи в `NAV_TYPE_LABELS` роняет тест, а не тихо
+выпадает из фильтра.
 
 ## ⚠ `unique_id` — это НЕ `entity_id`
 

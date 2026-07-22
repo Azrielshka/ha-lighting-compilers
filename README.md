@@ -81,6 +81,7 @@ ha-lighting-compilers/
 | группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `generate_floor_groups` |
 | Area этажа | `ves_<N>_etazh` | `generate_areas` |
 | помощники | `input_number.vacant_delay`, `input_button.but_back`, `input_boolean.regim_auto_<N>`, `input_select.nav_floor_<N>`, пресеты зала | `generate_helpers` |
+| фильтр навигации | `input_boolean.nav_type_all` + шесть `nav_type_<тип>`; временно ещё `input_select.nav_type_pick` | `generate_helpers` |
 
 ⚠ **`unique_id` — это не `entity_id`.** У YAML-платформы `light: - platform:
 group` идентификатор выводится из **имени** через slugify, а `unique_id` только
