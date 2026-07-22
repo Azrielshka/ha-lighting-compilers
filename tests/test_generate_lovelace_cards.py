@@ -161,6 +161,30 @@ DASHBOARD = "dash-test"
 DASHBOARD_TITLE = "Объект-тест"
 
 
+def _room_cards(view: dict) -> list:
+    """Карточки помещений этажного view — по содержимому, а не по индексу секции.
+
+    ⚠ Индекс секции сюда не годится. На этажном view их теперь две: панель
+    фильтра сверху и помещения под ней. Тесты искали `sections[0]` и упали,
+    когда панель встала первой. Вставят завтра ещё одну секцию — упадут снова,
+    хотя проверяют они совсем другое.
+
+    Помещение опознаём по кнопке «Подробнее» с переходом в subview: это то, что
+    делает карточку карточкой помещения.
+    """
+    out = []
+    for section in view.get("sections", []):
+        for card in section.get("cards", []):
+            inner = card.get("cards") or []
+            if not inner:
+                continue
+            last = inner[-1]
+            path = (last.get("tap_action") or {}).get("navigation_path", "")
+            if "zm-space-" in str(path):
+                out.append(card)
+    return out
+
+
 def _generate(object_layer, tmp_path) -> dict:
     """Сгенерировать views в файлы; вернуть {path: view}."""
     out_dir = tmp_path / "lovelace"
@@ -193,8 +217,8 @@ def test_floor_view_holds_compact_cards_with_navigation(object_layer, tmp_path):
     """На этажном view — компактные карточки, каждая ведёт в свой subview."""
     views = _generate(object_layer, tmp_path)
     floor = views["zm-floor-1"]
-    cards = floor["sections"][0]["cards"]
-    assert cards, "этажный view пуст"
+    cards = _room_cards(floor)
+    assert cards, "на этажном view нет карточек помещений"
 
     for card in cards:
         button = card["cards"][-1]
@@ -229,7 +253,7 @@ def test_compact_button_keeps_card_mod_css(object_layer, tmp_path):
     потерять или исказить его при сборке нельзя.
     """
     views = _generate(object_layer, tmp_path)
-    button = views["zm-floor-1"]["sections"][0]["cards"][0]["cards"][-1]
+    button = _room_cards(views["zm-floor-1"])[0]["cards"][-1]
 
     css = button["card_mod"]["style"]
     assert "flex-direction: row-reverse !important" in css
@@ -287,7 +311,7 @@ def test_second_floor_gets_its_own_view(object_layer, tmp_path):
     assert views["zm-floor-2"]["max_columns"] == 3
     assert views["zm-floor-2"]["sections"][0]["column_span"] == 3
     # 208-е помещение попало на второй этаж, а не к первому
-    cards = views["zm-floor-2"]["sections"][0]["cards"]
+    cards = _room_cards(views["zm-floor-2"])
     paths = [c["cards"][-1]["tap_action"]["navigation_path"] for c in cards]
     assert paths == [f"/{DASHBOARD}/zm-space-208_vkhodnoi_tambur"]
 

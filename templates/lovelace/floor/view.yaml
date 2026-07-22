@@ -60,6 +60,13 @@ badges:
     show_icon: true
     color: green
 sections:
+  # Панель фильтра — СВЕРХУ (решение владельца 2026-07-20): фильтровать, не
+  # листая до низа. Помощники общие на объект, поэтому панель здесь и на
+  # Главной управляет одним и тем же.
+  - type: grid
+    column_span: 3
+    cards:
+      [[NAV_FILTER]]
   - type: grid
     column_span: 3
     cards:

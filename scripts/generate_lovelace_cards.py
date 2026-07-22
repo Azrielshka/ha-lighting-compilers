@@ -39,12 +39,18 @@ import yaml
 
 from scripts._lib import ha_views as V
 from scripts._lib.canon import (
+    NAV_TYPE_ALL_ID,
+    NAV_TYPE_ALL_LABEL,
+    NAV_TYPE_ICONS,
+    NAV_TYPE_LABELS,
     SERVICE_VIEWS,
     TECHNICAL_SPACE_TYPES,
     floor_area_id,
     floor_icon,
     floor_light_entity,
     floor_nav_entity,
+    nav_type_all_entity,
+    nav_type_entity,
     space_label,
     tech_light_entity,
 )
@@ -296,6 +302,38 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
     return yaml.safe_load(view)
 
 
+def build_nav_filter(templates_dir: Path) -> str:
+    """Панель фильтра навигации: «Все помещения» + шесть типов.
+
+    Собирается из канона, а не перечисляется в шаблоне: те же подписи и иконки
+    читает generate_helpers, создавая сами помощники. Разъедутся — в панели
+    будет одно имя, в реестре HA другое, и оператор увидит «сущность
+    недоступна».
+
+    Панель одинакова на всех страницах, потому что помощники ОБЩИЕ на объект:
+    отфильтровали на Главной — этажные страницы уже отфильтрованы.
+    """
+    panel = _strip_header_comments(
+        _read(templates_dir / "_blocks" / "nav_filter.yaml"))
+    tile_tpl = _strip_header_comments(
+        _read(templates_dir / "_blocks" / "nav_filter_tile.yaml"))
+
+    # «Все» первым — это выключатель фильтра, а не ещё один тип.
+    items = [(nav_type_all_entity(), NAV_TYPE_ALL_LABEL, NAV_TYPE_ICONS[NAV_TYPE_ALL_ID])]
+    items += [(nav_type_entity(t), label, NAV_TYPE_ICONS[t])
+              for t, label in NAV_TYPE_LABELS.items()]
+
+    tiles = []
+    for entity, label, icon in items:
+        tile = tile_tpl
+        tile = tile.replace("[[FILTER_ENTITY]]", entity)
+        tile = tile.replace("[[FILTER_LABEL]]", label)
+        tile = tile.replace("[[FILTER_ICON]]", icon)
+        tiles.append(tile)
+
+    return _splice(panel, "[[FILTER_TILES]]", "\n".join(tiles))
+
+
 def build_service_blocks(templates_dir: Path, dashboard: str) -> str:
     """Кнопки сервисных страниц: расписание, конфигурация.
 
@@ -338,19 +376,45 @@ def build_floor_view(templates_dir: Path, floor: int, cards: List[dict],
     tpl = tpl.replace("[[FLOOR_LIGHT]]", floor_light_entity(floor))
     tpl = tpl.replace("[[DASHBOARD]]", dashboard)
     tpl = tpl.replace("[[FLOOR]]", str(floor))
+    tpl = _splice(tpl, "[[NAV_FILTER]]", build_nav_filter(templates_dir))
     tpl = _splice(tpl, "[[CARDS]]", _dump(cards))
 
     return yaml.safe_load(tpl)
 
 
 def build_compact_card(block: dict, heading: str, general_light: str,
-                       subview_path: str) -> dict:
-    """Компактная карточка помещения для этажного view: свет + «Подробнее»."""
-    return _fill(block, {
+                       subview_path: str, space_type: str = "") -> dict:
+    """Компактная карточка помещения для этажного view: свет + «Подробнее».
+
+    Получает условие видимости по своему типу — это и есть фильтр навигации.
+
+    ⚠ `visibility` работает потому, что карточка — прямой ребёнок секции.
+    Внутри стеков и гридов это свойство игнорируется; наш блок сам грид, но
+    лежит в секции, а не внутри другого контейнера. Завернёте карточки во
+    что-нибудь ещё — фильтр молча перестанет работать, причём выглядеть это
+    будет как «фильтр не нажимается».
+
+    Скрытые карточки секция схлопывает (`.card:has(> *[hidden])`), дыр в
+    раскладке не остаётся.
+    """
+    card = _fill(block, {
         "[[HEADING]]": heading,
         "[[GENERAL_LIGHT]]": general_light,
         "[[SUBVIEW_PATH]]": subview_path,
     })
+
+    if space_type in NAV_TYPE_LABELS:
+        # ИЛИ: включён «Все» — фильтр не применяем; либо включён свой тип.
+        # `state` принимает список, но здесь нужны РАЗНЫЕ сущности, поэтому or.
+        card["visibility"] = [{
+            "condition": "or",
+            "conditions": [
+                {"condition": "state", "entity": nav_type_all_entity(), "state": "on"},
+                {"condition": "state", "entity": nav_type_entity(space_type), "state": "on"},
+            ],
+        }]
+
+    return card
 
 
 def build_zal_lights(zone_lights) -> List[dict]:
@@ -528,6 +592,7 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
             heading=heading,
             general_light=str(row["general_light_entity"]),
             subview_path=f"/{dashboard}/{V.space_view_path(room_slug)}",
+            space_type=space_type,
         )
         floor_cards.setdefault(int(row["floor"]), []).append(compact)
         # Для Главной: карта «имя → слаг» и опции навигации строятся из одного
