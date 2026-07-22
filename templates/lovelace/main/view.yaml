@@ -30,6 +30,20 @@ header:
     type: markdown
     text_only: true
     content: "# [[TITLE]]"
+# Свет всего объекта. Бейдж, а не карточка (решение владельца): компактно, и
+# ползунок яркости здесь всё равно был бы обманчив — у вложенной группы она
+# считается как среднее от средних по этажам. Вкл/выкл при этом точен.
+#
+# ⚠ badges_position и badges_wrap выше стояли ВХОЛОСТУЮ: настройки раскладки
+# были, а самого списка badges не было.
+badges:
+  - type: entity
+    entity: "[[OBJECT_LIGHT]]"
+    name: Весь объект
+    show_name: true
+    show_state: true
+    show_icon: true
+    color: amber
 sections:
   - type: grid
     column_span: 2

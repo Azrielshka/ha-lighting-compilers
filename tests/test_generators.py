@@ -195,12 +195,40 @@ def test_general_one_group_per_space(object_layer):
 # ============================================================
 # ГРУППЫ ЭТАЖЕЙ
 # ============================================================
+#
+# ⚠ В файле lights_floor_group лежат ТРИ уровня иерархии, не один:
+#     floor_<N>_all  — этаж целиком        -> ссылается на общие группы помещений
+#     tex_floor_<N>  — техпомещения этажа  -> подмножество этажной
+#     object_all     — весь объект         -> ссылается на ЭТАЖНЫЕ группы
+#
+# Поэтому «все группы файла» и «группы этажей» — разные множества, и проверки
+# состава обязаны говорить, о каком уровне они. Тесты, бравшие файл целиком,
+# упали, когда появился object_all: они проверяли этажи, а получали объект.
+
+
+def _floor_ids(doc: dict) -> list:
+    """Только группы этажей, в порядке файла."""
+    return [g["unique_id"] for g in _groups(doc, "lights_floor_group")
+            if g["unique_id"].startswith("floor_")]
+
+
+def _floor_file_creates(doc: dict) -> set:
+    """entity_id всего, что создаёт сам файл этажных групп.
+
+    Нужен, потому что object_all ссылается НЕ на общие группы помещений, а на
+    группы этажей — то есть на сущности из этого же файла. Проверка «ссылка
+    ведёт на созданное» обязана это учитывать, иначе она объявит корректную
+    иерархию висячей.
+    """
+    from scripts._lib.naming import slugify_room
+    return {f"light.{slugify_room(g['name'])}"
+            for g in _groups(doc, "lights_floor_group")}
 
 def test_floor_group_per_floor(layer):
     doc = _run(FLOOR, layer, tech_groups=False)
     groups = _groups(doc, "lights_floor_group")
 
-    assert [g["unique_id"] for g in groups] == ["floor_1_all", "floor_2_all"]
+    assert _floor_ids(doc) == ["floor_1_all", "floor_2_all"]
     assert groups[0]["name"] == "Весь 1-й этаж"
 
 
@@ -227,7 +255,7 @@ def test_floor_uses_excel_floor_column(tmp_path):
     N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
 
     doc = _run(FLOOR, out, tech_groups=False)
-    assert [g["unique_id"] for g in _groups(doc, "lights_floor_group")] == ["floor_2_all"]
+    assert _floor_ids(doc) == ["floor_2_all"]
 
 
 def test_tech_groups_on_by_default(layer):
@@ -310,7 +338,11 @@ def test_tech_group_references_existing_entities(tmp_path):
     general = _run(GENERAL, out)
     floor = _run(FLOOR, out, tech_groups=True)
 
-    assert _referenced(floor, "lights_floor_group") <= _created(general, "lights_general_group")
+    # Иерархия четырёхуровневая: зоны -> общие группы -> этажи -> объект.
+    # Ссылка законна, если ведёт на общую группу ЛИБО на группу этажа
+    # (последнее — случай object_all).
+    assert (_referenced(floor, "lights_floor_group")
+            <= _created(general, "lights_general_group") | _floor_file_creates(floor))
 
 
 # ============================================================
@@ -333,7 +365,8 @@ def test_no_dangling_entities(object_layer):
     generals = _created(general, "lights_general_group")
 
     assert _referenced(general, "lights_general_group") <= zones
-    assert _referenced(floor, "lights_floor_group") <= generals
+    # Иерархия четырёхуровневая: зоны -> общие группы -> этажи -> объект.
+    assert _referenced(floor, "lights_floor_group") <= generals | _floor_file_creates(floor)
 
 
 def test_hierarchy_counts(object_layer):
@@ -343,7 +376,7 @@ def test_hierarchy_counts(object_layer):
 
     assert len(_groups(lights, "lights_group")) == 16
     assert len(_groups(general, "lights_general_group")) == 8
-    assert len(_groups(floor, "lights_floor_group")) == 2   # этажи 1 и 2
+    assert len(_floor_ids(floor)) == 2                      # этажи 1 и 2
 
     lamps = _referenced(lights, "lights_group")
     assert len(lamps) == 91
@@ -360,7 +393,11 @@ def test_filters_keep_hierarchy_consistent(object_layer):
     general = _run(GENERAL, object_layer, filters)
     floor = _run(FLOOR, object_layer, filters, tech_groups=False)
 
-    assert _referenced(floor, "lights_floor_group") <= _created(general, "lights_general_group")
+    # Иерархия четырёхуровневая: зоны -> общие группы -> этажи -> объект.
+    # Ссылка законна, если ведёт на общую группу ЛИБО на группу этажа
+    # (последнее — случай object_all).
+    assert (_referenced(floor, "lights_floor_group")
+            <= _created(general, "lights_general_group") | _floor_file_creates(floor))
     assert len(_groups(general, "lights_general_group")) == 2
 
 
@@ -381,12 +418,12 @@ def test_filter_by_russian_name(object_layer):
 
 def test_exclude_floors(layer):
     doc = _run(FLOOR, layer, Filters(exclude_floors=[2]), tech_groups=False)
-    assert [g["unique_id"] for g in _groups(doc, "lights_floor_group")] == ["floor_1_all"]
+    assert _floor_ids(doc) == ["floor_1_all"]
 
 
 def test_include_floors(layer):
     doc = _run(FLOOR, layer, Filters(include_floors=[2]), tech_groups=False)
-    assert [g["unique_id"] for g in _groups(doc, "lights_floor_group")] == ["floor_2_all"]
+    assert _floor_ids(doc) == ["floor_2_all"]
 
 
 def test_exclude_space_contains_matches_both_spellings(object_layer):

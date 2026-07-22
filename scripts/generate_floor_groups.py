@@ -39,8 +39,11 @@ import pandas as pd
 
 from scripts._lib.canon import (
     TECHNICAL_SPACE_TYPES,
+    floor_light_entity,
     floor_group_name,
     floor_group_unique_id,
+    object_group_name,
+    object_group_unique_id,
     tech_group_name,
     tech_group_unique_id,
 )
@@ -121,6 +124,26 @@ def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = Tr
         ))
 
     floors = sorted(filtered["floor"].unique())
+
+    # Группа всего объекта — ВЛОЖЕННО, из групп этажей.
+    #
+    # ⚠ Только floor_group. Техгруппы сюда не идут: они подмножество этажных,
+    # и одно и то же техпомещение попало бы в объект дважды, перекосив яркость.
+    #
+    # ⚠ Идёт ПОСЛЕДНЕЙ в файле: порядок YAML наладчик сверяет с таблицей, а
+    # объект логически «над» этажами.
+    #
+    # На одноэтажном объекте группа дублирует единственную этажную — и всё
+    # равно создаётся: бейдж на Главной захардкожен, без сущности он покажет
+    # «недоступна». Дубль безвреден, отсутствие заметно.
+    if floors:
+        groups.append(LightGroup(
+            unique_id=object_group_unique_id(),
+            name=object_group_name(),
+            entities=[floor_light_entity(int(f)) for f in floors],
+            comment="Группа всего объекта: все этажи",
+        ))
+
     print(f"  Этажей:               {len(floors)} ({', '.join(str(int(f)) for f in floors)})")
     print(f"  Помещений в группах:  {len(filtered)}")
 
@@ -129,6 +152,9 @@ def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = Tr
         print(f"  Тех.группы:           {tech_count} (типы: {types})")
     else:
         print("  Тех.группы:           выключены (--no-tech-groups)")
+
+    if floors:
+        print(f"  Группа объекта:       1 (вложенно: {len(floors)} этаж(ей))")
 
     return render_document(ROOT_KEY, groups, "Нет данных для формирования групп по этажам")
 

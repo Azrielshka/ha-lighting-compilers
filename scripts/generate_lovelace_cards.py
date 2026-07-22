@@ -49,6 +49,7 @@ from scripts._lib.canon import (
     floor_icon,
     floor_light_entity,
     floor_nav_entity,
+    object_light_entity,
     nav_pick_entity,
     nav_type_all_entity,
     nav_type_entity,
@@ -296,6 +297,7 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
     view = _strip_header_comments(_read(templates_dir / "main" / "view.yaml"))
     view = view.replace("[[PATH]]", V.MAIN_PATH)
     view = view.replace("[[TITLE]]", title)
+    view = view.replace("[[OBJECT_LIGHT]]", object_light_entity())
     view = _splice(view, "[[FLOOR_BLOCKS]]", "\n".join(blocks))
     view = _splice(view, "[[SERVICE_BLOCKS]]",
                    build_service_blocks(templates_dir, dashboard))
