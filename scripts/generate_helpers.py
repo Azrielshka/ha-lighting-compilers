@@ -42,6 +42,11 @@ from typing import Dict, List
 import pandas as pd
 
 from scripts._lib.canon import (
+    NAV_TYPE_ALL_ID,
+    NAV_TYPE_ALL_LABEL,
+    NAV_TYPE_ICONS,
+    NAV_TYPE_LABELS,
+    nav_type_id,
     BACK_BUTTON_ID,
     NAV_PLACEHOLDER,
     space_label,
@@ -120,6 +125,28 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     for preset_id, title in ZAL_PRESETS.items():
         booleans[preset_id] = {"name": title, "icon": "mdi:theater"}
 
+    # Фильтр навигации по типу помещения. ОБЩИЙ на объект, а не на этаж:
+    # обход «только коридоры» не должен сбрасываться при переходе между
+    # этажами, и это 7 сущностей вместо 7×N.
+    #
+    # ⚠ «Все» с initial: on — чтобы на свежем объекте было видно ВСЁ. Забудете
+    # initial, и после первого старта HA дашборд окажется пустым: все фильтры
+    # выключены, ни одна карточка помещения условие не проходит. Выглядит как
+    # поломка генератора, а не как «фильтр не настроен».
+    booleans[NAV_TYPE_ALL_ID] = {
+        "name": NAV_TYPE_ALL_LABEL,
+        "icon": NAV_TYPE_ICONS[NAV_TYPE_ALL_ID],
+        "initial": True,
+    }
+    # Типы создаём ВСЕ шесть, даже если на объекте таких помещений нет.
+    # Панель фильтров одна на объект и захардкожена; помощник, которого нет,
+    # показал бы в ней «сущность недоступна».
+    for space_type, label in NAV_TYPE_LABELS.items():
+        booleans[nav_type_id(space_type)] = {
+            "name": label,
+            "icon": NAV_TYPE_ICONS[space_type],
+        }
+
     # Заглушка первой опцией и она же initial: при загрузке ничего не выбрано.
     # В карту перехода она не попадает — см. canon.NAV_PLACEHOLDER.
     selects: Dict[str, Dict] = {}
@@ -135,7 +162,8 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     print(f"  input_number:         {len(numbers)}")
     print(f"  input_button:         {len(buttons)}")
     print(f"  input_boolean:        {len(booleans)} "
-          f"(режимы этажей: {len(floors)}, пресеты зала: {len(ZAL_PRESETS)})")
+          f"(режимы этажей: {len(floors)}, пресеты зала: {len(ZAL_PRESETS)}, "
+          f"фильтр типов: {len(NAV_TYPE_LABELS) + 1})")
     print(f"  input_select:         {len(selects)}")
 
     return {
@@ -164,8 +192,9 @@ def render_yaml(payload: Dict) -> str:
         "#\n"
         "# Пайплайн создаёт сами объекты, но НЕ логику за ними: пресеты зала и\n"
         "# режимы этажей — это выключатели, их поведение описывают ваши\n"
-        "# автоматизации. Исключение — vacant_delay и nav_floor_<N>: их читает\n"
-        "# сгенерированный код (OFF-автоматизации и кнопка перехода на Главной).\n"
+        "# автоматизации. Исключение — vacant_delay, nav_floor_<N> и nav_type_*:\n"
+        "# их читает сгенерированный код (OFF-автоматизации, кнопка перехода\n"
+        "# на Главной и условия видимости карточек помещений).\n"
         "#\n"
         "# ⚠ initial у vacant_delay применяется при КАЖДОМ старте HA, а не\n"
         "# только при создании. Это осознанно: значение принадлежит пайплайну.\n"

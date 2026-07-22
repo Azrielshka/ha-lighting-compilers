@@ -482,6 +482,72 @@ def floor_nav_entity(floor: int) -> str:
     return f"input_select.{floor_nav_id(floor)}"
 
 
+# ------------------------------------------------------------
+# Фильтр навигации по типу помещения
+# ------------------------------------------------------------
+# Помощники ОБЩИЕ на объект, а не на этаж. Обход «только коридоры» не должен
+# сбрасываться при переходе между этажами; заодно это 7 сущностей вместо 7×N.
+#
+# Подписи видит оператор — согласованы с владельцем 2026-07-20.
+# Ключи — те же, что в ALLOWED_SPACE_TYPES: карточка помещения ссылается на
+# помощника своего типа, и разъедься ключи, фильтр молча перестал бы её
+# показывать. Стережёт тест.
+NAV_TYPE_LABELS: Dict[str, str] = {
+    "korridor": "Коридоры",
+    "class": "Классы",
+    "zal": "Залы",
+    "special": "Санузлы и тамбуры",
+    "recreation": "Рекреации",
+    "hall": "Холлы",
+}
+
+# ⚠ «Все» — ОТДЕЛЬНЫЙ помощник, а не «ничего не отмечено = показать всё».
+#
+# У нас правило: объект создаём, логику — нет. Автоматизаций за помощниками мы
+# не пишем, поэтому «Все» не может гасить остальные — он обязан работать через
+# одни лишь условия видимости карточек.
+#
+# Вариант «все выключены = показать всё» выражается как `or` из шести
+# `and`-условий НА КАЖДОЙ карточке: семь условий против двух, помноженные на
+# число помещений. С отдельным помощником условие остаётся коротким:
+#
+#     visibility:
+#       - condition: or
+#         conditions:
+#           - {condition: state, entity: input_boolean.nav_type_all,      state: "on"}
+#           - {condition: state, entity: input_boolean.nav_type_korridor, state: "on"}
+#
+# Поведение прощающее: «Все» включён — видно всё, что бы ни было отмечено ещё.
+NAV_TYPE_ALL_ID: str = "nav_type_all"
+NAV_TYPE_ALL_LABEL: str = "Все помещения"
+
+# Иконки фильтра. Штучные, из таблицы не выводятся — как пресеты зала.
+NAV_TYPE_ICONS: Dict[str, str] = {
+    NAV_TYPE_ALL_ID: "mdi:select-all",
+    "korridor": "mdi:hail",
+    "class": "mdi:school",
+    "zal": "mdi:theater",
+    "special": "mdi:shower",
+    "recreation": "mdi:sofa",
+    "hall": "mdi:door-sliding",
+}
+
+
+def nav_type_id(space_type: str) -> str:
+    """nav_type_korridor — object_id помощника фильтра по типу."""
+    return f"nav_type_{space_type}"
+
+
+def nav_type_entity(space_type: str) -> str:
+    """input_boolean.nav_type_korridor — фильтр «показывать этот тип»."""
+    return f"input_boolean.{nav_type_id(space_type)}"
+
+
+def nav_type_all_entity() -> str:
+    """input_boolean.nav_type_all — «показывать все, фильтр не применять»."""
+    return f"input_boolean.{NAV_TYPE_ALL_ID}"
+
+
 # Сервисные страницы дашборда: расписание и конфигурация.
 #
 # Штучные, из таблицы не выводятся — как пресеты зала. Блок кнопок на Главной
