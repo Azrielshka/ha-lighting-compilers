@@ -57,6 +57,7 @@ from scripts._lib.canon import (
     BLUEPRINTS_BY_FAMILY,
     VACANT_DELAY_ENTITY,
     automation_id,
+    ba_gate_entity,
     blueprint_path,
     script_entity,
 )
@@ -87,6 +88,16 @@ class BlueprintError(RuntimeError):
 def _spaces_label(unit) -> str:
     """Человеческое имя единицы для alias: имена помещений через запятую."""
     return ", ".join(unit["spaces"])
+
+
+def _unit_floor(unit) -> int:
+    """Этаж единицы для гейта Оркестратора.
+
+    Гейт один на этаж, а единица обслуживания может занимать несколько (блок
+    через лестничный стояк). Берём минимальный — детерминированно; о самом
+    факте многоэтажности предупреждает build_yaml, чтобы наладчик проверил.
+    """
+    return min(int(f) for f in unit["floors"])
 
 
 def build_automation(unit, role: str, directory: str) -> List[str]:
@@ -123,6 +134,8 @@ def build_automation(unit, role: str, directory: str) -> List[str]:
                 lines.append(f"        - {sensor}")
         elif source == "vacant_delay":
             lines.append(f"      {input_name}: {VACANT_DELAY_ENTITY}")
+        elif source == "gate":
+            lines.append(f"      {input_name}: {ba_gate_entity(_unit_floor(unit))}")
         else:
             # source — роль скрипта: on / off / near_off / hall_near
             lines.append(f"      {input_name}: {script_entity(unit_id, source)}")
@@ -173,12 +186,20 @@ def build_yaml(units_df: pd.DataFrame, filters: Filters, directory: str) -> str:
 
     by_family: Dict[str, int] = {}
     no_sensors: List[str] = []
+    multi_floor: List[str] = []
 
     for _, unit in filtered.iterrows():
         if not len(unit["sensors_ms"]):
             # Автоматизация без датчиков не имеет триггеров — она мертва.
             no_sensors.append(str(unit["unit_id"]))
             continue
+
+        # Единица на нескольких этажах: гейт возьмём для минимального. Молчать
+        # нельзя — наладчик должен убедиться, что этаж выбран верно.
+        if len(unit["floors"]) > 1:
+            floors = ", ".join(str(int(f)) for f in sorted(unit["floors"]))
+            multi_floor.append(f"{unit['unit_id']} (этажи {floors} → гейт этажа "
+                               f"{_unit_floor(unit)})")
 
         lines.append(f"# ── {unit['unit_id']}  ({unit['family']}, "
                      f"{unit['sensor_count']} датч.)")
@@ -197,6 +218,12 @@ def build_yaml(units_df: pd.DataFrame, filters: Filters, directory: str) -> str:
 
     if no_sensors:
         print(f"\n  ⚠ Без датчиков — автоматизации не созданы: {', '.join(no_sensors)}")
+
+    if multi_floor:
+        print("\n  ⚠ Единицы на нескольких этажах — гейт взят для минимального,")
+        print("    проверьте, что это верный этаж:")
+        for item in multi_floor:
+            print(f"      {item}")
 
     if made == 0:
         return "# Ни одна единица обслуживания не имеет датчиков — автоматизации не созданы\n"

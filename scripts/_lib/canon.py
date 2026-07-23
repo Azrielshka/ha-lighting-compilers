@@ -428,6 +428,23 @@ def ba_labels() -> list[str]:
     ]
 
 
+# Гейт Оркестратора: binary_sensor, разрешающий работу датчиков на этаже.
+# Одна сущность на этаж; имя — часть контракта, менять односторонне нельзя.
+#
+# ⚠ Автоматизации пропускают работу, пока гейт НЕ в состоянии "off". Отсутствие,
+# unavailable и unknown — РАЗРЕШАЮТ: до установки Оркестратора и при его
+# перезагрузке свет по датчикам должен работать как сейчас. Реализуется это
+# только шаблоном `states(...) != 'off'` — condition:state на отсутствующей
+# сущности бросает ошибку и роняет автоматизацию в fail-closed (разбор и
+# согласование — docs/internal/contract-answer-01-gate.md).
+BA_GATE_ENTITY_PREFIX: str = "binary_sensor.building_automation_sensors_allowed_floor_"
+
+
+def ba_gate_entity(floor: int) -> str:
+    """binary_sensor.building_automation_sensors_allowed_floor_1 — гейт этажа."""
+    return f"{BA_GATE_ENTITY_PREFIX}{int(floor)}"
+
+
 # ============================================================
 # ЕДИНИЦЫ ОБСЛУЖИВАНИЯ, СЕМЕЙСТВА, СКРИПТЫ
 # ============================================================
@@ -735,40 +752,51 @@ SERVICE_VIEWS: Tuple[Dict[str, str], ...] = (
 #
 # Значение — какую роль скрипта подставить в этот вход.
 # sensors — специальное значение: список датчиков единицы.
+# gate    — специальное значение: гейт Оркестратора для этажа единицы.
+#
+# ⚠ ba_gate_entity стоит в КАЖДОМ семействе и в on, И в off. Не только во
+# включающих: в режиме «датчики запрещены, свет статически на 100 %» OFF по
+# таймауту вакансии иначе всё равно погасил бы его (требование §3.2 контракта).
 BLUEPRINT_INPUTS_BY_FAMILY: Dict[str, Dict[str, Dict[str, str]]] = {
     "default": {
         "on": {
             "motion_sensors": "sensors",
             "on_script": "on",
+            "ba_gate_entity": "gate",
         },
         "off": {
             "vacancy_sensors": "sensors",
             "vacant_delay_input": "vacant_delay",
             "off_script_1": "off",
             "off_script_2": "near_off",
+            "ba_gate_entity": "gate",
         },
     },
     "hall": {
         "on": {
             "motion_sensors": "sensors",
             "on_script": "on",
+            "ba_gate_entity": "gate",
         },
         "off": {
             "vacancy_sensors": "sensors",
             "vacant_delay_input": "vacant_delay",
             "off_script_1": "off",
             "off_script_2": "hall_near",
+            "ba_gate_entity": "gate",
         },
     },
     "special": {
         "on": {
             "motion_sensors": "sensors",
             "on_script": "on",
+            "ba_gate_entity": "gate",
         },
         "off": {
             "vacancy_sensors": "sensors",
             "vacant_delay_input": "vacant_delay",
             "off_script": "off",
+            "ba_gate_entity": "gate",
         },
     },
 }

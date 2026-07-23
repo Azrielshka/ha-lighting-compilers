@@ -26,6 +26,7 @@ from scripts._lib.canon import (
     BLUEPRINTS_BY_FAMILY,
     SCRIPTS_BY_FAMILY,
     VACANT_DELAY_ENTITY,
+    ba_gate_entity,
 )
 from scripts._lib.filters import Filters
 from scripts._lib.normalized import load_dataset
@@ -171,7 +172,9 @@ def test_referenced_script_roles_exist(family):
 
     for role_inputs in BLUEPRINT_INPUTS_BY_FAMILY[family].values():
         for source in role_inputs.values():
-            if source in ("sensors", "vacant_delay"):
+            # Спец-источники — не роли скриптов: sensors (список датчиков),
+            # vacant_delay (общий helper), gate (гейт Оркестратора по этажу).
+            if source in ("sensors", "vacant_delay", "gate"):
                 continue
             assert source in roles, f"{family}: роль {source!r} не клонируется"
 
@@ -434,3 +437,127 @@ def test_cli_without_normalized_layer(monkeypatch, tmp_path):
     ])
 
     assert AUTO.main() == 2
+
+
+# ============================================================
+# ГЕЙТ ОРКЕСТРАТОРА ЗДАНИЯ
+# ============================================================
+#
+# Гейт разрешает работу датчиков на этаже. Разбор поведения HA и согласование
+# конструкции — docs/internal/contract-answer-01-gate.md. Здесь проверяем ровно
+# то, что ломается молча: fail-open именно шаблоном, гейт в обоих ролях,
+# правильный этаж у многоэтажной единицы.
+
+ALL_BLUEPRINTS = sorted(f.name for f in BLUEPRINTS.glob("zm_*.yaml"))
+
+
+@pytest.mark.parametrize("filename", ALL_BLUEPRINTS)
+def test_blueprint_gate_condition_is_failopen_template(filename):
+    """
+    ⚠ Сердце правки. Условие обязано быть шаблоном `states(...) != 'off'`:
+
+      • condition:state на отсутствующей сущности бросает ошибку, not её не
+        глотает, автоматизация падает в fail-closed — гасит весь объект;
+      • has_value() даёт False на unavailable/unknown — тоже fail-closed.
+
+    Тест ловит обе ловушки: разрешает только голый states(...) != 'off'.
+    """
+    bp = load_blueprint(filename)
+
+    conditions = bp.get("condition")
+    assert conditions, f"{filename}: у blueprint пропал верхнеуровневый condition"
+
+    first = conditions[0]
+    assert first["condition"] == "template", f"{filename}: гейт не template"
+
+    tmpl = first["value_template"]
+    assert "states(ba_gate_entity)" in tmpl
+    assert "!= 'off'" in tmpl
+    assert "has_value" not in tmpl, f"{filename}: has_value ломает fail-open"
+    assert "== 'on'" not in tmpl, f"{filename}: == 'on' ломает fail-open"
+
+
+@pytest.mark.parametrize("filename", ALL_BLUEPRINTS)
+def test_blueprint_declares_gate_input(filename):
+    """Вход есть, домен — binary_sensor, и он БЕЗ default: значение всегда даёт генератор."""
+    bp = load_blueprint(filename)
+    inp = bp["blueprint"]["input"]
+
+    assert "ba_gate_entity" in inp, f"{filename}: нет входа ba_gate_entity"
+    assert "default" not in inp["ba_gate_entity"], \
+        f"{filename}: у гейта не должно быть default"
+
+    selector = inp["ba_gate_entity"]["selector"]["entity"]
+    assert selector["filter"]["domain"] == "binary_sensor"
+
+
+@pytest.mark.parametrize("filename", ALL_BLUEPRINTS)
+def test_blueprint_forwards_input_through_variables(filename):
+    """
+    !input внутри value_template не разворачивается — обязателен проброс через
+    variables. Без него шаблон читал бы states по несуществующей переменной.
+    """
+    bp = load_blueprint(filename)
+    variables = bp.get("variables") or {}
+
+    # BlueprintLoader подменяет тег на строку "!input ba_gate_entity".
+    assert variables.get("ba_gate_entity") == "!input ba_gate_entity", \
+        f"{filename}: variables не пробрасывает !input ba_gate_entity"
+
+
+def test_gate_present_in_both_roles(tmp_path):
+    """
+    ⚠ Гейт нужен и в ON, и в OFF. Иначе в режиме «датчики запрещены, свет
+    статически на 100 %» OFF по таймауту вакансии всё равно погасил бы его.
+    """
+    auto = automations(tmp_path, [
+        row("101_Коридор", "Korridor", sensor="1.1.1", panel="None"),
+    ])
+
+    on, off = auto[0], auto[1]
+    assert inputs_of(on)["ba_gate_entity"] == ba_gate_entity(1)
+    assert inputs_of(off)["ba_gate_entity"] == ba_gate_entity(1)
+
+
+def test_gate_uses_unit_floor(tmp_path):
+    """Гейт указывает на этаж единицы, а не на объект целиком."""
+    auto = automations(tmp_path, [
+        row("205_Зал", "Korridor", floor=2, group="205_1", lamp="1.2.1",
+            sensor="1.2.1", panel="None"),
+    ])
+
+    assert inputs_of(auto[0])["ba_gate_entity"] == \
+        "binary_sensor.building_automation_sensors_allowed_floor_2"
+
+
+def test_gate_multifloor_unit_takes_min_floor(tmp_path):
+    """
+    Единица через лестничный стояк живёт на двух этажах, а гейт один. Берём
+    минимальный этаж — детерминированно.
+    """
+    auto = automations(tmp_path, [
+        row("101_Лестница", "Korridor", block="stair", floor=1,
+            group="101_1", lamp="1.1.1", sensor="1.1.1", panel="None"),
+        row("201_Лестница", "Korridor", block="stair", floor=2,
+            group="201_1", lamp="1.2.1", sensor="1.2.1", panel="None"),
+    ])
+
+    # Одна единица (блок) → одна пара автоматизаций.
+    assert len(auto) == 2
+    for a in auto:
+        assert inputs_of(a)["ba_gate_entity"] == ba_gate_entity(1)
+
+
+def test_gate_multifloor_warns(tmp_path, capsys):
+    """О многоэтажной единице генератор обязан предупредить — молча выбирать
+    этаж нельзя, наладчик должен проверить."""
+    automations(tmp_path, [
+        row("101_Лестница", "Korridor", block="stair", floor=1,
+            group="101_1", lamp="1.1.1", sensor="1.1.1", panel="None"),
+        row("201_Лестница", "Korridor", block="stair", floor=2,
+            group="201_1", lamp="1.2.1", sensor="1.2.1", panel="None"),
+    ])
+
+    out = capsys.readouterr().out
+    assert "нескольких этажах" in out
+    assert "stair" in out

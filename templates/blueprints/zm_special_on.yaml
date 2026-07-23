@@ -30,6 +30,17 @@ blueprint:
         entity:
           domain: script
 
+    ba_gate_entity:
+      name: Сущность-разрешение (Building Automation)
+      description: >-
+        binary_sensor Оркестратора здания, разрешающий работу по датчикам на
+        этом этаже. Автоматизация выполняется, пока сущность НЕ в состоянии
+        "off". Отсутствующая, unavailable и unknown — разрешают работу.
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+
 mode: single
 
 trigger:
@@ -37,7 +48,20 @@ trigger:
     entity_id: !input motion_sensors
     to: "motion"
 
-condition: []
+variables:
+  ba_gate_entity: !input ba_gate_entity
+
+# Гейт Оркестратора здания. Пропускаем работу, пока сущность НЕ в "off".
+# Отсутствие / unavailable / unknown — РАЗРЕШАЮТ: без Оркестратора и при его
+# перезагрузке свет по датчикам работает как сейчас.
+#
+# ⚠ Именно шаблон, а не condition:state. На отсутствующей сущности state бросает
+# ошибку, not её не глотает, и автоматизация падает в fail-closed — гасит свет
+# по всему объекту. has_value() тоже нельзя: он даёт False на unavailable/unknown.
+# Нужен голый states(...) != 'off'. Разбор — docs/internal/contract-answer-01-gate.md.
+condition:
+  - condition: template
+    value_template: "{{ states(ba_gate_entity) != 'off' }}"
 
 action:
   # Валидация входных данных
