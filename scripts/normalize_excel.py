@@ -28,7 +28,7 @@ import json
 import sys
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 import pyarrow as pa
@@ -40,11 +40,14 @@ from scripts._lib.canon import (
     MAX_SENSORS_PER_UNIT,
     NORMALIZED_SCHEMA_VERSION,
     SCRIPTS_BY_FAMILY,
+    ZAGLUSHKA_LIGHT,
+    ZAGLUSHKA_SENSOR,
     family_for_space_type,
     general_light_entity,
     is_blank,
     is_none_token,
     lamp_entity,
+    light_group_from_cell,
     normalize_space_type,
     panel_entity,
     parse_addr,
@@ -53,7 +56,14 @@ from scripts._lib.canon import (
     sensor_motion_entity,
     zone_light_entity,
 )
-from scripts._lib.excel_schema import COLUMNS, DEVICE_COLUMNS, REQUIRED_COLUMNS, SHEET_NAME
+from scripts._lib.excel_schema import (
+    COLUMNS,
+    DEVICE_COLUMNS,
+    NEIGHBORS_COLUMNS,
+    NEIGHBORS_SHEET,
+    REQUIRED_COLUMNS,
+    SHEET_NAME,
+)
 from scripts._lib.naming import slugify_room
 from scripts._lib.schemas import SCHEMAS
 
@@ -404,6 +414,136 @@ def build_units(devices: pd.DataFrame, spaces: pd.DataFrame) -> pd.DataFrame:
 
 
 # ============================================================
+# ЗОНЫ ДАТЧИКОВ (лист «Группы соседей» -> neighbors.parquet)
+# ============================================================
+
+def read_neighbors_sheet(excel_path: Path) -> Optional[pd.DataFrame]:
+    """Прочитать лист «Группы соседей». None, если листа в книге нет.
+
+    Лист опциональный: без него zone_manager.json просто не собирается.
+    Имя ищем с обрезкой пробелов — заголовок гуляет между «Группы соседей» и
+    «Группы соседей ».
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*Data Validation extension.*")
+        book = pd.ExcelFile(excel_path)
+
+        match = [s for s in book.sheet_names if s.strip() == NEIGHBORS_SHEET]
+        if not match:
+            return None
+
+        df = book.parse(sheet_name=match[0], dtype=object,
+                        keep_default_na=False, na_values=[])
+
+    df.columns = [str(c).strip() for c in df.columns]
+    return df
+
+
+def build_neighbors(
+    ndf: pd.DataFrame, devices: pd.DataFrame
+) -> Tuple[pd.DataFrame, List[str]]:
+    """Собрать зоны датчиков из листа «Группы соседей».
+
+    Модель листа (см. plan-zone-manager.md):
+      - forward-fill: «Основной датчик» и «Основная группа» заданы в первой
+        строке блока; строки ниже с пустым основным датчиком продолжают его;
+      - позиционные тройки: строка блока даёт по одному элементу в neighbors /
+        neighbor_groups / far_neighbors.
+
+    Явный маркер (None / - / нет) → заглушка, ТИХО: наладчик сказал «дальнего
+    нет». Пустая ячейка при заполненной строке → тоже заглушка, но с
+    ПРЕДУПРЕЖДЕНИЕМ: возможно, забыли. Различие снимает подмену ошибки молчанием.
+
+    Зона без соседей вообще (тамбур) — норма, заглушки без предупреждения.
+
+    Возвращает (DataFrame, warnings): warnings оседают в meta нормализатора.
+    """
+    main_c, grp_c, n_c, ng_c, far_c = NEIGHBORS_COLUMNS
+
+    # entity датчика -> помещение. Помещение основного датчика становится
+    # ключом группировки spaces в JSON.
+    sensor_space = {
+        row["entity_id"]: row["space"]
+        for _, row in devices.iterrows()
+        if row["kind"] == "sensor"
+    }
+
+    warnings_out: List[str] = []
+
+    blocks: List[Dict] = []
+    cur: Optional[Dict] = None
+
+    for _, row in ndf.iterrows():
+        main = _cell(row.get(main_c))
+        if main:
+            cur = {"addr": main, "group": _cell(row.get(grp_c)),
+                   "n": [], "ng": [], "far": []}
+            blocks.append(cur)
+
+        if cur is None:
+            continue
+
+        n, ng, far = row.get(n_c), row.get(ng_c), row.get(far_c)
+        if is_blank(n) and is_blank(ng) and is_blank(far):
+            continue  # строка-разделитель между блоками
+
+        cur["n"].append(n)
+        cur["ng"].append(ng)
+        cur["far"].append(far)
+
+    def resolve(raw: object, stub: str, resolver, sensor: str, field: str) -> str:
+        """Ячейку → entity | заглушка, с предупреждением на пустую (не маркер)."""
+        if is_none_token(raw):
+            return stub                      # намеренно «нет» — тихо
+        if is_blank(raw):
+            warnings_out.append(
+                f"{sensor}: пустая ячейка «{field}» — поставлена заглушка; "
+                f"если соседа/дальнего нет намеренно, впишите «-»"
+            )
+            return stub
+        return resolver(raw)
+
+    records: List[Dict] = []
+    for b in blocks:
+        sensor = sensor_motion_entity(b["addr"])
+
+        neighbors, neighbor_groups, far_neighbors = [], [], []
+        for n, ng, far in zip(b["n"], b["ng"], b["far"]):
+            neighbors.append(resolve(n, ZAGLUSHKA_SENSOR, sensor_motion_entity, sensor, "Соседние датчики"))
+            neighbor_groups.append(resolve(ng, ZAGLUSHKA_LIGHT, light_group_from_cell, sensor, "Соседние группы света"))
+            far_neighbors.append(resolve(far, ZAGLUSHKA_SENSOR, sensor_motion_entity, sensor, "Дальние соседние датчики"))
+
+        # Зона без соседей (например, тамбур): один заглушечный сосед, чтобы
+        # blueprint не получил пустой список. Это норма, не предупреждение.
+        if not neighbors:
+            neighbors = [ZAGLUSHKA_SENSOR]
+            neighbor_groups = [ZAGLUSHKA_LIGHT]
+            far_neighbors = [ZAGLUSHKA_SENSOR]
+
+        space = sensor_space.get(sensor, "")
+        if not space:
+            warnings_out.append(
+                f"{sensor}: основной датчик не найден в «Проектной БД» — "
+                f"зона попадёт без помещения (проверьте адрес)"
+            )
+
+        records.append({
+            "sensor": sensor,
+            "space": space,
+            "light_group": [light_group_from_cell(b["group"])],
+            "neighbors": neighbors,
+            "neighbor_groups": neighbor_groups,
+            "far_neighbors": far_neighbors,
+        })
+
+    df = pd.DataFrame(records, columns=[
+        "sensor", "space", "light_group",
+        "neighbors", "neighbor_groups", "far_neighbors",
+    ])
+    return df, warnings_out
+
+
+# ============================================================
 # ЗАПИСЬ
 # ============================================================
 
@@ -420,6 +560,12 @@ def normalize(
     spaces = build_spaces(devices, groups)
     units = build_units(devices, spaces)
 
+    # Зоны датчиков для zone_manager — из отдельного листа, опционально.
+    ndf = read_neighbors_sheet(excel_path)
+    if ndf is None:
+        ndf = pd.DataFrame(columns=list(NEIGHBORS_COLUMNS))
+    neighbors, neighbor_warnings = build_neighbors(ndf, devices)
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     paths = {
@@ -427,13 +573,15 @@ def normalize(
         "groups": output_dir / "groups.parquet",
         "spaces": output_dir / "spaces.parquet",
         "units": output_dir / "units.parquet",
+        "neighbors": output_dir / "neighbors.parquet",
     }
 
     # Пишем СТРОГО по объявленной схеме, а не выводим её из данных.
     # Иначе на объекте без единой панели panels_by_group получил бы тип
     # list<list<null>> вместо list<list<string>> — и генератор сломался бы
     # не у нас, а у наладчика. Подробности: scripts/_lib/schemas.py
-    frames = (("devices", devices), ("groups", groups), ("spaces", spaces), ("units", units))
+    frames = (("devices", devices), ("groups", groups), ("spaces", spaces),
+              ("units", units), ("neighbors", neighbors))
     for name, frame in frames:
         table = pa.Table.from_pandas(frame, schema=SCHEMAS[name], preserve_index=False)
         pq.write_table(table, paths[name])
@@ -465,13 +613,16 @@ def normalize(
             "units": int(len(units)),
             "scripts": int(sum(len(s) for s in units["scripts"])),
             "automations": int(len(units) * 2),  # ON + OFF на единицу
+            "neighbor_zones": int(len(neighbors)),
         },
         "columns": {
             "devices": list(devices.columns),
             "groups": list(groups.columns),
             "spaces": list(spaces.columns),
             "units": list(units.columns),
+            "neighbors": list(neighbors.columns),
         },
+        "neighbor_warnings": neighbor_warnings,
         "notes": {
             "device_binding": "устройство принадлежит группе из своей строки Excel",
             "sensor_entities": "один адрес датчика -> sensor.ms_* и sensor.il_*",
@@ -501,10 +652,19 @@ def _print_stats(meta: Dict, output_dir: Path) -> None:
     print(f"  Единиц обслуживания: {s['units']}")
     print(f"    скриптов клонируется: {s['scripts']}")
     print(f"    автоматизаций:        {s['automations']}")
+    print(f"  Зон датчиков (zone_manager): {s['neighbor_zones']}")
 
     if s["spaces_without_valid_type"]:
         print(f"\n⚠ Помещений без корректного типа: {s['spaces_without_valid_type']}")
         print("  Они попадут в группы света, но не в карточки Lovelace.")
+
+    nw = meta.get("neighbor_warnings") or []
+    if nw:
+        print(f"\n⚠ Лист «Группы соседей» — предупреждений: {len(nw)}")
+        for w in nw[:10]:
+            print(f"  • {w}")
+        if len(nw) > 10:
+            print(f"  … и ещё {len(nw) - 10}")
 
     print(f"\nOK: записано в {output_dir}")
     for name, path in meta["output_files"].items():

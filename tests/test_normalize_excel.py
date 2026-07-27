@@ -313,6 +313,7 @@ def test_object_example(tmp_path, object_example):
         # special=2; default=3 ×3 (103, ladder_1, 107); hall=3
         "scripts": 14,
         "automations": 10,   # ON + OFF на каждую единицу
+        "neighbor_zones": 13,  # зон в листе «Группы соседей»
     }
 
 

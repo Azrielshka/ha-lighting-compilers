@@ -895,3 +895,46 @@ def script_entity(unit_id: str, role: str) -> str:
 def script_object_id(unit_id: str, role: str) -> str:
     """Корневой ключ в scripts.yaml — то же имя, но без домена."""
     return f"{str(unit_id).strip()}_{role}"
+
+
+# ============================================================
+# ZONE MANAGER (конфигурация зон датчиков)
+# ============================================================
+#
+# zone_manager.json — конфиг, который blueprint'ы датчиков запрашивают через
+# zone_manager.get_sensor_config. Собирается из листа «Группы соседей».
+# Интеграция: github.com/Azrielshka/zone_manager. Полное описание формата и
+# правил — docs/internal/plan-zone-manager.md.
+
+ZONE_MANAGER_VERSION: str = "v0.1"
+
+# Куда кладёт файл деплой. Интеграция читает его по этому пути (задаётся при
+# установке). /homeassistant — это /config в HA OS.
+ZONE_MANAGER_DEPLOY_PATH: str = "/homeassistant/zone_manager.json"
+
+# Заглушки для зоны без соседей / без дальнего. Реальных таких сущностей нет —
+# они никогда не в motion, поэтому blueprint получает непустой список, а логика
+# ведёт себя как «соседа нет».
+ZAGLUSHKA_SENSOR: str = "sensor.ms_zaglushka"
+ZAGLUSHKA_LIGHT: str = "light.l_zaglushka"
+
+# Отличает group_id (103_1: цифры_цифры) от имени помещения (101_Тамбур:
+# цифры_буквы). По этому и решаем, какую группу света построить.
+GROUP_ID_RE = re.compile(r"^\d+_\d+$")
+
+
+def light_group_from_cell(value: object) -> str:
+    """Ячейка «группа света» → entity_id группы.
+
+    Два формата в листе «Группы соседей», одно правило:
+      103_1       (group_id) -> зонная группа  light.103_1
+      101_Тамбур  (помещение) -> общая группа   light.101_tambur_obshchii
+
+    Различаем по формату: после «_» цифра — group_id, буква — имя помещения.
+    Имя прогоняем через тот же slugify, что и area/general-группы, поэтому
+    ссылка совпадёт с реально созданной сущностью.
+    """
+    raw = str(value).strip()
+    if GROUP_ID_RE.match(raw):
+        return zone_light_entity(raw)
+    return general_light_entity(slugify_room(raw))

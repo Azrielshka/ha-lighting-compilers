@@ -130,6 +130,7 @@ class LauncherWindow(QMainWindow):
             "helpers": "scripts/generate_helpers.py",
             "scripts": "scripts/generate_scripts.py",
             "automations": "scripts/generate_automations.py",
+            "zone_manager": "scripts/generate_zone_manager.py",
             "lovelace": "scripts/generate_lovelace_cards.py",
             "deploy": "scripts/deploy.py",
         }
@@ -160,6 +161,7 @@ class LauncherWindow(QMainWindow):
             "helpers",
             "scripts",
             "automations",
+            "zone_manager",
         ]
 
         # ------------------------------------------------------------

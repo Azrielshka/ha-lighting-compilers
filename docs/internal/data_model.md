@@ -142,8 +142,18 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Фильтр списком ⏳ | `input_select.nav_type_pick` | | `generate_helpers` |
 | Навигация по этажу | `input_select.nav_floor_<N>` | `input_select.nav_floor_1` | `generate_helpers` |
 | Пресеты зала | `input_boolean.<preset>` | `input_boolean.rezhim_tetra` | `generate_helpers` |
+| Конфиг зон датчиков | `zone_manager.json` | зоны, соседи, группы света | `generate_zone_manager` |
 
 Все правила — в `canon.py`; генераторы их не выводят сами.
+
+## Zone Manager (`zone_manager.json`)
+
+Конфиг зон, который blueprint'ы датчиков запрашивают через
+`zone_manager.get_sensor_config`. Источник — лист **«Группы соседей»** таблицы
+(отдельный от «Проектной БД»): нормализатор читает его в `neighbors.parquet`,
+шаг 10 собирает JSON. Правило группы света в листе: `103_1` (group_id) → зонная
+`light.103_1`; имя помещения (`101_Тамбур`) → общая `light.101_tambur_obshchii`.
+Полное описание формата, forward-fill и заглушек — `plan-zone-manager.md`.
 
 ## Иерархия групп света — четыре уровня
 

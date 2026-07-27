@@ -193,12 +193,33 @@ UNITS_SCHEMA = pa.schema([
 ])
 
 
+# Зоны датчиков для zone_manager.json (из листа «Группы соседей»).
+# Одна строка = один основной датчик (зона). Списки уже нормализованы в
+# entity_id, заглушки подставлены (sensor.ms_zaglushka / light.l_zaglushka).
+NEIGHBORS_SCHEMA = pa.schema([
+    # Основной датчик зоны: sensor.ms_X_Y_Z.
+    ("sensor",          pa.string()),
+
+    # Помещение основного датчика (из devices) — ключ группировки spaces в JSON.
+    ("space",           pa.string()),
+
+    # Группа света зоны. Список из одного элемента — так ждёт get_sensor_config.
+    ("light_group",     _ENTITY_LIST),
+
+    # Соседи, их группы и дальние соседи — позиционно выровнены.
+    ("neighbors",       _ENTITY_LIST),
+    ("neighbor_groups", _ENTITY_LIST),
+    ("far_neighbors",   _ENTITY_LIST),
+])
+
+
 # Имя датасета -> схема. Порядок задаёт порядок записи и вывода.
 SCHEMAS: Dict[str, pa.Schema] = {
     "devices": DEVICES_SCHEMA,
     "groups": GROUPS_SCHEMA,
     "spaces": SPACES_SCHEMA,
     "units": UNITS_SCHEMA,
+    "neighbors": NEIGHBORS_SCHEMA,
 }
 
 DATASET_NAMES = tuple(SCHEMAS)

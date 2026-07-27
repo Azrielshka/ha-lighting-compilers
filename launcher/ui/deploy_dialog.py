@@ -46,6 +46,7 @@ TARGETS: List[tuple] = [
     ("scripts", "Скрипты", "includes/scripts/zm_scripts.yaml"),
     ("automations", "Автоматизации", "includes/automations/zm_automations.yaml"),
     ("blueprints", "Blueprint'ы", "blueprints/automation/zone_manager/"),
+    ("zone_manager", "Zone Manager (зоны датчиков)", "zone_manager.json"),
     ("areas", "Пространства и этажи", "реестры HA (WebSocket)"),
     ("lovelace", "Карточки (views дашборда)", "конфиг дашборда (WebSocket)"),
 ]

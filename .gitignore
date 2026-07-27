@@ -45,6 +45,7 @@ data/helpers/
 data/scripts/
 data/automations/
 data/blueprints/
+data/json/
 
 # =========================
 # Handoff для стороннего разработчика (собирается, не версионируется)

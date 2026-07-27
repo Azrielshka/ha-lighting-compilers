@@ -81,6 +81,10 @@ def data_dir(tmp_path) -> Path:
         "title: 103 Вестибюль\npath: zm-space-103_vestibiul\nsubview: true\n",
         encoding="utf-8")
 
+    (root / "json").mkdir()
+    (root / "json" / "zone_manager.json").write_text(
+        '{"version": "v0.1", "spaces": {}}\n', encoding="utf-8")
+
     return root
 
 
@@ -132,12 +136,19 @@ def test_blueprints_keep_their_names(data_dir):
 def test_all_remote_files_are_prefixed_or_blueprints(data_dir):
     """
     Префикс zm_ — гарантия, что деплой перезапишет только своё и не тронет
-    файлы наладчика. Исключений нет: правило без дыр проверяется одной строкой.
+    файлы наладчика.
+
+    Единственное исключение — zone_manager.json: этим файлом владеет интеграция
+    Zone Manager, имя у него фиксированное (она читает его по этому пути), и
+    префикс zm_ туда поставить нельзя. Перезапись здесь — цель, а не риск: файл
+    и есть наш выход для интеграции.
     """
     plan = build_plan(data_dir, list(TARGETS))
 
     for f in plan.files:
         name = f.remote.rsplit("/", 1)[1]
+        if name == "zone_manager.json":
+            continue
         assert name.startswith("zm_"), name
 
 
@@ -208,6 +219,7 @@ def test_remote_dirs_collected(data_dir):
         "/config/includes/scripts",
         "/config/includes/automations",
         "/config/blueprints/automation/zone_manager",
+        "/config",   # zone_manager.json лежит в корне конфига
     }
 
 

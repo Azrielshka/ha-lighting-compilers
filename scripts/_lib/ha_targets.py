@@ -97,6 +97,7 @@ TARGETS: Tuple[str, ...] = (
     "scripts",
     "automations",
     "blueprints",
+    "zone_manager",
     "areas",
     "lovelace",
 )
@@ -107,6 +108,7 @@ TARGET_TITLES: Dict[str, str] = {
     "scripts": "Скрипты",
     "automations": "Автоматизации",
     "blueprints": "Blueprint'ы",
+    "zone_manager": "Zone Manager (зоны датчиков)",
     "areas": "Пространства и этажи",
     "lovelace": "Карточки (views дашборда)",
 }
@@ -194,6 +196,18 @@ def build_plan(
                 target="blueprints",
             ))
 
+    if "zone_manager" in targets:
+        # zone_manager.json кладётся в КОРЕНЬ конфига. По SFTP через SSH-аддон
+        # это /config/zone_manager.json — тот же физический файл, который
+        # интеграция читает как /homeassistant/zone_manager.json (это один
+        # каталог, просто разные точки монтирования). Имя без префикса zm_:
+        # файлом владеет интеграция, у неё фиксированное имя.
+        files.append(FileTarget(
+            local=data_dir / "json" / "zone_manager.json",
+            remote=f"{root}/zone_manager.json",
+            target="zone_manager",
+        ))
+
     areas_file: Optional[Path] = None
     if "areas" in targets:
         # Areas и Floors — не файлы: они создаются в реестрах HA по WebSocket.
@@ -220,6 +234,7 @@ def missing_pipeline_steps(plan: Plan) -> List[str]:
         "automations": "generate_automations.py",
         "helpers": "generate_helpers.py",
         "blueprints": "generate_automations.py",
+        "zone_manager": "generate_zone_manager.py",
         "areas": "generate_areas.py",
         "lovelace": "generate_lovelace_cards.py",
     }

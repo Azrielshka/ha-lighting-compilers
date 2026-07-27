@@ -15,6 +15,7 @@ Dry-run по умолчанию: показывает, что и куда пое
     Скрипты        -> /config/includes/scripts/zm_scripts.yaml  (SCP)
     Автоматизации  -> /config/includes/automations/zm_*.yaml    (SCP)
     Blueprint'ы    -> /config/blueprints/automation/zone_manager/ (SCP)
+    Zone Manager   -> /config/zone_manager.json                 (SCP)
     Пространства   -> реестры HA                                (WebSocket)
 
 Файлы перезаписываются целиком: «сгенерировал → залил». Мусор не копится —
@@ -440,6 +441,14 @@ def deploy_live(plan: Plan, ssh: SSHConfig, ws: Optional[WSConfig],
             print("   Если отказ по правам: lovelace/config/save требует токен")
             print("   АДМИНИСТРАТОРА — токен обычного пользователя не подойдёт.\n")
             errors += 1
+
+    # Zone Manager сам файл не перечитывает: blueprint зовёт get_sensor_config
+    # с reload: false. Деплой сервисы не дёргает и HA не перезапускает, поэтому
+    # просто напоминаем — иначе новый конфиг молча не вступит в силу.
+    if any(f.target == "zone_manager" for f in plan.ready):
+        print("\n  ⚠ zone_manager.json обновлён. Чтобы интеграция его перечитала,")
+        print("    вызовите сервис zone_manager.reload (или get_sensor_config с")
+        print("    reload: true). Деплой сервисы не трогает.\n")
 
     if errors:
         print(f"⚠ Завершено с ошибками: {errors}")
