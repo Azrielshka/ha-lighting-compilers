@@ -1,0 +1,2318 @@
+{
+  "version": "v0.1",
+  "spaces": {
+    "NAME SPACE": {
+      "zones": {
+        "sensor.1": {
+          "neighbors": [
+            "sensor.1",
+            "sensor.2"
+          ],
+          "far_neighbors": [
+            "sensor.1",
+            "sensor.2"
+          ],
+          "neighbor_groups": [
+            "light.1",
+            "light.2"
+          ],
+          "light_group": [
+            "light.0"
+          ]
+        },
+        "sensor.2": {
+          "neighbors": [
+            "sensor.1",
+            "sensor.2"
+          ],
+          "far_neighbors": [
+            "sensor.1",
+            "sensor.2"
+          ],
+          "neighbor_groups": [
+            "light.1",
+            "light.2"
+          ],
+          "light_group": [
+            "light.0"
+          ]
+        }
+      }
+    },
+    "Коридор 413": {
+      "zones": {
+        "sensor.ms_1_22_0": {
+          "neighbors": [
+            "sensor.ms_1_22_1"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_22_2"
+          ],
+          "neighbor_groups": [
+            "light.413_1"
+          ],
+          "light_group": [
+            "light.413_0"
+          ]
+        },
+        "sensor.ms_1_22_1": {
+          "neighbors": [
+            "sensor.ms_1_22_0",
+            "sensor.ms_1_22_2",
+            "sensor.ms_1_7_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_22_0",
+            "sensor.ms_1_22_10",
+            "sensor.ms_1_7_8"
+          ],
+          "neighbor_groups": [
+            "light.413_0",
+            "light.413_2",
+            "light.404_1"
+          ],
+          "light_group": [
+            "light.413_1"
+          ]
+        },
+        "sensor.ms_1_22_2": {
+          "neighbors": [
+            "sensor.ms_1_22_1",
+            "sensor.ms_1_22_10"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_22_0",
+            "sensor.ms_1_22_9"
+          ],
+          "neighbor_groups": [
+            "light.413_1",
+            "light.413_3"
+          ],
+          "light_group": [
+            "light.413_2"
+          ]
+        },
+        "sensor.ms_1_21_10": {
+          "neighbors": [
+            "sensor.ms_1_22_2",
+            "sensor.ms_1_22_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_22_1",
+            "sensor.ms_1_22_8"
+          ],
+          "neighbor_groups": [
+            "light.413_2",
+            "light.413_4"
+          ],
+          "light_group": [
+            "light.413_3"
+          ]
+        },
+        "sensor.ms_1_21_9": {
+          "neighbors": [
+            "sensor.ms_1_22_10",
+            "sensor.ms_1_22_8",
+            "sensor.ms_1_11_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_22_2",
+            "sensor.ms_1_22_8",
+            "sensor.ms_1_11_6"
+          ],
+          "neighbor_groups": [
+            "light.413_3",
+            "light.413_5",
+            "light.408_obshchii_lestnitsa"
+          ],
+          "light_group": [
+            "light.413_4"
+          ]
+        },
+        "sensor.ms_1_21_8": {
+          "neighbors": [
+            "sensor.ms_1_22_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_22_10"
+          ],
+          "neighbor_groups": [
+            "light.413_4"
+          ],
+          "light_group": [
+            "light.413_5"
+          ]
+        }
+      }
+    },
+    "405 С/у женский": {
+      "zones": {
+        "sensor.ms_1_22_5": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.405_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_22_4": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.405_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_22_3": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.405_obshchii_s_u_zhenskii"
+          ]
+        }
+      }
+    },
+    "406 С/у мужской": {
+      "zones": {
+        "sensor.ms_1_22_9": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.406_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_22_8": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.406_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_22_7": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.406_obshchii_s_u_zhenskii"
+          ]
+        }
+      }
+    },
+    "Левый стояк лестниц 501/404/307/210/171/170": {
+      "zones": {
+        "sensor.ms_1_7_9": {
+          "neighbors": [
+            "sensor.ms_1_7_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_8"
+          ],
+          "neighbor_groups": [
+            "light.404_1"
+          ],
+          "light_group": [
+            "light.501_obshchii_lestnitsa"
+          ]
+        },
+        "sensor.ms_1_7_7": {
+          "neighbors": [
+            "sensor.ms_1_7_9",
+            "sensor.ms_1_7_8",
+            "sensor.ms_1_22_1"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_9",
+            "sensor.ms_1_7_6",
+            "sensor.ms_1_22_0"
+          ],
+          "neighbor_groups": [
+            "light.501_obshchii_lestnitsa",
+            "light.404_0",
+            "light.413_1"
+          ],
+          "light_group": [
+            "light.404_1"
+          ]
+        },
+        "sensor.ms_1_7_8": {
+          "neighbors": [
+            "sensor.ms_1_7_7",
+            "sensor.ms_1_7_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_9",
+            "sensor.ms_1_7_5"
+          ],
+          "neighbor_groups": [
+            "light.404_1",
+            "light.307_1"
+          ],
+          "light_group": [
+            "light.404_0"
+          ]
+        },
+        "sensor.ms_1_7_6": {
+          "neighbors": [
+            "sensor.ms_1_7_8",
+            "sensor.ms_1_7_5",
+            "sensor.ms_1_18_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_7",
+            "sensor.ms_1_7_4",
+            "sensor.ms_1_18_8"
+          ],
+          "neighbor_groups": [
+            "light.404_0",
+            "light.307_0",
+            "light.316_2"
+          ],
+          "light_group": [
+            "light.307_1"
+          ]
+        },
+        "sensor.ms_1_7_5": {
+          "neighbors": [
+            "sensor.ms_1_7_6",
+            "sensor.ms_1_7_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_8",
+            "sensor.ms_1_7_3"
+          ],
+          "neighbor_groups": [
+            "light.307_1",
+            "light.210_1"
+          ],
+          "light_group": [
+            "light.307_0"
+          ]
+        },
+        "sensor.ms_1_7_4": {
+          "neighbors": [
+            "sensor.ms_1_7_5",
+            "sensor.ms_1_7_3",
+            "sensor.ms_1_13_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_6",
+            "sensor.ms_1_7_2",
+            "sensor.ms_1_13_8"
+          ],
+          "neighbor_groups": [
+            "light.307_0",
+            "light.210_0",
+            "light.209_1"
+          ],
+          "light_group": [
+            "light.210_1"
+          ]
+        },
+        "sensor.ms_1_7_3": {
+          "neighbors": [
+            "sensor.ms_1_7_4",
+            "sensor.ms_1_7_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_5",
+            "sensor.ms_1_8_5"
+          ],
+          "neighbor_groups": [
+            "light.210_1",
+            "light.171_obshchii_lestnitsa"
+          ],
+          "light_group": [
+            "light.210_0"
+          ]
+        },
+        "sensor.ms_1_7_2": {
+          "neighbors": [
+            "sensor.ms_1_7_3",
+            "sensor.ms_1_7_0",
+            "sensor.ms_1_8_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_7_4",
+            "sensor.ms_1_7_0",
+            "sensor.ms_1_8_6"
+          ],
+          "neighbor_groups": [
+            "light.210_0",
+            "light.170_obshchii_tambur",
+            "light.172_3"
+          ],
+          "light_group": [
+            "light.171_obshchii_lestnitsa"
+          ]
+        },
+        "sensor.ms_1_7_0": {
+          "neighbors": [
+            "sensor.ms_1_7_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_5"
+          ],
+          "neighbor_groups": [
+            "light.171_obshchii_lestnitsa"
+          ],
+          "light_group": [
+            "light.170_obshchii_tambur"
+          ]
+        }
+      }
+    },
+    "Коридор 316": {
+      "zones": {
+        "sensor.ms_1_19_0": {
+          "neighbors": [
+            "sensor.ms_1_19_1"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_19_2"
+          ],
+          "neighbor_groups": [
+            "light.316_1"
+          ],
+          "light_group": [
+            "light.316_0"
+          ]
+        },
+        "sensor.ms_1_19_1": {
+          "neighbors": [
+            "sensor.ms_1_19_0",
+            "sensor.ms_1_19_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_19_0",
+            "sensor.ms_1_18_9"
+          ],
+          "neighbor_groups": [
+            "light.316_0",
+            "light.316_3"
+          ],
+          "light_group": [
+            "light.316_1"
+          ]
+        },
+        "sensor.ms_1_19_2": {
+          "neighbors": [
+            "sensor.ms_1_19_1",
+            "sensor.ms_1_18_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_19_0",
+            "sensor.ms_1_18_8"
+          ],
+          "neighbor_groups": [
+            "light.316_1",
+            "light.316_2"
+          ],
+          "light_group": [
+            "light.316_3"
+          ]
+        },
+        "sensor.ms_1_18_9": {
+          "neighbors": [
+            "sensor.ms_1_19_2",
+            "sensor.ms_1_18_8",
+            "sensor.ms_1_7_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_19_1",
+            "sensor.ms_1_18_7",
+            "sensor.ms_1_7_5"
+          ],
+          "neighbor_groups": [
+            "light.316_3",
+            "light.316_4",
+            "light.307_1"
+          ],
+          "light_group": [
+            "light.316_2"
+          ]
+        },
+        "sensor.ms_1_18_8": {
+          "neighbors": [
+            "sensor.ms_1_18_9",
+            "sensor.ms_1_18_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_19_2",
+            "sensor.ms_1_18_6"
+          ],
+          "neighbor_groups": [
+            "light.316_2",
+            "light.316_5"
+          ],
+          "light_group": [
+            "light.316_4"
+          ]
+        },
+        "sensor.ms_1_18_7": {
+          "neighbors": [
+            "sensor.ms_1_18_8",
+            "sensor.ms_1_18_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_18_9",
+            "sensor.ms_1_18_5"
+          ],
+          "neighbor_groups": [
+            "light.316_4",
+            "light.316_6"
+          ],
+          "light_group": [
+            "light.316_5"
+          ]
+        },
+        "sensor.ms_1_18_6": {
+          "neighbors": [
+            "sensor.ms_1_18_7",
+            "sensor.ms_1_18_5",
+            "sensor.ms_1_11_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_18_8",
+            "sensor.ms_1_18_5",
+            "sensor.ms_1_11_4"
+          ],
+          "neighbor_groups": [
+            "light.316_5",
+            "light.316_7",
+            "light.311_obshchii_lestnitsa"
+          ],
+          "light_group": [
+            "light.316_6"
+          ]
+        },
+        "sensor.ms_1_18_5": {
+          "neighbors": [
+            "sensor.ms_1_18_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_18_7"
+          ],
+          "neighbor_groups": [
+            "light.316_6"
+          ],
+          "light_group": [
+            "light.316_7"
+          ]
+        }
+      }
+    },
+    "308 С/у женский": {
+      "zones": {
+        "sensor.ms_1_19_7": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.308_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_19_6": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.308_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_19_4": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.308_obshchii_s_u_zhenskii"
+          ]
+        }
+      }
+    },
+    "309 С/у мужской": {
+      "zones": {
+        "sensor.ms_1_19_10": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.309_obshchii_s_u_muzhskoi"
+          ]
+        },
+        "sensor.ms_1_19_9": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.309_obshchii_s_u_muzhskoi"
+          ]
+        },
+        "sensor.ms_1_19_8": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.309_obshchii_s_u_muzhskoi"
+          ]
+        }
+      }
+    },
+    "Правый стояк лестниц 408/311/214/184/183": {
+      "zones": {
+        "sensor.ms_1_11_8": {
+          "neighbors": [
+            "sensor.ms_1_11_6",
+            "sensor.ms_1_21_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_18_6",
+            "sensor.ms_1_21_8"
+          ],
+          "neighbor_groups": [
+            "light.311_obshchii_lestnitsa",
+            "light.413_4"
+          ],
+          "light_group": [
+            "light.408_obshchii_lestnitsa"
+          ]
+        },
+        "sensor.ms_1_11_6": {
+          "neighbors": [
+            "sensor.ms_1_11_8",
+            "sensor.ms_1_11_4",
+            "sensor.ms_1_18_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_21_9",
+            "sensor.ms_1_14_7",
+            "sensor.ms_1_18_5"
+          ],
+          "neighbor_groups": [
+            "light.408_obshchii_lestnitsa",
+            "light.214_1",
+            "light.316_6"
+          ],
+          "light_group": [
+            "light.311_obshchii_lestnitsa"
+          ]
+        },
+        "sensor.ms_1_11_4": {
+          "neighbors": [
+            "sensor.ms_1_11_6",
+            "sensor.ms_1_11_3",
+            "sensor.ms_1_14_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_18_6",
+            "sensor.ms_1_11_2",
+            "sensor.ms_1_14_6"
+          ],
+          "neighbor_groups": [
+            "light.311_obshchii_lestnitsa",
+            "light.214_0",
+            "light.209_4"
+          ],
+          "light_group": [
+            "light.214_1"
+          ]
+        },
+        "sensor.ms_1_11_3": {
+          "neighbors": [
+            "sensor.ms_1_11_4",
+            "sensor.ms_1_11_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_14_7",
+            "sensor.ms_1_10_8"
+          ],
+          "neighbor_groups": [
+            "light.214_1",
+            "light.184_obshchii_lestnitsa"
+          ],
+          "light_group": [
+            "light.214_0"
+          ]
+        },
+        "sensor.ms_1_11_2": {
+          "neighbors": [
+            "sensor.ms_1_11_3",
+            "sensor.ms_1_11_0",
+            "sensor.ms_1_10_8",
+            "sensor.ms_1_10_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_11_4",
+            "sensor.ms_1_11_0",
+            "sensor.ms_1_10_7",
+            "sensor.ms_1_10_9"
+          ],
+          "neighbor_groups": [
+            "light.214_0",
+            "light.183_obshchii_tambur",
+            "light.172_8",
+            "light.172_9"
+          ],
+          "light_group": [
+            "light.184_obshchii_lestnitsa"
+          ]
+        },
+        "sensor.ms_1_11_0": {
+          "neighbors": [
+            "sensor.ms_1_11_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_10_8"
+          ],
+          "neighbor_groups": [
+            "light.184_obshchii_lestnitsa"
+          ],
+          "light_group": [
+            "light.183_obshchii_tambur"
+          ]
+        }
+      }
+    },
+    "Коридор 209": {
+      "zones": {
+        "sensor.ms_1_13_8": {
+          "neighbors": [
+            "sensor.ms_1_13_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_14_9"
+          ],
+          "neighbor_groups": [
+            "light.209_1"
+          ],
+          "light_group": [
+            "light.209_0"
+          ]
+        },
+        "sensor.ms_1_13_9": {
+          "neighbors": [
+            "sensor.ms_1_13_8",
+            "sensor.ms_1_14_9",
+            "sensor.ms_1_7_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_13_8",
+            "sensor.ms_1_14_8",
+            "sensor.ms_1_7_3"
+          ],
+          "neighbor_groups": [
+            "light.209_0",
+            "light.209_2",
+            "light.210_1"
+          ],
+          "light_group": [
+            "light.209_1"
+          ]
+        },
+        "sensor.ms_1_14_9": {
+          "neighbors": [
+            "sensor.ms_1_13_9",
+            "sensor.ms_1_14_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_13_8",
+            "sensor.ms_1_14_7"
+          ],
+          "neighbor_groups": [
+            "light.209_1",
+            "light.209_3"
+          ],
+          "light_group": [
+            "light.209_2"
+          ]
+        },
+        "sensor.ms_1_14_8": {
+          "neighbors": [
+            "sensor.ms_1_14_9",
+            "sensor.ms_1_14_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_13_9",
+            "sensor.ms_1_14_6"
+          ],
+          "neighbor_groups": [
+            "light.209_2",
+            "light.209_4"
+          ],
+          "light_group": [
+            "light.209_3"
+          ]
+        },
+        "sensor.ms_1_14_7": {
+          "neighbors": [
+            "sensor.ms_1_14_8",
+            "sensor.ms_1_14_6",
+            "sensor.ms_1_11_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_14_9",
+            "sensor.ms_1_14_6",
+            "sensor.ms_1_11_3"
+          ],
+          "neighbor_groups": [
+            "light.209_3",
+            "light.209_5",
+            "light.214_1"
+          ],
+          "light_group": [
+            "light.209_4"
+          ]
+        },
+        "sensor.ms_1_14_6": {
+          "neighbors": [
+            "sensor.ms_1_14_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_14_8"
+          ],
+          "neighbor_groups": [
+            "light.209_4"
+          ],
+          "light_group": [
+            "light.209_5"
+          ]
+        }
+      }
+    },
+    "211 С/у женский": {
+      "zones": {
+        "sensor.ms_1_13_4": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.211_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_13_3": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.211_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_13_2": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.211_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_13_1": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.211_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_13_0": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.211_obshchii_s_u_zhenskii"
+          ]
+        }
+      }
+    },
+    "212 С/у мужской": {
+      "zones": {
+        "sensor.ms_1_13_7": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.212_obshchii_s_u_muzhskoi"
+          ]
+        },
+        "sensor.ms_1_13_6": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.212_obshchii_s_u_muzhskoi"
+          ]
+        },
+        "sensor.ms_1_13_5": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.212_obshchii_s_u_muzhskoi"
+          ]
+        }
+      }
+    },
+    "117 Туалет": {
+      "zones": {
+        "sensor.ms_1_1_12": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.117_obshchii_tualet"
+          ]
+        }
+      }
+    },
+    "125 С/у": {
+      "zones": {
+        "sensor.ms_1_4_3": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.125_obshchii_s_u"
+          ]
+        }
+      }
+    },
+    "126 С/у": {
+      "zones": {
+        "sensor.ms_1_4_4": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.126_obshchii_s_u"
+          ]
+        }
+      }
+    },
+    "112 С/у женский": {
+      "zones": {
+        "sensor.ms_1_4_1": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.112_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_4_0": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.112_obshchii_s_u_zhenskii"
+          ]
+        },
+        "sensor.ms_1_4_2": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.112_obshchii_s_u_zhenskii"
+          ]
+        }
+      }
+    },
+    "Коридор 115": {
+      "zones": {
+        "sensor.ms_1_1_3": {
+          "neighbors": [
+            "sensor.ms_1_1_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_5"
+          ],
+          "neighbor_groups": [
+            "light.115_1"
+          ],
+          "light_group": [
+            "light.115_0"
+          ]
+        },
+        "sensor.ms_1_1_4": {
+          "neighbors": [
+            "sensor.ms_1_1_3",
+            "sensor.ms_1_1_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_3",
+            "sensor.ms_1_1_6"
+          ],
+          "neighbor_groups": [
+            "light.115_0",
+            "light.114_0"
+          ],
+          "light_group": [
+            "light.115_1"
+          ]
+        }
+      }
+    },
+    "Коридор 114": {
+      "zones": {
+        "sensor.ms_1_1_5": {
+          "neighbors": [
+            "sensor.ms_1_1_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_3"
+          ],
+          "neighbor_groups": [
+            "light.115_1"
+          ],
+          "light_group": [
+            "light.114_0"
+          ]
+        },
+        "sensor.ms_1_1_6": {
+          "neighbors": [
+            "sensor.ms_1_1_5",
+            "sensor.ms_1_1_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_4",
+            "sensor.ms_1_1_8"
+          ],
+          "neighbor_groups": [
+            "light.114_0",
+            "light.114_2"
+          ],
+          "light_group": [
+            "light.114_1"
+          ]
+        },
+        "sensor.ms_1_1_7": {
+          "neighbors": [
+            "sensor.ms_1_1_6",
+            "sensor.ms_1_1_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_5",
+            "sensor.ms_1_1_9"
+          ],
+          "neighbor_groups": [
+            "light.114_1",
+            "light.114_3"
+          ],
+          "light_group": [
+            "light.114_2"
+          ]
+        },
+        "sensor.ms_1_1_8": {
+          "neighbors": [
+            "sensor.ms_1_1_7",
+            "sensor.ms_1_1_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_6",
+            "sensor.ms_1_4_8"
+          ],
+          "neighbor_groups": [
+            "light.114_2",
+            "light.114_4"
+          ],
+          "light_group": [
+            "light.114_3"
+          ]
+        },
+        "sensor.ms_1_1_9": {
+          "neighbors": [
+            "sensor.ms_1_1_8",
+            "sensor.ms_1_4_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_7",
+            "sensor.ms_1_4_9"
+          ],
+          "neighbor_groups": [
+            "light.114_3",
+            "light.114_5"
+          ],
+          "light_group": [
+            "light.114_4"
+          ]
+        },
+        "sensor.ms_1_4_8": {
+          "neighbors": [
+            "sensor.ms_1_1_9",
+            "sensor.ms_1_4_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_8",
+            "sensor.ms_1_4_10"
+          ],
+          "neighbor_groups": [
+            "light.114_4",
+            "light.114_6"
+          ],
+          "light_group": [
+            "light.114_5"
+          ]
+        },
+        "sensor.ms_1_4_9": {
+          "neighbors": [
+            "sensor.ms_1_4_8",
+            "sensor.ms_1_4_10"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_1_9",
+            "sensor.ms_1_2_3"
+          ],
+          "neighbor_groups": [
+            "light.114_5",
+            "light.114_7"
+          ],
+          "light_group": [
+            "light.114_6"
+          ]
+        },
+        "sensor.ms_1_4_10": {
+          "neighbors": [
+            "sensor.ms_1_4_9",
+            "sensor.ms_1_2_3"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_4_8",
+            "sensor.ms_1_2_4"
+          ],
+          "neighbor_groups": [
+            "light.114_6",
+            "light.132_0"
+          ],
+          "light_group": [
+            "light.114_7"
+          ]
+        }
+      }
+    },
+    "МГН С/у и раздевалка 130/131": {
+      "zones": {
+        "sensor.ms_1_4_5": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.130_obshchii_s_u_mgn"
+          ]
+        },
+        "sensor.ms_1_4_6": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.131_obshchii_razdevalka_mgn"
+          ]
+        }
+      }
+    },
+    "Главный вестибюль 132": {
+      "zones": {
+        "sensor.ms_1_2_3": {
+          "neighbors": [
+            "sensor.ms_1_4_10",
+            "sensor.ms_1_2_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_4_9",
+            "sensor.ms_1_2_5"
+          ],
+          "neighbor_groups": [
+            "light.114_7",
+            "light.132_1"
+          ],
+          "light_group": [
+            "light.132_0"
+          ]
+        },
+        "sensor.ms_1_2_4": {
+          "neighbors": [
+            "sensor.ms_1_2_3",
+            "sensor.ms_1_2_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_4_10",
+            "sensor.ms_1_2_6"
+          ],
+          "neighbor_groups": [
+            "light.132_0",
+            "light.132_2"
+          ],
+          "light_group": [
+            "light.132_1"
+          ]
+        },
+        "sensor.ms_1_2_5": {
+          "neighbors": [
+            "sensor.ms_1_2_4",
+            "sensor.ms_1_2_6",
+            "sensor.ms_1_4_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_2_3",
+            "sensor.ms_1_2_7",
+            "sensor.ms_1_4_7"
+          ],
+          "neighbor_groups": [
+            "light.132_1",
+            "light.132_7",
+            "light.132_11"
+          ],
+          "light_group": [
+            "light.132_2"
+          ]
+        },
+        "sensor.ms_1_2_6": {
+          "neighbors": [
+            "sensor.ms_1_2_5",
+            "sensor.ms_1_2_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_2_4",
+            "sensor.ms_1_2_8"
+          ],
+          "neighbor_groups": [
+            "light.132_2",
+            "light.132_3"
+          ],
+          "light_group": [
+            "light.132_7"
+          ]
+        },
+        "sensor.ms_1_2_7": {
+          "neighbors": [
+            "sensor.ms_1_2_6",
+            "sensor.ms_1_2_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_2_5",
+            "sensor.ms_1_3_10"
+          ],
+          "neighbor_groups": [
+            "light.132_7",
+            "light.132_8"
+          ],
+          "light_group": [
+            "light.132_3"
+          ]
+        },
+        "sensor.ms_1_2_8": {
+          "neighbors": [
+            "sensor.ms_1_2_7",
+            "sensor.ms_1_3_10"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_2_6",
+            "sensor.ms_1_3_9"
+          ],
+          "neighbor_groups": [
+            "light.132_3",
+            "light.132_4"
+          ],
+          "light_group": [
+            "light.132_8"
+          ]
+        },
+        "sensor.ms_1_3_10": {
+          "neighbors": [
+            "sensor.ms_1_2_8",
+            "sensor.ms_1_3_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_2_7",
+            "sensor.ms_1_3_8"
+          ],
+          "neighbor_groups": [
+            "light.132_8",
+            "light.132_9"
+          ],
+          "light_group": [
+            "light.132_4"
+          ]
+        },
+        "sensor.ms_1_3_9": {
+          "neighbors": [
+            "sensor.ms_1_3_10",
+            "sensor.ms_1_3_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_2_8",
+            "sensor.ms_1_3_7"
+          ],
+          "neighbor_groups": [
+            "light.132_4",
+            "light.132_5"
+          ],
+          "light_group": [
+            "light.132_9"
+          ]
+        },
+        "sensor.ms_1_3_8": {
+          "neighbors": [
+            "sensor.ms_1_3_8",
+            "sensor.ms_1_3_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_10",
+            "sensor.ms_1_6_4"
+          ],
+          "neighbor_groups": [
+            "light.132_9",
+            "light.132_10"
+          ],
+          "light_group": [
+            "light.132_5"
+          ]
+        },
+        "sensor.ms_1_3_7": {
+          "neighbors": [
+            "sensor.ms_1_3_8",
+            "sensor.ms_1_6_4",
+            "sensor.ms_1_3_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_9",
+            "sensor.ms_1_6_5",
+            "sensor.ms_1_3_4"
+          ],
+          "neighbor_groups": [
+            "light.132_5",
+            "light.132_6",
+            "light.138_1"
+          ],
+          "light_group": [
+            "light.132_10"
+          ]
+        },
+        "sensor.ms_1_6_4": {
+          "neighbors": [
+            "sensor.ms_1_3_7",
+            "sensor.ms_1_6_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_8",
+            "sensor.ms_1_6_6"
+          ],
+          "neighbor_groups": [
+            "light.132_10",
+            "light.141_0"
+          ],
+          "light_group": [
+            "light.132_6"
+          ]
+        },
+        "sensor.ms_1_4_7": {
+          "neighbors": [
+            "sensor.ms_1_2_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_2_4"
+          ],
+          "neighbor_groups": [
+            "light.132_2"
+          ],
+          "light_group": [
+            "light.132_11"
+          ]
+        }
+      }
+    },
+    "Коридор 141": {
+      "zones": {
+        "sensor.ms_1_6_5": {
+          "neighbors": [
+            "sensor.ms_1_6_4",
+            "sensor.ms_1_6_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_7",
+            "sensor.ms_1_6_7"
+          ],
+          "neighbor_groups": [
+            "light.132_6",
+            "light.141_1"
+          ],
+          "light_group": [
+            "light.141_0"
+          ]
+        },
+        "sensor.ms_1_6_6": {
+          "neighbors": [
+            "sensor.ms_1_6_5",
+            "sensor.ms_1_6_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_6_4",
+            "sensor.ms_1_8_0"
+          ],
+          "neighbor_groups": [
+            "light.141_0",
+            "light.141_2"
+          ],
+          "light_group": [
+            "light.141_1"
+          ]
+        },
+        "sensor.ms_1_6_7": {
+          "neighbors": [
+            "sensor.ms_1_6_6",
+            "sensor.ms_1_8_0"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_6_5",
+            "sensor.ms_1_8_1"
+          ],
+          "neighbor_groups": [
+            "light.141_1",
+            "light.141_3"
+          ],
+          "light_group": [
+            "light.141_2"
+          ]
+        },
+        "sensor.ms_1_8_0": {
+          "neighbors": [
+            "sensor.ms_1_6_7",
+            "sensor.ms_1_8_1"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_6_6",
+            "sensor.ms_1_8_2"
+          ],
+          "neighbor_groups": [
+            "light.141_2",
+            "light.141_4"
+          ],
+          "light_group": [
+            "light.141_3"
+          ]
+        },
+        "sensor.ms_1_8_1": {
+          "neighbors": [
+            "sensor.ms_1_8_0",
+            "sensor.ms_1_8_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_6_7",
+            "sensor.ms_1_8_3"
+          ],
+          "neighbor_groups": [
+            "light.141_3",
+            "light.172_0"
+          ],
+          "light_group": [
+            "light.141_4"
+          ]
+        }
+      }
+    },
+    "Вестибюль 172": {
+      "zones": {
+        "sensor.ms_1_8_2": {
+          "neighbors": [
+            "sensor.ms_1_8_1",
+            "sensor.ms_1_8_3"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_0",
+            "sensor.ms_1_8_4"
+          ],
+          "neighbor_groups": [
+            "light.141_4",
+            "light.172_1"
+          ],
+          "light_group": [
+            "light.172_0"
+          ]
+        },
+        "sensor.ms_1_8_3": {
+          "neighbors": [
+            "sensor.ms_1_8_2",
+            "sensor.ms_1_8_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_1",
+            "sensor.ms_1_8_5"
+          ],
+          "neighbor_groups": [
+            "light.172_0",
+            "light.172_2"
+          ],
+          "light_group": [
+            "light.172_1"
+          ]
+        },
+        "sensor.ms_1_8_4": {
+          "neighbors": [
+            "sensor.ms_1_8_2",
+            "sensor.ms_1_8_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_1",
+            "sensor.ms_1_8_6"
+          ],
+          "neighbor_groups": [
+            "light.172_1",
+            "light.172_3"
+          ],
+          "light_group": [
+            "light.172_2"
+          ]
+        },
+        "sensor.ms_1_8_5": {
+          "neighbors": [
+            "sensor.ms_1_8_4",
+            "sensor.ms_1_8_6",
+            "sensor.ms_1_7_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_3",
+            "sensor.ms_1_8_7",
+            "sensor.ms_1_7_3"
+          ],
+          "neighbor_groups": [
+            "light.172_2",
+            "light.172_4",
+            "light.171_1"
+          ],
+          "light_group": [
+            "light.172_3"
+          ]
+        },
+        "sensor.ms_1_8_6": {
+          "neighbors": [
+            "sensor.ms_1_8_5",
+            "sensor.ms_1_8_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_4",
+            "sensor.ms_1_8_8"
+          ],
+          "neighbor_groups": [
+            "light.172_3",
+            "light.172_5"
+          ],
+          "light_group": [
+            "light.172_4"
+          ]
+        },
+        "sensor.ms_1_8_7": {
+          "neighbors": [
+            "sensor.ms_1_8_6",
+            "sensor.ms_1_8_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_5",
+            "sensor.ms_1_10_7"
+          ],
+          "neighbor_groups": [
+            "light.172_4",
+            "light.172_6"
+          ],
+          "light_group": [
+            "light.172_5"
+          ]
+        },
+        "sensor.ms_1_8_8": {
+          "neighbors": [
+            "sensor.ms_1_8_7",
+            "sensor.ms_1_10_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_6",
+            "sensor.ms_1_10_8"
+          ],
+          "neighbor_groups": [
+            "light.172_5",
+            "light.172_7"
+          ],
+          "light_group": [
+            "light.172_6"
+          ]
+        },
+        "sensor.ms_1_10_7": {
+          "neighbors": [
+            "sensor.ms_1_8_8",
+            "sensor.ms_1_10_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_7",
+            "sensor.ms_1_10_9"
+          ],
+          "neighbor_groups": [
+            "light.172_6",
+            "light.172_8"
+          ],
+          "light_group": [
+            "light.172_7"
+          ]
+        },
+        "sensor.ms_1_10_8": {
+          "neighbors": [
+            "sensor.ms_1_10_7",
+            "sensor.ms_1_10_9",
+            "sensor.ms_1_11_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_8",
+            "sensor.ms_1_10_9",
+            "sensor.ms_1_11_3"
+          ],
+          "neighbor_groups": [
+            "light.172_7",
+            "light.172_9",
+            "light.184_1"
+          ],
+          "light_group": [
+            "light.172_8"
+          ]
+        },
+        "sensor.ms_1_10_9": {
+          "neighbors": [
+            "sensor.ms_1_10_8",
+            "sensor.ms_1_11_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_10_7",
+            "sensor.ms_1_11_3"
+          ],
+          "neighbor_groups": [
+            "light.172_8",
+            "light.184_1"
+          ],
+          "light_group": [
+            "light.172_9"
+          ]
+        }
+      }
+    },
+    "Центральный стояк лестниц 205/138": {
+      "zones": {
+        "sensor.ms_1_3_2": {
+          "neighbors": [
+            "sensor.ms_1_3_3"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_6"
+          ],
+          "neighbor_groups": [
+            "light.205_2"
+          ],
+          "light_group": [
+            "light.205_0"
+          ]
+        },
+        "sensor.ms_1_3_3": {
+          "neighbors": [
+            "sensor.ms_1_3_2",
+            "sensor.ms_1_3_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_2",
+            "sensor.ms_1_3_7"
+          ],
+          "neighbor_groups": [
+            "light.205_0",
+            "light.138_1"
+          ],
+          "light_group": [
+            "light.205_2"
+          ]
+        },
+        "sensor.ms_1_3_6": {
+          "neighbors": [
+            "sensor.ms_1_3_3",
+            "sensor.ms_1_3_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_2",
+            "sensor.ms_1_6_4"
+          ],
+          "neighbor_groups": [
+            "light.205_2",
+            "light.132_10"
+          ],
+          "light_group": [
+            "light.138_1"
+          ]
+        }
+      }
+    },
+    "Тамбуры входные 136/137": {
+      "zones": {
+        "sensor.ms_1_2_9": {
+          "neighbors": [
+            "sensor.ms_1_2_8",
+            "sensor.ms_1_2_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_10",
+            "sensor.ms_1_2_7"
+          ],
+          "neighbor_groups": [
+            "light.132_8"
+          ],
+          "light_group": [
+            "light.136_obshchii_tambur"
+          ]
+        },
+        "sensor.ms_1_2_10": {
+          "neighbors": [
+            "sensor.ms_1_2_8",
+            "sensor.ms_1_2_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_10",
+            "sensor.ms_1_2_7"
+          ],
+          "neighbor_groups": [
+            "light.132_8"
+          ],
+          "light_group": [
+            "light.137_obshchii_tambur"
+          ]
+        }
+      }
+    },
+    "Вестибюль 147": {
+      "zones": {
+        "sensor.ms_1_5_7": {
+          "neighbors": [
+            "sensor.ms_1_6_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_6_8"
+          ],
+          "neighbor_groups": [
+            "light.147_1"
+          ],
+          "light_group": [
+            "light.147_0"
+          ]
+        },
+        "sensor.ms_1_6_8": {
+          "neighbors": [
+            "sensor.ms_1_5_7"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_7"
+          ],
+          "neighbor_groups": [
+            "light.147_0"
+          ],
+          "light_group": [
+            "light.147_1"
+          ]
+        }
+      }
+    },
+    "Коридор 156": {
+      "zones": {
+        "sensor.ms_1_5_1": {
+          "neighbors": [
+            "sensor.ms_1_5_2"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_3"
+          ],
+          "neighbor_groups": [
+            "light.156_1"
+          ],
+          "light_group": [
+            "light.156_0"
+          ]
+        },
+        "sensor.ms_1_5_2": {
+          "neighbors": [
+            "sensor.ms_1_5_1",
+            "sensor.ms_1_5_3",
+            "sensor.ms_1_5_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_1",
+            "sensor.ms_1_5_5",
+            "sensor.ms_1_5_9"
+          ],
+          "neighbor_groups": [
+            "light.156_0",
+            "light.156_2",
+            "light.156_3"
+          ],
+          "light_group": [
+            "light.156_1"
+          ]
+        },
+        "sensor.ms_1_5_3": {
+          "neighbors": [
+            "sensor.ms_1_5_2",
+            "sensor.ms_1_5_4",
+            "sensor.ms_1_5_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_1",
+            "sensor.ms_1_5_9",
+            "sensor.ms_1_5_6"
+          ],
+          "neighbor_groups": [
+            "light.156_1",
+            "light.156_3",
+            "light.161_0"
+          ],
+          "light_group": [
+            "light.156_2"
+          ]
+        },
+        "sensor.ms_1_5_4": {
+          "neighbors": [
+            "sensor.ms_1_5_2",
+            "sensor.ms_1_5_3",
+            "sensor.ms_1_5_9"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_1",
+            "sensor.ms_1_5_5",
+            "sensor.ms_1_5_9"
+          ],
+          "neighbor_groups": [
+            "light.156_1",
+            "light.156_1",
+            "light.156_4"
+          ],
+          "light_group": [
+            "light.156_3"
+          ]
+        },
+        "sensor.ms_1_5_9": {
+          "neighbors": [
+            "sensor.ms_1_5_4"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_3"
+          ],
+          "neighbor_groups": [
+            "light.156_3"
+          ],
+          "light_group": [
+            "light.156_4"
+          ]
+        }
+      }
+    },
+    "Загрузочная 161": {
+      "zones": {
+        "sensor.ms_1_5_5": {
+          "neighbors": [
+            "sensor.ms_1_5_3",
+            "sensor.ms_1_5_6"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_2",
+            "sensor.ms_1_5_6"
+          ],
+          "neighbor_groups": [
+            "light.156_2",
+            "light.161_1"
+          ],
+          "light_group": [
+            "light.161_0"
+          ]
+        },
+        "sensor.ms_1_5_6": {
+          "neighbors": [
+            "sensor.ms_1_5_5"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_5_3"
+          ],
+          "neighbor_groups": [
+            "light.161_0"
+          ],
+          "light_group": [
+            "light.161_1"
+          ]
+        }
+      }
+    },
+    "С/у 154": {
+      "zones": {
+        "sensor.ms_1_5_0": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.154_obshchii_s_u"
+          ]
+        }
+      }
+    },
+    "Комната л/г девочек 173": {
+      "zones": {
+        "sensor.ms_1_9_3": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.173_obshchii_komnata_l_g_dev"
+          ]
+        }
+      }
+    },
+    "С/у женский 174/175": {
+      "zones": {
+        "sensor.ms_1_9_4": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.174_obshchii_umyvalnaya"
+          ]
+        },
+        "sensor.ms_1_9_5": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.175_obshchii_s_u_zhenskii"
+          ]
+        }
+      }
+    },
+    "С/у женский 176": {
+      "zones": {
+        "sensor.ms_1_9_6": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.176_obshchii_s_u_muzhskoi"
+          ]
+        },
+        "sensor.ms_1_9_7": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.176_obshchii_s_u_muzhskoi"
+          ]
+        }
+      }
+    },
+    "С/у преподавательский 177": {
+      "zones": {
+        "sensor.ms_1_9_8": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.177_obshchii_s_u_prepodavat"
+          ]
+        }
+      }
+    },
+    "С/у преподавательский 178": {
+      "zones": {
+        "sensor.ms_1_9_9": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.178_obshchii_s_u_mgn"
+          ]
+        }
+      }
+    },
+    "Тамбуры входные 179/180": {
+      "zones": {
+        "sensor.ms_1_8_9": {
+          "neighbors": [
+            "sensor.ms_1_8_8",
+            "sensor.ms_1_8_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_7",
+            "sensor.ms_1_8_6"
+          ],
+          "neighbor_groups": [
+            "light.172_6"
+          ],
+          "light_group": [
+            "light.179_obshchii_tambur"
+          ]
+        },
+        "sensor.ms_1_8_10": {
+          "neighbors": [
+            "sensor.ms_1_8_8",
+            "sensor.ms_1_8_8"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_8_7",
+            "sensor.ms_1_8_6"
+          ],
+          "neighbor_groups": [
+            "light.172_6"
+          ],
+          "light_group": [
+            "light.180_obshchii_tambur"
+          ]
+        }
+      }
+    },
+    "Читальный зал 143": {
+      "zones": {
+        "sensor.ms_1_5_9": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.143_obshchii_chitatelskii_zal"
+          ]
+        },
+        "sensor.ms_1_5_10": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.143_obshchii_chitatelskii_zal"
+          ]
+        },
+        "sensor.ms_1_5_11": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.143_obshchii_chitatelskii_zal"
+          ]
+        }
+      }
+    },
+    "Обеденный зал 145": {
+      "zones": {
+        "sensor.ms_1_6_0": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.145_obshchii_obedennyi_zal"
+          ]
+        },
+        "sensor.ms_1_6_1": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.145_obshchii_obedennyi_zal"
+          ]
+        },
+        "sensor.ms_1_6_2": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.145_obshchii_obedennyi_zal"
+          ]
+        },
+        "sensor.ms_1_6_3": {
+          "neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "far_neighbors": [
+            "sensor.ms_zaglushka"
+          ],
+          "neighbor_groups": [
+            "light.l_zaglushka"
+          ],
+          "light_group": [
+            "light.145_obshchii_obedennyi_zal"
+          ]
+        }
+      }
+    },
+    "Забытый стояк лестниц 203/146": {
+      "zones": {
+        "sensor.ms_1_3_0": {
+          "neighbors": [
+            "sensor.ms_1_3_1"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_1"
+          ],
+          "neighbor_groups": [
+            "light.146_1"
+          ],
+          "light_group": [
+            "light.146_0"
+          ]
+        },
+        "sensor.ms_1_3_1": {
+          "neighbors": [
+            "sensor.ms_1_3_0"
+          ],
+          "far_neighbors": [
+            "sensor.ms_1_3_0"
+          ],
+          "neighbor_groups": [
+            "light.146_0"
+          ],
+          "light_group": [
+            "light.146_1"
+          ]
+        }
+      }
+    }
+  }
+}
