@@ -134,7 +134,7 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `light.tekh_pom_1_i_etazh` | `generate_floor_groups` |
 | Группа всего объекта | `light.ves_obekt` | | `generate_floor_groups` |
 | Area этажа | `ves_<N>_etazh` | `ves_1_etazh` | `generate_areas` |
-| Задержка гашения | `input_number.vacant_delay` | | `generate_helpers` |
+| Задержка гашения | `input_number.vacant_delay_<тип>` | по одной на тип помещения, без `initial` | `generate_helpers` |
 | Кнопка «назад» | `input_button.but_back` | | `generate_helpers` |
 | ~~Режим этажа~~ ❌ | `input_boolean.regim_auto_<N>` | больше НЕ создаётся (правка 5) | — |
 | Фильтр: показать всё | `input_boolean.nav_type_all` | | `generate_helpers` |

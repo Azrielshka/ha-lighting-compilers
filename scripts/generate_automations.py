@@ -28,13 +28,16 @@ Home Assistant списком и является. Обёртки вида `zm_a
 Почему не automations.yaml в корне: туда Home Assistant пишет автоматизации,
 созданные через UI. Перезаписав его, мы стёрли бы ручную работу наладчика.
 
+⚠ Задержка гашения
+------------------
+OFF-автоматизация ссылается на input_number.vacant_delay_<тип> своего типа
+помещения. Эти помощники СОЗДАЁТ generate_helpers (по одному на тип), но БЕЗ
+initial: на первом старте HA они равны 0, и свет гаснет мгновенно, пока
+наладчик не выставит значения. См. canon (снятый initial и его цена).
+
 ⚠ Известный долг
 ----------------
-input_number.vacant_delay пайплайн НЕ создаёт (см. canon.VACANT_DELAY_ENTITY).
-Без него OFF-автоматизации соберутся и загрузятся, но триггер не сработает:
-`for: seconds: {{ states(...) }}` вернёт unknown — и свет не будет гаснуть.
-
-Zone Manager JSON тоже собирается вручную. Без него автоматизация отработает,
+Zone Manager JSON собирается вручную. Без него автоматизация отработает,
 получит found: false и запишет warning в лог. Свет не включится.
 """
 
@@ -55,11 +58,11 @@ from scripts._lib.canon import (
     BLUEPRINT_DIR,
     BLUEPRINT_INPUTS_BY_FAMILY,
     BLUEPRINTS_BY_FAMILY,
-    VACANT_DELAY_ENTITY,
     automation_id,
     ba_gate_entity,
     blueprint_path,
     script_entity,
+    vacant_delay_entity,
 )
 from scripts._lib.filters import (
     Filters,
@@ -133,7 +136,8 @@ def build_automation(unit, role: str, directory: str) -> List[str]:
             for sensor in sensors:
                 lines.append(f"        - {sensor}")
         elif source == "vacant_delay":
-            lines.append(f"      {input_name}: {VACANT_DELAY_ENTITY}")
+            # Задержка своего типа помещения: у каждого типа свой input_number.
+            lines.append(f"      {input_name}: {vacant_delay_entity(unit['space_type'])}")
         elif source == "gate":
             lines.append(f"      {input_name}: {ba_gate_entity(_unit_floor(unit))}")
         else:
@@ -177,8 +181,9 @@ def build_yaml(units_df: pd.DataFrame, filters: Filters, directory: str) -> str:
         "# Не automations.yaml в корне: туда HA пишет автоматизации, созданные",
         "# через UI, и перезапись стёрла бы ручную работу наладчика.",
         "#",
-        f"# ⚠ {VACANT_DELAY_ENTITY} пайплайн не создаёт — заведите его на объекте,",
-        "#   иначе OFF-триггер не сработает и свет не будет гаснуть.",
+        "# ⚠ Задержка гашения — input_number.vacant_delay_<тип> своего типа",
+        "#   помещения (создаёт generate_helpers). На первом старте HA = 0,",
+        "#   выставьте значения под типы на объекте.",
         "#",
         "# Файл собран автоматически — правки будут затёрты.",
         "",
@@ -304,8 +309,9 @@ def main() -> int:
 
     print(f"\nOK: {output_path}")
     print(f"    {blueprints_out} — {len(copied)} blueprint'ов для деплоя")
-    print(f"\n⚠ Заведите {VACANT_DELAY_ENTITY} на объекте:")
-    print("   без него OFF-триггер не сработает и свет не будет гаснуть.")
+    print("\n⚠ Задержки гашения input_number.vacant_delay_<тип> создаёт")
+    print("   generate_helpers. На первом старте HA они = 0 — выставьте")
+    print("   значения под типы на объекте, иначе свет гаснет мгновенно.")
     return 0
 
 

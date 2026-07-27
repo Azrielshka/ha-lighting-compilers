@@ -7,13 +7,15 @@ generate_helpers.py
 Выход: data/helpers/lighting-compilers.yaml
 
 Раньше помощников заводил наладчик руками, и забытый всплывал уже на объекте:
-без `input_number.vacant_delay` свет не гаснет, без `input_select` не работает
+без `input_number.vacant_delay_<тип>` свет не гаснет, без `input_select` не работает
 навигация с Главной. Теперь их создаёт пайплайн.
 
 Что создаётся:
 
-  input_number.vacant_delay        — задержка перехода в vacant. Один на объект,
-                                     на него ссылается КАЖДАЯ OFF-автоматизация.
+  input_number.vacant_delay_<тип>  — задержка гашения, ПО ОДНОМУ на тип
+                                     помещения. OFF-автоматизация ссылается на
+                                     задержку своего типа. Без initial — значение
+                                     принадлежит объекту.
   input_button.but_back            — «назад» в бейджах этажных view.
   input_boolean.regim_auto_<N>     — БОЛЬШЕ НЕ СОЗДАЁТСЯ (правка 5): бейдж режима
                                      переключён на switch/гейт Оркестратора.
@@ -47,17 +49,17 @@ from scripts._lib.canon import (
     NAV_TYPE_ALL_LABEL,
     NAV_TYPE_ICONS,
     NAV_PICK_ID,
+    ALLOWED_SPACE_TYPES,
     NAV_TYPE_LABELS,
     nav_pick_options,
     nav_type_id,
     BACK_BUTTON_ID,
     NAV_PLACEHOLDER,
     space_label,
-    VACANT_DELAY_DEFAULT,
-    VACANT_DELAY_ID,
     VACANT_DELAY_MAX,
     VACANT_DELAY_MIN,
     VACANT_DELAY_STEP,
+    vacant_delay_id,
     ZAL_PRESETS,
     floor_auto_mode_id,
     floor_nav_id,
@@ -102,17 +104,21 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
 
     floors = sorted(by_floor)
 
+    # Задержка гашения — по одному input_number на КАЖДЫЙ тип помещения
+    # (2026-07-23). Все 6 канонических, порядок стабилен (sorted). БЕЗ initial:
+    # значение принадлежит объекту, наладчик выставляет его под тип и оно
+    # сохраняется между рестартами (см. canon про снятый initial и его цену).
     numbers = {
-        VACANT_DELAY_ID: {
-            "name": "Задержка перехода в vacant",
+        vacant_delay_id(space_type): {
+            "name": f"Задержка гашения — {NAV_TYPE_LABELS[space_type]}",
             "min": VACANT_DELAY_MIN,
             "max": VACANT_DELAY_MAX,
             "step": VACANT_DELAY_STEP,
-            "initial": VACANT_DELAY_DEFAULT,
             "unit_of_measurement": "с",
             "mode": "box",
             "icon": "mdi:timer-outline",
         }
+        for space_type in sorted(ALLOWED_SPACE_TYPES)
     }
 
     buttons = {
@@ -181,13 +187,16 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
         }
 
     print(f"  Этажей:               {len(floors)}")
-    print(f"  input_number:         {len(numbers)}")
+    print(f"  input_number:         {len(numbers)} (задержка гашения на тип помещения)")
     print(f"  input_button:         {len(buttons)}")
     # «режимы этажей» ушли из счётчика: regim_auto больше не генерится (правка 5).
     print(f"  input_boolean:        {len(booleans)} "
           f"(пресеты зала: {len(ZAL_PRESETS)}, "
           f"фильтр типов: {len(NAV_TYPE_LABELS) + 1})")
     print(f"  input_select:         {len(selects)}")
+    print("  ⚠ У задержек гашения нет initial: на ПЕРВОМ старте HA каждая = 0")
+    print("    (свет гаснет мгновенно). Выставьте значения под типы на объекте —")
+    print("    дальше они сохраняются между перезапусками.")
 
     return {
         "input_number": numbers,

@@ -20,12 +20,12 @@ import generate_helpers as H
 import normalize_excel as N
 from conftest import make_book
 from scripts._lib.canon import (
+    ALLOWED_SPACE_TYPES,
     NAV_PLACEHOLDER,
-    VACANT_DELAY_DEFAULT,
-    VACANT_DELAY_ENTITY,
     ZAL_PRESETS,
     floor_auto_mode_entity,
     floor_nav_entity,
+    vacant_delay_id,
 )
 from scripts._lib.filters import Filters
 from scripts._lib.normalized import load_dataset
@@ -63,38 +63,37 @@ def _package(layer: Path) -> dict:
 
 
 # ============================================================
-# vacant_delay — главный известный долг
+# vacant_delay — задержка гашения ПО ТИПУ помещения
 # ============================================================
 
-def test_vacant_delay_is_created_with_default(object_layer):
-    """Тот самый помощник, без которого свет не гаснет."""
-    number = _package(object_layer)["input_number"]["vacant_delay"]
-
-    assert number["initial"] == VACANT_DELAY_DEFAULT == 10
-    assert number["mode"] == "box"          # поле ввода, а не ползунок
-    assert number["min"] == 0 and number["max"] == 300
-
-
-def test_vacant_delay_entity_matches_what_automations_reference(object_layer):
-    """Имя выводится из ключа — оно обязано совпасть с тем, что ждут автоматизации.
-
-    entity_id у YAML-помощника берётся из КЛЮЧА (`vacant_delay:`), а не из
-    отображаемого имени. Если ключ разойдётся с canon.VACANT_DELAY_ENTITY,
-    OFF-автоматизации будут ссылаться в пустоту.
+def test_vacant_delay_created_per_type_without_initial(object_layer):
     """
-    keys = _package(object_layer)["input_number"].keys()
+    Правка 2026-07-23: один input_number на КАЖДЫЙ из 6 канонических типов,
+    БЕЗ initial.
 
-    assert VACANT_DELAY_ENTITY == f"input_number.{list(keys)[0]}"
-
-
-def test_vacant_delay_has_initial_on_purpose(object_layer):
-    """`initial` обязан быть: без него на чистом объекте состояние unknown.
-
-    Тогда `for: seconds: {{ states(...) }}` ломается и свет не гаснет — это и
-    есть баг, ради которого шаг helpers затевался. Цена осознанная: значение
-    принадлежит пайплайну и восстанавливается при каждом старте HA.
+    ⚠ Отсутствие initial критично: с ним значение сбрасывалось при каждом
+    старте HA. Без — принадлежит объекту. Тест стережёт, чтобы initial не
+    вернулся случайно (например, копипастом из старого помощника).
     """
-    assert "initial" in _package(object_layer)["input_number"]["vacant_delay"]
+    numbers = _package(object_layer)["input_number"]
+
+    assert len(numbers) == len(ALLOWED_SPACE_TYPES) == 6
+
+    for space_type in ALLOWED_SPACE_TYPES:
+        key = vacant_delay_id(space_type)
+        assert key in numbers, f"нет задержки для типа {space_type}"
+
+        number = numbers[key]
+        assert "initial" not in number, f"{key}: initial вернулся"
+        assert number["mode"] == "box"          # поле ввода, а не ползунок
+        assert number["min"] == 0 and number["max"] == 300
+
+
+# Прежний test_vacant_delay_has_initial_on_purpose удалён (2026-07-23): initial
+# снят по решению владельца, значение теперь принадлежит объекту. Отсутствие
+# initial стережёт test_vacant_delay_created_per_type_without_initial выше.
+# «unknown → for ломается» не возвращается: сущность создаётся всегда (просто
+# без initial), значение при первом старте = min (0), а не unknown.
 
 
 # ============================================================

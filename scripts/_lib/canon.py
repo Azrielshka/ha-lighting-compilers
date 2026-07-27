@@ -554,24 +554,40 @@ BLUEPRINT_DIR: str = "zone_manager"
 # vacant_delay), поэтому предсказуем. Через UI он выводится из отображаемого
 # имени — ловушка, на которой мы уже обжигались с группами этажа.
 
-# input_number с задержкой перехода в vacant. Один на объект.
-# На него ссылается КАЖДАЯ OFF-автоматизация.
-VACANT_DELAY_ENTITY: str = "input_number.vacant_delay"
-VACANT_DELAY_ID: str = "vacant_delay"
-VACANT_DELAY_DEFAULT: int = 10     # секунд, согласовано с владельцем 2026-07-17
+# input_number с задержкой перехода в vacant — ПО ОДНОМУ НА ТИП помещения
+# (2026-07-23, решение владельца). Раньше был один общий на объект; теперь
+# у каждого типа своя выдержка гашения, и OFF-автоматизация помещения ссылается
+# на задержку своего типа. Создаются для всех 6 канонических типов, как
+# nav_type-фильтр (единообразно; class/zal OFF-автоматизаций не имеют, их
+# helper останется без потребителя, но набор стабилен между объектами).
+#
+# ⚠ entity_id берётся из КЛЮЧА в YAML (`vacant_delay_korridor:` ->
+# input_number.vacant_delay_korridor), поэтому предсказуем.
+VACANT_DELAY_PREFIX: str = "vacant_delay_"
 VACANT_DELAY_MIN: int = 0
 VACANT_DELAY_MAX: int = 300        # 5 минут — задержка гашения света
 VACANT_DELAY_STEP: int = 1
 
-# ⚠ `initial` у input_number задаёт значение при КАЖДОМ старте HA, а не только
-# при создании: «If you set a valid value for initial this integration will
-# start with the state set to that value. Otherwise, it will restore the state
-# it had before Home Assistant stopping» (доки input_number).
+
+def vacant_delay_id(space_type: str) -> str:
+    """vacant_delay_korridor — object_id задержки для типа помещения."""
+    return f"{VACANT_DELAY_PREFIX}{str(space_type).strip().lower()}"
+
+
+def vacant_delay_entity(space_type: str) -> str:
+    """input_number.vacant_delay_korridor — сущность задержки для типа."""
+    return f"input_number.{vacant_delay_id(space_type)}"
+
+
+# ⚠ `initial` у этих input_number СНЯТ (2026-07-23, решение владельца). Раньше
+# стоял initial=10 и переписывал значение при КАЖДОМ старте HA — правка в UI
+# жила лишь до перезапуска. Теперь значение принадлежит ОБЪЕКТУ: наладчик
+# выставляет задержку под тип и она сохраняется между рестартами.
 #
-# Ставим осознанно: значение принадлежит пайплайну, как и группы света —
-# хотите другое, меняете константу и передеплоиваете. Цена — правка в UI живёт
-# до перезапуска. Взамен навсегда закрыт `unknown` на чистом объекте, из-за
-# которого `for: seconds` ломался и свет не гас (главный известный долг).
+# ⚠ Цена: без initial при ПЕРВОМ старте HA input_number берёт min (0) — свет
+# гаснет мгновенно, пока наладчик не выставит значения. Отчёт шага об этом
+# предупреждает. Раньше initial=10 давал разумный старт, но ценой затирания
+# ручных правок — размен сделан в пользу объекта.
 
 BACK_BUTTON_ID: str = "but_back"
 BACK_BUTTON_ENTITY: str = f"input_button.{BACK_BUTTON_ID}"

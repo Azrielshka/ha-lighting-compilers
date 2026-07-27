@@ -25,8 +25,8 @@ from scripts._lib.canon import (
     BLUEPRINT_INPUTS_BY_FAMILY,
     BLUEPRINTS_BY_FAMILY,
     SCRIPTS_BY_FAMILY,
-    VACANT_DELAY_ENTITY,
     ba_gate_entity,
+    vacant_delay_entity,
 )
 from scripts._lib.filters import Filters
 from scripts._lib.normalized import load_dataset
@@ -223,7 +223,8 @@ def test_off_automation_default(tmp_path):
     off = auto[1]
     inp = inputs_of(off)
 
-    assert inp["vacant_delay_input"] == VACANT_DELAY_ENTITY
+    # Задержка — своего типа помещения (korridor), а не общая.
+    assert inp["vacant_delay_input"] == vacant_delay_entity("korridor")
     assert inp["off_script_1"] == "script.101_koridor_off"
     assert inp["off_script_2"] == "script.101_koridor_near_off"
 
@@ -236,6 +237,30 @@ def test_off_automation_special_has_single_script(tmp_path):
 
     assert inp["off_script"] == "script.110_sanuzel_off"
     assert "off_script_1" not in inp
+    # Задержка своего типа — special, а не korridor.
+    assert inp["vacant_delay_input"] == vacant_delay_entity("special")
+
+
+def test_vacant_delay_differs_by_room_type(tmp_path):
+    """
+    Разные типы — разные input_number задержки. Раньше был один общий;
+    теперь коридор и санузел ссылаются на РАЗНЫЕ помощники.
+    """
+    auto = automations(tmp_path, [
+        row("101_Коридор", "Korridor", sensor="1.1.1", panel="None"),
+        row("110_Санузел", "Special", sensor="1.2.1", panel="None"),
+    ])
+
+    delays = {
+        a["use_blueprint"]["input"]["vacant_delay_input"]
+        for a in auto
+        if "vacant_delay_input" in a["use_blueprint"]["input"]
+    }
+
+    assert delays == {
+        vacant_delay_entity("korridor"),
+        vacant_delay_entity("special"),
+    }
 
 
 def test_off_automation_hall_uses_hall_near(tmp_path):
