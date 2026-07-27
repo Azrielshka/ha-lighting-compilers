@@ -334,7 +334,7 @@ class LauncherWindow(QMainWindow):
         ⚠ Кнопки живут в прокручиваемой области, и это не удобство, а защита от
         обрезки текста.
 
-        Их четырнадцать, и без прокрутки панель требовала себе 689px по высоте.
+        Их пятнадцать, и без прокрутки панель требовала себе под 740px по высоте.
         Вместе с конфигурацией и шапкой окно просило 1016px — больше, чем есть у
         ноутбучного экрана. Оконный менеджер ужимал окно ниже его же минимума,
         layout сплющивал кнопки, и от подписи оставалась горизонтальная полоска
@@ -382,9 +382,9 @@ class LauncherWindow(QMainWindow):
         self.btn_helpers.setToolTip(
             "Вспомогательные объекты HA одним пакетом:\n"
             "data/helpers/lighting-compilers.yaml.\n\n"
-            "input_number.vacant_delay — без него свет не гаснет.\n"
+            "input_number.vacant_delay_<тип> — задержка гашения по типу помещения.\n"
             "input_select.nav_floor_<N> — списки помещений для навигации.\n"
-            "Пресеты зала и режимы этажей — объекты создаются, логику за ними\n"
+            "Пресеты зала и фильтр типов — объекты создаются, логику за ними\n"
             "описывают ваши автоматизации."
         )
 
@@ -399,8 +399,15 @@ class LauncherWindow(QMainWindow):
         self.btn_automations = QPushButton("[09] AUTOMATIONS")
         self.btn_automations.setToolTip(
             "По две автоматизации на единицу обслуживания (ON и OFF).\n"
-            "Плюс копии blueprint'ов в data/blueprints/ для деплоя.\n\n"
-            "⚠ input_number.vacant_delay пайплайн не создаёт — заведите его на объекте."
+            "Плюс копии blueprint'ов в data/blueprints/ для деплоя."
+        )
+
+        # Конфиг зон датчиков из листа «Группы соседей».
+        self.btn_zone_manager = QPushButton("[10] ZONE MANAGER")
+        self.btn_zone_manager.setToolTip(
+            "Собирает data/json/zone_manager.json из листа «Группы соседей».\n"
+            "Его запрашивают blueprint'ы датчиков (get_sensor_config).\n\n"
+            "⚠ Без него свет по датчикам не включается."
         )
 
         # Не входит в Build All: карточки вставляются в дашборд вручную.
@@ -437,6 +444,7 @@ class LauncherWindow(QMainWindow):
         layout.addWidget(self.btn_helpers)
         layout.addWidget(self.btn_scripts)
         layout.addWidget(self.btn_automations)
+        layout.addWidget(self.btn_zone_manager)
 
         layout.addSpacing(8)
         layout.addWidget(self.btn_lovelace)
@@ -563,6 +571,9 @@ class LauncherWindow(QMainWindow):
         )
         self.btn_automations.clicked.connect(
             lambda: self._run_single_operation("automations")
+        )
+        self.btn_zone_manager.clicked.connect(
+            lambda: self._run_single_operation("zone_manager")
         )
         self.btn_lovelace.clicked.connect(
             lambda: self._run_single_operation("lovelace")
