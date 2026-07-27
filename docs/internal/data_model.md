@@ -136,7 +136,7 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Area этажа | `ves_<N>_etazh` | `ves_1_etazh` | `generate_areas` |
 | Задержка гашения | `input_number.vacant_delay` | | `generate_helpers` |
 | Кнопка «назад» | `input_button.but_back` | | `generate_helpers` |
-| Режим этажа ⏳ | `input_boolean.regim_auto_<N>` | `input_boolean.regim_auto_1` | `generate_helpers` |
+| ~~Режим этажа~~ ❌ | `input_boolean.regim_auto_<N>` | больше НЕ создаётся (правка 5) | — |
 | Фильтр: показать всё | `input_boolean.nav_type_all` | | `generate_helpers` |
 | Фильтр: тип помещения | `input_boolean.nav_type_<тип>` | `input_boolean.nav_type_korridor` | `generate_helpers` |
 | Фильтр списком ⏳ | `input_select.nav_type_pick` | | `generate_helpers` |
@@ -181,10 +181,12 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 управления фильтром (семь плиток против одного списка) и после сравнения один
 из двух уходит. Подробности и предупреждения — `decisions.md`.
 
-⏳ `input_boolean.regim_auto_<N>` помечен к снятию: его логику забирает гейт
-Оркестратора (см. «Разметка для Оркестратора»). Пока Оркестратора нет, помощник
-остаётся — на нём висит бейдж режима на этажных страницах. Снимаем вместе с
-заменой сущности в бейдже.
+❌ `input_boolean.regim_auto_<N>` **больше не создаётся** (правка 5, 2026-07-23):
+Оркестратор встал на объект, и бейджи режима переключены на его сущности —
+этажный `switch...avtomatika_etazh_<N>` (кликабельный) + гейт-индикатор, на
+Главной бейдж-`select` режима здания. Генерация закомментирована в
+`generate_helpers.py`, билдер в каноне сохранён для отката. На существующих
+объектах осиротевшие `regim_auto` убираются вручную.
 
 ⚠ **Ключи фильтра — те же строки, что `ALLOWED_SPACE_TYPES`.** Карточка
 помещения ссылается на помощника своего типа; разъедься они на символ, фильтр

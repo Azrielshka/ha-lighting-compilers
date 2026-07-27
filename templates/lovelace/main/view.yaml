@@ -44,6 +44,16 @@ badges:
     show_state: true
     show_icon: true
     color: amber
+  # Режим здания (Оркестратор): select Авто/Ручной. Клик по бейджу открывает
+  # окно с выбором опции — выбор сохраняется через сам бейдж. Существует только
+  # при установленном Оркестраторе; без него — «недоступно».
+  - type: entity
+    entity: "[[MODE_SELECT]]"
+    name: Режим здания
+    show_name: true
+    show_state: true
+    show_icon: true
+    color: deep-purple
 sections:
   - type: grid
     column_span: 2

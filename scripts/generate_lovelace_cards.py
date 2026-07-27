@@ -45,7 +45,10 @@ from scripts._lib.canon import (
     NAV_TYPE_LABELS,
     SERVICE_VIEWS,
     TECHNICAL_SPACE_TYPES,
+    ba_gate_entity,
+    building_mode_select_entity,
     floor_area_id,
+    floor_auto_switch_entity,
     floor_icon,
     floor_light_entity,
     floor_nav_entity,
@@ -298,6 +301,7 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
     view = view.replace("[[PATH]]", V.MAIN_PATH)
     view = view.replace("[[TITLE]]", title)
     view = view.replace("[[OBJECT_LIGHT]]", object_light_entity())
+    view = view.replace("[[MODE_SELECT]]", building_mode_select_entity())
     view = _splice(view, "[[FLOOR_BLOCKS]]", "\n".join(blocks))
     view = _splice(view, "[[SERVICE_BLOCKS]]",
                    build_service_blocks(templates_dir, dashboard))
@@ -378,6 +382,8 @@ def build_floor_view(templates_dir: Path, floor: int, cards: List[dict],
     tpl = tpl.replace("[[PATH]]", V.floor_view_path(floor))
     tpl = tpl.replace("[[FLOOR_ICON]]", floor_icon(floor))
     tpl = tpl.replace("[[FLOOR_LIGHT]]", floor_light_entity(floor))
+    tpl = tpl.replace("[[FLOOR_SWITCH]]", floor_auto_switch_entity(floor))
+    tpl = tpl.replace("[[FLOOR_GATE]]", ba_gate_entity(floor))
     tpl = tpl.replace("[[DASHBOARD]]", dashboard)
     tpl = tpl.replace("[[FLOOR]]", str(floor))
     tpl = _splice(tpl, "[[NAV_FILTER]]", build_nav_filter(templates_dir))

@@ -458,6 +458,30 @@ def ba_gate_entity(floor: int) -> str:
     return f"{BA_GATE_ENTITY_PREFIX}{int(floor)}_etazh"
 
 
+# Переключатель режима этажа Оркестратора. Кликабельный (switch), в отличие от
+# гейта: им диспетчер переключает Авто/Ручной этажа прямо с бейджа. Именно он —
+# функциональная замена legacy input_boolean.regim_auto (полярность та же:
+# ON = автоматика). Гейт для бейджа не годится — он read-only.
+#
+# ⚠ Та же хрупкость entity_id, что у гейта: реальное имя с объекта, не формула.
+BA_FLOOR_SWITCH_PREFIX: str = "switch.orkestrator_zdaniia_avtomatika_etazh_"
+
+
+def floor_auto_switch_entity(floor: int) -> str:
+    """switch.orkestrator_zdaniia_avtomatika_etazh_1_etazh — тумблер режима этажа."""
+    return f"{BA_FLOOR_SWITCH_PREFIX}{int(floor)}_etazh"
+
+
+# Селектор режима управления зданием (Авто / Ручной). Одна сущность на объект.
+# Идёт бейджем на Главную: клик открывает окно выбора опции.
+BUILDING_MODE_SELECT: str = "select.orkestrator_zdaniia_rezhim_upravleniia_zdaniem"
+
+
+def building_mode_select_entity() -> str:
+    """select.orkestrator_zdaniia_rezhim_upravleniia_zdaniem — режим здания."""
+    return BUILDING_MODE_SELECT
+
+
 # ============================================================
 # ЕДИНИЦЫ ОБСЛУЖИВАНИЯ, СЕМЕЙСТВА, СКРИПТЫ
 # ============================================================

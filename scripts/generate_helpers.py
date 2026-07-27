@@ -15,7 +15,8 @@ generate_helpers.py
   input_number.vacant_delay        — задержка перехода в vacant. Один на объект,
                                      на него ссылается КАЖДАЯ OFF-автоматизация.
   input_button.but_back            — «назад» в бейджах этажных view.
-  input_boolean.regim_auto_<N>     — бейдж режима, по одному на этаж.
+  input_boolean.regim_auto_<N>     — БОЛЬШЕ НЕ СОЗДАЁТСЯ (правка 5): бейдж режима
+                                     переключён на switch/гейт Оркестратора.
   input_boolean.<пресет зала>       — 4 сценария зала.
   input_select.nav_floor_<N>       — выбор помещения на Главной, по одному на
                                      этаж. Опции — помещения этажа.
@@ -119,11 +120,18 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     }
 
     booleans: Dict[str, Dict] = {}
-    for floor in floors:
-        booleans[floor_auto_mode_id(floor)] = {
-            "name": f"Автоматический режим — {floor} этаж",
-            "icon": "mdi:motion-sensor",
-        }
+    # Правка 5 (2026-07-23): генерация regim_auto ПРЕКРАЩЕНА. Их логику забрал
+    # Оркестратор здания: бейдж режима на этажном view переключён на его switch
+    # (switch.orkestrator_..._avtomatika_etazh_<N>) + гейт-индикатор датчиков.
+    # Оставлено закомментированным, а не удалено, — на случай отката/истории.
+    #
+    # ⚠ На объектах, где regim_auto уже создан, сущности останутся осиротевшими:
+    # удаление из генерируемого файла их не сносит, нужна ручная уборка.
+    # for floor in floors:
+    #     booleans[floor_auto_mode_id(floor)] = {
+    #         "name": f"Автоматический режим — {floor} этаж",
+    #         "icon": "mdi:motion-sensor",
+    #     }
     for preset_id, title in ZAL_PRESETS.items():
         booleans[preset_id] = {"name": title, "icon": "mdi:theater"}
 
@@ -175,8 +183,9 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     print(f"  Этажей:               {len(floors)}")
     print(f"  input_number:         {len(numbers)}")
     print(f"  input_button:         {len(buttons)}")
+    # «режимы этажей» ушли из счётчика: regim_auto больше не генерится (правка 5).
     print(f"  input_boolean:        {len(booleans)} "
-          f"(режимы этажей: {len(floors)}, пресеты зала: {len(ZAL_PRESETS)}, "
+          f"(пресеты зала: {len(ZAL_PRESETS)}, "
           f"фильтр типов: {len(NAV_TYPE_LABELS) + 1})")
     print(f"  input_select:         {len(selects)}")
 
@@ -204,8 +213,8 @@ def render_yaml(payload: Dict) -> str:
         "# Сгенерировано generate_helpers.py — правки здесь перезатрёт деплой.\n"
         "# Значения задаются в scripts/_lib/canon.py.\n"
         "#\n"
-        "# Пайплайн создаёт сами объекты, но НЕ логику за ними: пресеты зала и\n"
-        "# режимы этажей — это выключатели, их поведение описывают ваши\n"
+        "# Пайплайн создаёт сами объекты, но НЕ логику за ними: пресеты зала —\n"
+        "# это выключатели, их поведение описывают ваши\n"
         "# автоматизации. Исключение — vacant_delay, nav_floor_<N> и nav_type_*:\n"
         "# их читает сгенерированный код (OFF-автоматизации, кнопка перехода\n"
         "# на Главной и условия видимости карточек помещений).\n"

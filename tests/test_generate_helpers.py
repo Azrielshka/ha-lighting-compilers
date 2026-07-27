@@ -149,12 +149,21 @@ def test_nav_options_use_same_label_as_card_heading(object_layer):
 # Режимы этажей и пресеты зала
 # ============================================================
 
-def test_auto_mode_boolean_per_floor(object_layer):
+def test_regim_auto_is_no_longer_generated(object_layer):
+    """
+    Правка 5 (2026-07-23): regim_auto больше НЕ создаётся — бейдж режима
+    переключён на switch/гейт Оркестратора. Билдер floor_auto_mode_entity
+    сохранён (для истории/отката), но в пакете его сущностей быть не должно.
+    """
     booleans = _package(object_layer)["input_boolean"]
 
     for floor in (1, 2):
+        # Формула билдера жива на случай отката...
         assert floor_auto_mode_entity(floor) == f"input_boolean.regim_auto_{floor}"
-        assert f"regim_auto_{floor}" in booleans
+        # ...но сама сущность не генерируется.
+        assert f"regim_auto_{floor}" not in booleans
+
+    assert not any(k.startswith("regim_auto_") for k in booleans)
 
 
 def test_zal_presets_are_created(object_layer):

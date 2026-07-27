@@ -16,10 +16,14 @@
 # как light.ves_1_i_etazh; light.floor_1_all не существует вовсе. На этом уже
 # обожглись — бейдж висел в пустоте и показывал «сущность недоступна».
 #
-# Бейджи ссылаются на помощников, которых создаёт шаг 7 пайплайна
-# (generate_helpers.py): input_button.but_back — один на объект,
-# input_boolean.regim_auto_<этаж> — по одному на этаж. Раньше их заводил
-# владелец руками; с 2026-07-17 это делает пайплайн.
+# Бейджи. input_button.but_back — помощник пайплайна (шаг 7). Режим этажа —
+# ДВЕ сущности Оркестратора (правка 5, 2026-07-23), а не наш помощник:
+#   [[FLOOR_SWITCH]] — switch.orkestrator_..._avtomatika_etazh_<N>: КЛИКАБЕЛЬНЫЙ
+#                      тумблер Авто/Ручной, замена legacy regim_auto;
+#   [[FLOOR_GATE]]   — binary_sensor.orkestrator_..._datchiki_razresheny_etazh_<N>:
+#                      read-only индикатор «датчики разрешены».
+# ⚠ Оба существуют только когда стоит Оркестратор. Без него бейджи покажут
+# «недоступно» — это UI-индикатор, свет он не ломает.
 #
 # Навигация «назад» ведёт на /[[DASHBOARD]] без указания view: так открывается
 # ПЕРВЫЙ view дашборда. Первой стоит наша Главная (zm-main, ha_views.INSERT_AT = 0)
@@ -54,11 +58,18 @@ badges:
     show_icon: true
     name: Управление светом [[FLOOR]]-го этажа
   - type: entity
-    entity: input_boolean.regim_auto_[[FLOOR]]
+    entity: [[FLOOR_SWITCH]]
     show_name: true
     show_state: true
     show_icon: true
+    name: Режим [[FLOOR]]-го этажа
     color: green
+  - type: entity
+    entity: [[FLOOR_GATE]]
+    show_name: true
+    show_state: true
+    show_icon: true
+    name: Датчики [[FLOOR]]-го этажа
 sections:
   # Панель фильтра — СВЕРХУ (решение владельца 2026-07-20): фильтровать, не
   # листая до низа. Помощники общие на объект, поэтому панель здесь и на

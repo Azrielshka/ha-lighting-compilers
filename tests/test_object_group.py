@@ -187,7 +187,13 @@ def test_main_badge_points_at_a_group_that_exists(object_layer, tmp_path):
 
     entities = [b["entity"] for b in badges]
     assert C.object_light_entity() in entities
+
+    # Проверка «группа существует» касается ТОЛЬКО бейджей света. Бейдж режима
+    # здания (select Оркестратора, правка 5) — не наша группа, его пропускаем.
+    assert C.building_mode_select_entity() in entities
     for entity in entities:
+        if not entity.startswith("light."):
+            continue
         assert entity in real, f"бейдж ссылается на несозданную группу: {entity}"
 
 

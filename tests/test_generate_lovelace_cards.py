@@ -324,13 +324,18 @@ def test_floor_header_and_badges(object_layer, tmp_path):
     assert floor["header"]["card"]["content"] == "# 1 Этаж"
     assert floor["header"]["badges_position"] == "top"
 
+    from scripts._lib.canon import ba_gate_entity, floor_auto_switch_entity
+
     badges = {b["entity"]: b for b in floor["badges"]}
     # свет этажа — наша группа. Имя сущности идёт от `name` группы через
     # slugify, а не от её unique_id: light.ves_1_i_etazh, не light.floor_1_all.
     assert "light.ves_1_i_etazh" in badges
     assert badges["light.ves_1_i_etazh"]["name"] == "Управление светом 1-го этажа"
-    # помощники владельца — по конвенции от номера этажа
-    assert "input_boolean.regim_auto_1" in badges
+    # Режим этажа — правка 5: switch Оркестратора (кликабельный) + гейт-индикатор.
+    # regim_auto больше НЕ ссылается.
+    assert floor_auto_switch_entity(1) in badges
+    assert ba_gate_entity(1) in badges
+    assert not any(e.startswith("input_boolean.regim_auto") for e in badges)
     assert "input_button.but_back" in badges
 
 
