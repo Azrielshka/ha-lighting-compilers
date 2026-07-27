@@ -526,8 +526,20 @@ def test_gate_uses_unit_floor(tmp_path):
             sensor="1.2.1", panel="None"),
     ])
 
-    assert inputs_of(auto[0])["ba_gate_entity"] == \
-        "binary_sensor.building_automation_sensors_allowed_floor_2"
+    assert inputs_of(auto[0])["ba_gate_entity"] == ba_gate_entity(2)
+
+
+def test_gate_entity_id_matches_object():
+    """
+    ⚠ Якорь на РЕАЛЬНЫЙ entity_id с объекта (external-interface.md §1).
+
+    Формула хрупкая: Оркестратор строит имя из русского display-name, а не из
+    контрактной формулы building_automation_*. Первое имя было ошибкой — гейт
+    указывал в пустоту, и fail-open это маскировал. Тест держит формулу
+    синхронной с объектом: правка станет осознанной, а не тихой.
+    """
+    assert ba_gate_entity(1) == \
+        "binary_sensor.orkestrator_zdaniia_datchiki_razresheny_etazh_1_etazh"
 
 
 def test_gate_multifloor_unit_takes_min_floor(tmp_path):

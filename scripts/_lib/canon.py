@@ -429,7 +429,7 @@ def ba_labels() -> list[str]:
 
 
 # Гейт Оркестратора: binary_sensor, разрешающий работу датчиков на этаже.
-# Одна сущность на этаж; имя — часть контракта, менять односторонне нельзя.
+# Одна сущность на этаж.
 #
 # ⚠ Автоматизации пропускают работу, пока гейт НЕ в состоянии "off". Отсутствие,
 # unavailable и unknown — РАЗРЕШАЮТ: до установки Оркестратора и при его
@@ -437,12 +437,25 @@ def ba_labels() -> list[str]:
 # только шаблоном `states(...) != 'off'` — condition:state на отсутствующей
 # сущности бросает ошибку и роняет автоматизацию в fail-closed (разбор и
 # согласование — docs/internal/contract-answer-01-gate.md).
-BA_GATE_ENTITY_PREFIX: str = "binary_sensor.building_automation_sensors_allowed_floor_"
+#
+# ⚠ Имя — РЕАЛЬНЫЙ entity_id с объекта (external-interface.md §1), а НЕ формула
+# из контракта. Оркестратор строит entity_id из русского display-name сущности,
+# и суффикс — floor_id вида "<N>_etazh" (slugify нашего floor_name "N этаж").
+# Первое сообщение с формулой building_automation_* было ошибкой: такой
+# сущности на объекте нет, и гейт молча указывал в пустоту (fail-open это
+# маскировал — датчики работали, но Оркестратор не смог бы их закрыть).
+#
+# ⚠ entity_id ХРУПОК (external-interface.md §1): при переименовании гейта в UI
+# или на другом объекте он разъедется, и снова тихо — states() вернёт 'unknown',
+# условие всегда пройдёт. Правило Оркестратора: зафиксировать имена гейтов на
+# объекте один раз и держать их здесь синхронными. Меняете floor_name —
+# проверьте эту строку.
+BA_GATE_ENTITY_PREFIX: str = "binary_sensor.orkestrator_zdaniia_datchiki_razresheny_etazh_"
 
 
 def ba_gate_entity(floor: int) -> str:
-    """binary_sensor.building_automation_sensors_allowed_floor_1 — гейт этажа."""
-    return f"{BA_GATE_ENTITY_PREFIX}{int(floor)}"
+    """binary_sensor.orkestrator_zdaniia_datchiki_razresheny_etazh_1_etazh — гейт этажа."""
+    return f"{BA_GATE_ENTITY_PREFIX}{int(floor)}_etazh"
 
 
 # ============================================================

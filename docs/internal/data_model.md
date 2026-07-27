@@ -396,7 +396,7 @@ blueprint'ы (`canon.ba_gate_entity`):
 
 | Сущность | Правило | Кто ссылается |
 |---|---|---|
-| Гейт этажа | `binary_sensor.building_automation_sensors_allowed_floor_<N>` | `generate_automations` (вход `ba_gate_entity`) |
+| Гейт этажа | `binary_sensor.orkestrator_zdaniia_datchiki_razresheny_etazh_<N>_etazh` | `generate_automations` (вход `ba_gate_entity`) |
 
 Автоматизации датчиков пропускают работу, **пока гейт НЕ в `off`**. Реализовано
 шаблоном `{{ states(ba_gate_entity) != 'off' }}`, а не `condition: state`:
@@ -405,19 +405,30 @@ blueprint'ы (`canon.ba_gate_entity`):
 работу, поэтому до установки Оркестратора и при его перезагрузке датчики
 работают как сейчас. Разбор — `contract-answer-01-gate.md`.
 
-**Полный контракт имён сущностей Оркестратора.** Задаются им по умолчанию, без
-согласования не меняются; `entity_id` владелец может переименовать в UI (тогда
-ответственность на нём). `<N>` — номер этажа.
+⚠ **Имя гейта — реальный `entity_id` с объекта, а не формула из контракта.**
+Оркестратор строит `entity_id` из русского display-name, суффикс — `floor_id`
+вида `<N>_etazh` (slugify нашего `floor_name`). Контрактная формула
+`building_automation_sensors_allowed_floor_<N>` была ошибкой: такой сущности на
+объекте нет. `entity_id` хрупок (см. `external-interface.md` §1) — при
+переименовании гейта разъедется, и тихо (fail-open замаскирует). `canon.ba_gate_entity`
+держат синхронным с объектом; тест-якорь — `test_gate_entity_id_matches_object`.
+
+**Полный контракт имён сущностей Оркестратора** (реальные `entity_id` с объекта,
+`external-interface.md` §1). Задаются им из русского display-name и зависят от
+установки: `<N>` — номер этажа, `<N>_etazh` — `floor_id`.
 
 | Сущность | Смысл |
 |---|---|
-| `select.building_automation_control_mode` | режим управления: Авто / Ручной |
-| `sensor.building_automation_schedule_mode` | режим расписания: Урок / Перемена / Не рабочее / Окошко |
-| `binary_sensor.building_automation_schedule_source` | доступен ли источник расписания |
-| `sensor.building_automation_pending_transition` | отложенный переход (атрибут — момент применения) |
-| `switch.building_automation_floor_<N>_automatic` | режим этажа тумблером: ON = автоматика |
-| `binary_sensor.building_automation_sensors_allowed_floor_<N>` | **гейт** датчиков этажа |
-| `sensor.building_automation_floor_<N>_applied_mode` | фактически применённый режим этажа |
+| `select.orkestrator_zdaniia_rezhim_upravleniia_zdaniem` | режим управления: Авто / Ручной |
+| `sensor.building_automation` | режим расписания: `lesson` / `break` / `window` / `off` |
+| `binary_sensor.orkestrator_zdaniia_istochnik_raspisaniia_dostupen` | доступен ли источник расписания |
+| `sensor.orkestrator_zdaniia_otlozhennyi_perekhod` | отложенный переход (атрибут `apply_at` — момент применения) |
+| `switch.orkestrator_zdaniia_avtomatika_etazh_<N>_etazh` | режим этажа тумблером: ON = автоматика |
+| `binary_sensor.orkestrator_zdaniia_datchiki_razresheny_etazh_<N>_etazh` | **гейт** датчиков этажа |
+| `sensor.orkestrator_zdaniia_primenennyi_rezhim_etazh_<N>_etazh` | фактически применённый режим этажа |
+
+Из них нам нужен только гейт (его подставляет генератор). Остальные — для
+дашбордов и сверки; на них мы ничего не строим.
 
 ⚠ Два прохода деплоя. Свет назначается только сущности, уже существующей в
 реестре. На первом деплое групп света ещё нет (пакеты легли на диск, HA не
