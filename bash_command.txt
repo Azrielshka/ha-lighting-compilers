@@ -78,6 +78,7 @@ python scripts/generate_areas.py
 python scripts/generate_helpers.py
 python scripts/generate_scripts.py
 python scripts/generate_automations.py
+python scripts/generate_zone_manager.py     # зоны датчиков -> data/json/zone_manager.json
 
 # Полный прогон одной строкой (то же, что кнопка Build All)
 python scripts/validate_excel.py --excel data/object_example.xlsx && \
@@ -88,7 +89,8 @@ python scripts/generate_floor_groups.py && \
 python scripts/generate_areas.py && \
 python scripts/generate_helpers.py && \
 python scripts/generate_scripts.py && \
-python scripts/generate_automations.py
+python scripts/generate_automations.py && \
+python scripts/generate_zone_manager.py
 
 # ------------------------------------------------------------
 # 3) КАРТОЧКИ LOVELACE — вне Build All

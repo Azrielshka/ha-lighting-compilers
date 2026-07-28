@@ -81,8 +81,9 @@ ha-lighting-compilers/
 | группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `generate_floor_groups` |
 | группа всего объекта | `light.ves_obekt` — вложенно, из групп этажей | `generate_floor_groups` |
 | Area этажа | `ves_<N>_etazh` | `generate_areas` |
-| помощники | `input_number.vacant_delay`, `input_button.but_back`, `input_boolean.regim_auto_<N>`, `input_select.nav_floor_<N>`, пресеты зала | `generate_helpers` |
+| помощники | `input_number.vacant_delay_<тип>` (по типу помещения), `input_button.but_back`, `input_select.nav_floor_<N>`, пресеты зала | `generate_helpers` |
 | фильтр навигации | `input_boolean.nav_type_all` + шесть `nav_type_<тип>`; временно ещё `input_select.nav_type_pick` | `generate_helpers` |
+| конфиг зон датчиков | `zone_manager.json` (из листа «Группы соседей») | `generate_zone_manager` |
 
 ⚠ **`unique_id` — это не `entity_id`.** У YAML-платформы `light: - platform:
 group` идентификатор выводится из **имени** через slugify, а `unique_id` только
@@ -94,12 +95,12 @@ group` идентификатор выводится из **имени** чер�
 
 # 2. Порядок работы
 
-## Пайплайн — 9 шагов
+## Пайплайн — 10 шагов
 
 | # | Скрипт | Делает |
 |---|---|---|
 | 1 | `validate_excel.py` | проверяет таблицу; на ошибках пайплайн останавливается |
-| 2 | `normalize_excel.py` | Excel → `devices` / `groups` / `spaces` / `units` parquet |
+| 2 | `normalize_excel.py` | Excel → `devices` / `groups` / `spaces` / `units` / `neighbors` parquet |
 | 3 | `generate_lights_groups.py` | подгруппы света (зоны) → `lights_group.yaml` |
 | 4 | `generate_general_groups.py` | общие группы помещений → `lights_general_groups.yaml` |
 | 5 | `generate_floor_groups.py` | группы этажей → `lights_floor_groups.yaml` |
@@ -107,9 +108,10 @@ group` идентификатор выводится из **имени** чер�
 | 7 | `generate_helpers.py` | вспомогательные объекты → `lighting-compilers.yaml` (на HA `zm_`) |
 | 8 | `generate_scripts.py` | клоны шаблонных скриптов → `scripts.yaml` |
 | 9 | `generate_automations.py` | автоматизации из blueprint'ов → `automations.yaml` |
+| 10 | `generate_zone_manager.py` | зоны датчиков → `zone_manager.json` (из листа «Группы соседей») |
 
 Каждый шаг запускается **отдельно**, из CLI или кнопкой лаунчера, и работает на
-том, что уже лежит в `data/normalized/`. `Build All` прогоняет все девять.
+том, что уже лежит в `data/normalized/`. `Build All` прогоняет все десять.
 
 **`Build All` офлайновый** — в живую систему не пишет ничего. Доставка на HA —
 отдельный шаг (`deploy.py`), по явному действию.
@@ -260,16 +262,17 @@ CI сверяет тег с `launcher.__version__` и падает при рас
 
 ## ⚠ Важно
 
-Пайплайн собирает **конфигурацию**, но на объекте свет не включится, пока не
-появится **JSON Zone Manager** — автоматизация вызовет
-`zone_manager.get_sensor_config`, получит `found: false`, и включения не будет.
-Он собирается вручную; помощником не является, шагом `generate_helpers.py` не
-закрывается. Подробности — ROADMAP → «Известный долг».
+**JSON Zone Manager** (`zone_manager.get_sensor_config`) — без него автоматизация
+получала `found: false`, и свет по датчикам не включался. С 2026-07-23 это
+**шаг 10 пайплайна**: `generate_zone_manager.py` собирает `zone_manager.json`
+из листа «Группы соседей». Долг закрыт; осталась приёмка на объекте (ROADMAP →
+«Zone Manager»).
 
-`input_number.vacant_delay` (без него свет не **гаснет**) раньше был второй
-такой вещью — с 2026-07-17 его создаёт `generate_helpers.py`.
+`input_number.vacant_delay_<тип>` (без него свет не **гаснет**) тоже создаёт
+`generate_helpers.py` — по одному на тип помещения, без `initial`: значение
+выставляет наладчик на объекте.
 
-**Помощники: объект создаём, логику — нет.** `input_boolean` пресетов зала и
-режимов этажей появятся, но это выключатели: что они делают, описывают ваши
-автоматизации. Исключение — `vacant_delay` и `input_select.nav_floor_<N>`:
-их читает сгенерированный код.
+**Помощники: объект создаём, логику — нет.** `input_boolean` пресетов зала
+появятся, но это выключатели: что они делают, описывают ваши автоматизации.
+Исключение — `vacant_delay_<тип>` и `input_select.nav_floor_<N>`: их читает
+сгенерированный код.
