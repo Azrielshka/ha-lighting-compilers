@@ -309,7 +309,8 @@ def test_second_floor_gets_its_own_view(object_layer, tmp_path):
 
     assert views["zm-floor-2"]["icon"] == "mdi:home-floor-2"
     assert views["zm-floor-2"]["max_columns"] == 3
-    assert views["zm-floor-2"]["sections"][0]["column_span"] == 3
+    # секция мультивыбора — ширина 1 (карточки помещений — 2)
+    assert views["zm-floor-2"]["sections"][0]["column_span"] == 1
     # 208-е помещение попало на второй этаж, а не к первому
     cards = _room_cards(views["zm-floor-2"])
     paths = [c["cards"][-1]["tap_action"]["navigation_path"] for c in cards]
@@ -322,7 +323,10 @@ def test_floor_header_and_badges(object_layer, tmp_path):
     floor = views["zm-floor-1"]
 
     assert floor["header"]["card"]["content"] == "# 1 Этаж"
-    assert floor["header"]["badges_position"] == "top"
+    # раскладка бейджей — как на Главной (2026-07-28): центр/снизу/прокрутка
+    assert floor["header"]["layout"] == "center"
+    assert floor["header"]["badges_position"] == "bottom"
+    assert floor["header"]["badges_wrap"] == "scroll"
 
     from scripts._lib.canon import ba_gate_entity, floor_auto_switch_entity
 

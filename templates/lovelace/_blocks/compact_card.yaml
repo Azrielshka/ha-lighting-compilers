@@ -31,7 +31,7 @@
       features:
         - type: toggle
         - type: light-brightness
-      features_position: bottom
+      features_position: inline
     - type: button
       name: Подробнее
       icon: mdi:arrow-right-circle
@@ -64,3 +64,6 @@
               text-underline-offset: 2px;
               color: var(--state-color);
           }
+  grid_options:
+    columns: 9
+    rows: auto

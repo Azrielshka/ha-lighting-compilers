@@ -196,7 +196,13 @@ def test_panel_uses_only_helpers_that_exist(helpers):
     created = {f"input_boolean.{k}" for k in helpers["input_boolean"]}
     created |= {f"input_select.{k}" for k in helpers["input_select"]}
 
-    used = {c["entity"] for c in panel["cards"] if c.get("type") == "tile"}
+    # Плитки типов лежат в vertical-stack, select-фильтр — плиткой верхнего уровня.
+    used = set()
+    for c in panel["cards"]:
+        if c.get("type") == "tile":
+            used.add(c["entity"])
+        elif c.get("type") == "vertical-stack":
+            used |= {t["entity"] for t in c["cards"] if t.get("type") == "tile"}
     assert used, "в панели нет ни одной плитки"
 
     missing = used - created
@@ -204,9 +210,13 @@ def test_panel_uses_only_helpers_that_exist(helpers):
 
 
 def test_panel_starts_with_all(helpers):
-    """«Все» первой плиткой: это выключатель фильтра, а не ещё один тип."""
+    """«Все» первой плиткой: это выключатель фильтра, а не ещё один тип.
+
+    Плитки живут в vertical-stack (заголовок над ними, select под ними).
+    """
     panel = yaml.safe_load(G.build_nav_filter(G.DEFAULT_TEMPLATES_DIR))[0]
-    tiles = [c for c in panel["cards"] if c.get("type") == "tile"]
+    stack = next(c for c in panel["cards"] if c.get("type") == "vertical-stack")
+    tiles = stack["cards"]
 
     assert tiles[0]["entity"] == C.nav_type_all_entity()
     assert tiles[0]["name"] == C.NAV_TYPE_ALL_LABEL

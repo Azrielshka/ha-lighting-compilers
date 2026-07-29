@@ -17,7 +17,8 @@
   entity: "[[FILTER_ENTITY]]"
   name: "[[FILTER_LABEL]]"
   icon: "[[FILTER_ICON]]"
-  vertical: true
+  vertical: false
   hide_state: true
   tap_action:
     action: toggle
+  features_position: bottom

@@ -33,10 +33,12 @@ path: [[PATH]]
 icon: [[FLOOR_ICON]]
 type: sections
 max_columns: 3
+# Раскладка бейджей — как на Главной (решение владельца 2026-07-28):
+# по центру, снизу, с прокруткой.
 header:
-  layout: responsive
-  badges_position: top
-  badges_wrap: wrap
+  layout: center
+  badges_position: bottom
+  badges_wrap: scroll
   card:
     type: markdown
     text_only: true
@@ -74,11 +76,14 @@ sections:
   # Панель фильтра — СВЕРХУ (решение владельца 2026-07-20): фильтровать, не
   # листая до низа. Помощники общие на объект, поэтому панель здесь и на
   # Главной управляет одним и тем же.
+  #
+  # Ширина секций (решение владельца 2026-07-28): мультивыбор — 1, карточки
+  # помещений — 2.
   - type: grid
-    column_span: 3
+    column_span: 1
     cards:
       [[NAV_FILTER]]
   - type: grid
-    column_span: 3
+    column_span: 2
     cards:
       [[CARDS]]
