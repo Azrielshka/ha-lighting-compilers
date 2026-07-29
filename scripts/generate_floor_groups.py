@@ -38,10 +38,13 @@ from typing import Dict, List
 import pandas as pd
 
 from scripts._lib.canon import (
+    NAV_TYPE_LABELS,
     TECHNICAL_SPACE_TYPES,
     floor_light_entity,
     floor_group_name,
     floor_group_unique_id,
+    floor_type_group_name,
+    floor_type_group_unique_id,
     object_group_name,
     object_group_unique_id,
     tech_group_name,
@@ -67,7 +70,8 @@ DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "light_groups" / "lights_floor_gro
 ROOT_KEY = "lights_floor_group"
 
 
-def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = True) -> str:
+def build_yaml(spaces_df: pd.DataFrame, filters: Filters,
+               tech_groups: bool = True, type_groups: bool = True) -> str:
     """Собрать YAML групп этажей из spaces.parquet."""
     total_spaces = len(spaces_df)
     filtered, excluded = apply_filters(spaces_df, filters)
@@ -93,6 +97,7 @@ def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = Tr
 
     groups: List[LightGroup] = []
     tech_count = 0
+    type_count = 0
 
     # Этажи по возрастанию; помещения внутри — в порядке таблицы.
     for floor in sorted(filtered["floor"].unique()):
@@ -108,20 +113,31 @@ def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = Tr
             comment=f"Группа для всего {floor}-го этажа",
         ))
 
-        if not tech_groups:
-            continue
+        if tech_groups:
+            tech_df = fdf[fdf["space_type"].isin(TECHNICAL_SPACE_TYPES)]
+            if not tech_df.empty:
+                tech_count += 1
+                groups.append(LightGroup(
+                    unique_id=tech_group_unique_id(floor),
+                    name=tech_group_name(floor),
+                    entities=tech_df["general_light_entity"].tolist(),
+                    comment=f"Группа для тех помещений {floor}-го этажа",
+                ))
 
-        tech_df = fdf[fdf["space_type"].isin(TECHNICAL_SPACE_TYPES)]
-        if tech_df.empty:
-            continue
-
-        tech_count += 1
-        groups.append(LightGroup(
-            unique_id=tech_group_unique_id(floor),
-            name=tech_group_name(floor),
-            entities=tech_df["general_light_entity"].tolist(),
-            comment=f"Группа для тех помещений {floor}-го этажа",
-        ))
+        # Группы по типу помещения — по одной на каждый ПРИСУТСТВУЮЩИЙ на этаже
+        # тип (пустая группа света бессмысленна). Порядок типов — стабильный.
+        if type_groups:
+            present = sorted(t for t in fdf["space_type"].dropna().unique()
+                             if t in NAV_TYPE_LABELS)
+            for space_type in present:
+                type_df = fdf[fdf["space_type"] == space_type]
+                type_count += 1
+                groups.append(LightGroup(
+                    unique_id=floor_type_group_unique_id(floor, space_type),
+                    name=floor_type_group_name(floor, space_type),
+                    entities=type_df["general_light_entity"].tolist(),
+                    comment=f"Группа {NAV_TYPE_LABELS[space_type]} {floor}-го этажа",
+                ))
 
     floors = sorted(filtered["floor"].unique())
 
@@ -153,6 +169,11 @@ def build_yaml(spaces_df: pd.DataFrame, filters: Filters, tech_groups: bool = Tr
     else:
         print("  Тех.группы:           выключены (--no-tech-groups)")
 
+    if type_groups:
+        print(f"  Группы по типу:       {type_count} (на каждый тип этажа)")
+    else:
+        print("  Группы по типу:       выключены (--no-type-groups)")
+
     if floors:
         print(f"  Группа объекта:       1 (вложенно: {len(floors)} этаж(ей))")
 
@@ -170,6 +191,9 @@ def main() -> int:
     parser.add_argument("--no-tech-groups", action="store_true",
                         help=f"Не создавать tex_floor_<n>. По умолчанию они создаются "
                              f"для типов: {', '.join(sorted(TECHNICAL_SPACE_TYPES))}")
+    parser.add_argument("--no-type-groups", action="store_true",
+                        help="Не создавать группы этажа по типу помещения "
+                             "(floor_<n>_<тип>). По умолчанию создаются.")
     add_filter_args(parser, with_include_floors=True)
     args = parser.parse_args()
 
@@ -186,7 +210,9 @@ def main() -> int:
         print(f"❌ {exc}")
         return 2
 
-    yaml_text = build_yaml(spaces_df, filters_from_args(args), tech_groups=not args.no_tech_groups)
+    yaml_text = build_yaml(spaces_df, filters_from_args(args),
+                           tech_groups=not args.no_tech_groups,
+                           type_groups=not args.no_type_groups)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(yaml_text, encoding="utf-8")

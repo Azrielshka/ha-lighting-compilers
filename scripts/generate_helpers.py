@@ -48,6 +48,8 @@ from scripts._lib.canon import (
     NAV_TYPE_ALL_ID,
     NAV_TYPE_ALL_LABEL,
     NAV_TYPE_ICONS,
+    FLOOR_TYPE_FILTER_ID,
+    floor_type_filter_options,
     NAV_PICK_ID,
     ALLOWED_SPACE_TYPES,
     NAV_TYPE_LABELS,
@@ -178,6 +180,15 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
         "options": nav_pick_options(),
         "initial": nav_pick_options()[0],   # «Все помещения» — фильтр не сужает
         "icon": "mdi:filter-menu",
+    }
+
+    # Фильтр групп по типу на Главной: выбрал тип — показывается плитка группы
+    # этого типа на каждом этаже. Заглушка первой = ничего доп. не показано.
+    selects[FLOOR_TYPE_FILTER_ID] = {
+        "name": "Группы по типу",
+        "options": floor_type_filter_options(),
+        "initial": floor_type_filter_options()[0],
+        "icon": "mdi:home-group",
     }
 
     for floor in floors:

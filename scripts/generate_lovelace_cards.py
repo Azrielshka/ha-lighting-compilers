@@ -51,6 +51,8 @@ from scripts._lib.canon import (
     floor_icon,
     floor_light_entity,
     floor_nav_entity,
+    floor_type_filter_entity,
+    floor_type_light_entity,
     object_light_entity,
     nav_pick_entity,
     nav_type_all_entity,
@@ -261,15 +263,37 @@ def build_nav_map(rooms: List[tuple]) -> str:
     return ",\n".join(f"  '{label}': '{slug}'" for label, slug in rooms)
 
 
+def _type_conditionals(templates_dir: Path, floor: int, space_types: List[str]) -> str:
+    """conditional-плитки групп по типу для одного этажа.
+
+    По одной на присутствующий тип, порядок — как в NAV_TYPE_LABELS. Каждая
+    видна, когда floor_type_filter равен подписи её типа.
+    """
+    tpl = _strip_header_comments(
+        _read(templates_dir / "_blocks" / "main_type_conditional.yaml"))
+
+    present = [t for t in NAV_TYPE_LABELS if t in set(space_types)]
+    parts: List[str] = []
+    for space_type in present:
+        card = tpl
+        card = card.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity())
+        card = card.replace("[[TYPE_LABEL]]", NAV_TYPE_LABELS[space_type])
+        card = card.replace("[[TYPE_LIGHT]]", floor_type_light_entity(floor, space_type))
+        parts.append(card)
+    return "\n".join(parts)
+
+
 def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
+                    types_by_floor: Dict[int, List[str]],
                     dashboard: str, title: str) -> dict:
-    """Главная: блок на этаж — карточка, свет, автоматика, выбор помещения.
+    """Главная: блок на этаж — карточка, свет, автоматика, фильтр, навигация.
 
     Собирается текстом, а не структурой: в блоке живут Jinja-карта и CSS
     card_mod, которые владелец правит руками — их надо донести дословно.
 
     Плитка тех.помещений убрана (решение владельца 2026-07-28), на её месте —
-    тумблер автоматики этажа от Оркестратора (floor_auto_switch_entity).
+    тумблер автоматики этажа. `types_by_floor` — присутствующие на этаже типы,
+    из них собираются conditional-плитки групп по типу под фильтр Главной.
     """
     block_tpl = _strip_header_comments(
         _read(templates_dir / "_blocks" / "main_floor_block.yaml"))
@@ -281,6 +305,10 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
         block = block.replace("[[FLOOR_VIEW_PATH]]", V.floor_view_path(floor))
         block = block.replace("[[FLOOR_LIGHT]]", floor_light_entity(floor))
         block = block.replace("[[FLOOR_SWITCH]]", floor_auto_switch_entity(floor))
+        block = _splice(block, "[[TYPE_CONDITIONALS]]",
+                        _type_conditionals(templates_dir, floor,
+                                           types_by_floor.get(floor, [])))
+        block = block.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity())
         block = block.replace("[[NAV_SELECT]]", floor_nav_entity(floor))
         block = block.replace("[[DASHBOARD]]", dashboard)
         block = _splice(block, "[[NAV_MAP]]", build_nav_map(rooms_by_floor[floor]))
@@ -294,6 +322,7 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
     view = view.replace("[[TITLE]]", title)
     view = view.replace("[[OBJECT_LIGHT]]", object_light_entity())
     view = view.replace("[[MODE_SELECT]]", building_mode_select_entity())
+    view = view.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity())
     view = _splice(view, "[[FLOOR_BLOCKS]]", "\n".join(blocks))
     view = _splice(view, "[[SERVICE_BLOCKS]]",
                    build_service_blocks(templates_dir, dashboard))
@@ -572,6 +601,7 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
 
     floor_cards: Dict[int, List[dict]] = {}
     rooms_by_floor: Dict[int, List[tuple]] = {}
+    types_by_floor: Dict[int, List[str]] = {}
     subviews: List[dict] = []
     report: Dict[str, Dict] = {}
     skipped: List[Dict] = []
@@ -609,6 +639,8 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
         # Для Главной: карта «имя → слаг» и опции навигации строятся из одного
         # списка (canon.space_label) — иначе кнопка перехода молча сломается.
         rooms_by_floor.setdefault(int(row["floor"]), []).append((heading, room_slug))
+        # Присутствующие типы этажа — для conditional-плиток групп по типу.
+        types_by_floor.setdefault(int(row["floor"]), []).append(space_type)
 
         report[space] = {
             "space_type": space_type,
@@ -626,7 +658,7 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
     views = floor_views + subviews
     if rooms_by_floor:
         views.append(build_main_view(templates_dir, rooms_by_floor,
-                                     dashboard, title))
+                                     types_by_floor, dashboard, title))
 
     return V.order_views(views), report, skipped, excluded
 

@@ -303,6 +303,57 @@ def tech_group_unique_id(floor: int) -> str:
 
 
 # ------------------------------------------------------------
+# Группы этажа ПО ТИПУ помещения
+# ------------------------------------------------------------
+# «Все коридоры 1-го этажа», «Все классы 1-го этажа» и т.д. — для фильтра
+# управления этажами на Главной (решение владельца 2026-07-28). Создаются
+# только для типов, реально присутствующих на этаже: пустая группа света
+# бессмысленна. Имя типа берём из NAV_TYPE_LABELS — тех же подписей, что у
+# фильтра навигации.
+
+def floor_type_group_name(floor: int, space_type: str) -> str:
+    """«Коридоры 1-й этаж» — отображаемое имя группы типа на этаже."""
+    return f"{NAV_TYPE_LABELS[space_type]} {int(floor)}-й этаж"
+
+
+def floor_type_group_unique_id(floor: int, space_type: str) -> str:
+    """floor_1_korridor — ключ в реестре HA. НЕ entity_id."""
+    return f"floor_{int(floor)}_{str(space_type).strip().lower()}"
+
+
+def floor_type_light_entity(floor: int, space_type: str) -> str:
+    """light.<slug> группы типа на этаже — так, как её создаст HA из имени.
+
+    Выводится из отображаемого имени через slugify, как floor_light_entity:
+    ссылаться на группу можно только этим билдером, не по unique_id.
+    """
+    return f"light.{slugify_room(floor_type_group_name(floor, space_type))}"
+
+
+# Фильтр групп по типу на Главной (решение владельца 2026-07-28): один select
+# на объект. Выбрал тип — на каждом этаже показывается плитка группы этого типа
+# (через conditional card, т.к. visibility внутри vertical-stack не работает).
+# Заглушка первой опцией = «ничего дополнительно не показано» (виден только
+# постоянный свет этажа).
+FLOOR_TYPE_FILTER_ID: str = "floor_type_filter"
+FLOOR_TYPE_FILTER_PLACEHOLDER: str = "— тип —"
+
+
+def floor_type_filter_entity() -> str:
+    """input_select.floor_type_filter — выбор типа групп на Главной."""
+    return f"input_select.{FLOOR_TYPE_FILTER_ID}"
+
+
+def floor_type_filter_options() -> list:
+    """Опции: заглушка + подписи типов (NAV_TYPE_LABELS, тот же порядок).
+
+    ⚠ Строки-подписи обязаны совпасть символ в символ с состоянием, которое
+    проверяет conditional card плитки группы — иначе плитка молча не покажется.
+    """
+    return [FLOOR_TYPE_FILTER_PLACEHOLDER] + list(NAV_TYPE_LABELS.values())
+
+
+# ------------------------------------------------------------
 # Группа всего объекта
 # ------------------------------------------------------------
 # Собирается ВЛОЖЕННО — из групп этажей, а не из общих групп помещений

@@ -8,6 +8,9 @@
 #   [[FLOOR_LIGHT]]      — light.ves_<N>_i_etazh, «Весь N-й этаж»
 #   [[FLOOR_SWITCH]]     — switch.orkestrator_..._avtomatika_etazh_<N>: тумблер
 #                          автоматики этажа (Оркестратор). Кликабельный.
+#   [[TYPE_CONDITIONALS]] — conditional-плитки групп по типу (main_type_conditional.yaml),
+#                          по одной на присутствующий тип этажа
+#   [[FLOOR_TYPE_FILTER]] — input_select.floor_type_filter (в conditions плиток)
 #   [[NAV_SELECT]]       — input_select.nav_floor_<N> (его создаёт generate_helpers)
 #   [[NAV_MAP]]          — карта «имя помещения → room_slug», строки Jinja-словаря
 #   [[DASHBOARD]]        — url_path дашборда
@@ -55,6 +58,9 @@
       features_position: inline
       features:
         - type: toggle
+    # Плитки групп по типу — по одной conditional на присутствующий тип этажа.
+    # Видна та, чей тип выбран в фильтре Главной (input_select.floor_type_filter).
+    [[TYPE_CONDITIONALS]]
     - type: tile
       entity: "[[NAV_SELECT]]"
       vertical: false

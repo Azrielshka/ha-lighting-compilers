@@ -558,6 +558,39 @@ def test_main_floor_has_switch_not_tech_tile(object_layer, tmp_path):
         assert not any("tekh_pom" in str(e) for e in tiles)
 
 
+def test_main_type_group_filter(object_layer, tmp_path):
+    """Фильтр групп по типу (п.3): select-плитка на Главной + conditional-плитка
+    группы каждого присутствующего типа этажа, видимая по состоянию фильтра.
+    """
+    from scripts._lib.canon import (
+        floor_type_filter_entity, floor_type_light_entity, NAV_TYPE_LABELS,
+    )
+
+    main = _main_view(_generate(object_layer, tmp_path))
+
+    # select-плитка фильтра — в секции управления этажами
+    section_entities = [c.get("entity") for c in main["sections"][0]["cards"]]
+    assert floor_type_filter_entity() in section_entities
+
+    blocks = _floor_blocks(main)
+
+    # этаж 1 фикстуры: korridor, class, zal, special, recreation
+    block1 = blocks[0]
+    conds = [c for c in block1["cards"] if c.get("type") == "conditional"]
+    got = {(c["conditions"][0]["state"], c["card"]["entity"]) for c in conds}
+    for stype in ("korridor", "class", "zal", "special", "recreation"):
+        assert (NAV_TYPE_LABELS[stype], floor_type_light_entity(1, stype)) in got
+
+    # каждое условие висит именно на фильтре групп
+    for c in conds:
+        assert c["conditions"][0]["entity"] == floor_type_filter_entity()
+
+    # этаж 2 — только hall
+    conds2 = [c for c in blocks[1]["cards"] if c.get("type") == "conditional"]
+    got2 = {(c["conditions"][0]["state"], c["card"]["entity"]) for c in conds2}
+    assert got2 == {(NAV_TYPE_LABELS["hall"], floor_type_light_entity(2, "hall"))}
+
+
 def test_nav_map_matches_helper_options(object_layer, tmp_path):
     """Карта «имя → слаг» и опции input_select строятся из одного источника.
 
@@ -608,6 +641,17 @@ def test_main_title_from_flag(object_layer, tmp_path):
     main = _main_view(_generate(object_layer, tmp_path))
 
     assert main["header"]["card"]["content"] == f"# {DASHBOARD_TITLE}"
+
+
+def test_main_badges_layout(object_layer, tmp_path):
+    """Раскладка бейджей Главной (решение владельца 2026-07-28):
+    по центру, снизу, с прокруткой.
+    """
+    header = _main_view(_generate(object_layer, tmp_path))["header"]
+
+    assert header["layout"] == "center"
+    assert header["badges_position"] == "bottom"
+    assert header["badges_wrap"] == "scroll"
 
 
 def test_main_nav_button_keeps_card_mod(object_layer, tmp_path):

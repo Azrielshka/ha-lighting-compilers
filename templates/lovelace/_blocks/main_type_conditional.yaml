@@ -1,0 +1,25 @@
+# Плитка группы этажа ПО ТИПУ, показывается по фильтру Главной.
+#
+# Маркеры (подставляет генератор):
+#   [[TYPE_LABEL]]  — подпись типа (canon.NAV_TYPE_LABELS), она же состояние
+#                     input_select.floor_type_filter
+#   [[TYPE_LIGHT]]  — light.<slug> группы типа на этаже (floor_type_light_entity)
+#
+# ⚠ conditional card, а НЕ visibility: плитка живёт внутри vertical-stack блока
+# этажа, а visibility работает только для прямых детей секции. conditional же
+# показывает вложенную карточку по состоянию и работает на любой глубине.
+#
+# ⚠ Состояние в conditions обязано совпасть с опцией input_select символ в
+# символ (обе строки из canon.NAV_TYPE_LABELS) — иначе плитка молча не покажется.
+- type: conditional
+  conditions:
+    - condition: state
+      entity: "[[FLOOR_TYPE_FILTER]]"
+      state: "[[TYPE_LABEL]]"
+  card:
+    type: tile
+    entity: "[[TYPE_LIGHT]]"
+    vertical: false
+    features_position: inline
+    features:
+      - type: toggle

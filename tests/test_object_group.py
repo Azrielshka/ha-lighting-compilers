@@ -75,9 +75,12 @@ def test_object_group_holds_exactly_the_floor_groups(object_layer):
     """
     groups = _groups(object_layer)
 
+    # Только floor_<N>_all — этажи целиком. floor_<N>_<тип> (группы по типу)
+    # тоже начинаются с floor_, но объектная группа собрана НЕ из них.
+    import re
     floor_entities = {
         f"light.{slugify_room(g['name'])}"
-        for uid, g in groups.items() if uid.startswith("floor_")
+        for uid, g in groups.items() if re.fullmatch(r"floor_\d+_all", uid)
     }
     assert floor_entities, "в фикстуре нет ни одной этажной группы"
 

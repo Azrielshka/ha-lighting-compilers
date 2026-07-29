@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Dict, List, Set
 
@@ -196,20 +197,24 @@ def test_general_one_group_per_space(object_layer):
 # ГРУППЫ ЭТАЖЕЙ
 # ============================================================
 #
-# ⚠ В файле lights_floor_group лежат ТРИ уровня иерархии, не один:
-#     floor_<N>_all  — этаж целиком        -> ссылается на общие группы помещений
-#     tex_floor_<N>  — техпомещения этажа  -> подмножество этажной
-#     object_all     — весь объект         -> ссылается на ЭТАЖНЫЕ группы
+# ⚠ В файле lights_floor_group лежат ЧЕТЫРЕ уровня иерархии, не один:
+#     floor_<N>_all    — этаж целиком       -> ссылается на общие группы помещений
+#     floor_<N>_<тип>  — тип на этаже       -> общие группы помещений этого типа
+#     tex_floor_<N>    — техпомещения этажа -> подмножество этажной
+#     object_all       — весь объект        -> ссылается на ЭТАЖНЫЕ группы
 #
 # Поэтому «все группы файла» и «группы этажей» — разные множества, и проверки
-# состава обязаны говорить, о каком уровне они. Тесты, бравшие файл целиком,
-# упали, когда появился object_all: они проверяли этажи, а получали объект.
+# состава обязаны говорить, о каком уровне они. `floor_<N>_all` и `floor_<N>_<тип>`
+# оба начинаются с `floor_` — различаем точным паттерном, не префиксом.
 
 
 def _floor_ids(doc: dict) -> list:
-    """Только группы этажей, в порядке файла."""
+    """Только группы ЭТАЖЕЙ целиком (floor_<N>_all), в порядке файла.
+
+    Не floor_<N>_<тип>: те тоже начинаются с floor_, но это группы по типу.
+    """
     return [g["unique_id"] for g in _groups(doc, "lights_floor_group")
-            if g["unique_id"].startswith("floor_")]
+            if re.fullmatch(r"floor_\d+_all", g["unique_id"])]
 
 
 def _floor_file_creates(doc: dict) -> set:
@@ -322,6 +327,51 @@ def test_tech_types_composition(tmp_path):
 
     # А вот в группу всего этажа попадают все пять.
     assert len(by_id["floor_1_all"]["entities"]) == 5
+
+
+def test_floor_type_groups_one_per_present_type(tmp_path):
+    """Группа этажа по типу — по одной на каждый ПРИСУТСТВУЮЩИЙ тип, из общих
+    групп помещений этого типа. Отключается --no-type-groups.
+    """
+    from scripts._lib.canon import floor_type_group_unique_id
+
+    rows = []
+    for i, (name, stype) in enumerate([
+        ("101_Коридор", "Korridor"),
+        ("102_Тамбур", "Special"),
+        ("103_Рекреация", "Recreation"),
+        ("104_Класс", "Class"),
+        ("105_Зал", "Zal"),
+    ], start=1):
+        rows.append({
+            "Этаж": 1, "Название помещения": name, "Тип помещения": stype,
+            "Шина DALI": 1, "Группа": f"10{i}_1", "Лампа": f"1.1.{i}",
+            "Датчик": "None", "Панель": "None",
+        })
+
+    out = tmp_path / "normalized"
+    N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
+
+    doc = _run(FLOOR, out)
+    by_id = {g["unique_id"]: g for g in _groups(doc, "lights_floor_group")}
+
+    # На каждый тип — своя группа из общей группы его помещения.
+    expected = {
+        "korridor": "light.101_koridor_obshchii",
+        "special": "light.102_tambur_obshchii",
+        "recreation": "light.103_rekreatsiia_obshchii",
+        "class": "light.104_klass_obshchii",
+        "zal": "light.105_zal_obshchii",
+    }
+    for stype, light in expected.items():
+        uid = floor_type_group_unique_id(1, stype)
+        assert by_id[uid]["entities"] == [light], uid
+
+    # Отключение флагом.
+    ids_off = {g["unique_id"] for g in _groups(_run(FLOOR, out, type_groups=False),
+                                               "lights_floor_group")}
+    assert not any(re.fullmatch(r"floor_\d+_(korridor|class|zal|special|recreation|hall)", i)
+                   for i in ids_off)
 
 
 def test_tech_group_references_existing_entities(tmp_path):

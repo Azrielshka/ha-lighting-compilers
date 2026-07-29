@@ -22,10 +22,15 @@ path: [[PATH]]
 icon: mdi:home
 type: sections
 max_columns: 3
+# Раскладка бейджей (решение владельца 2026-07-28): по центру, снизу,
+# с прокруткой вместо переноса.
+#   layout: center         — заголовок и бейджи центрируются
+#   badges_position: bottom — бейджи под заголовком
+#   badges_wrap: scroll     — не переносятся на вторую строку, а прокручиваются
 header:
-  layout: responsive
-  badges_position: top
-  badges_wrap: wrap
+  layout: center
+  badges_position: bottom
+  badges_wrap: scroll
   card:
     type: markdown
     text_only: true
@@ -63,6 +68,15 @@ sections:
       - type: heading
         heading_style: title
         heading: Управление этажами
+      # Фильтр групп по типу: выбрал тип — на каждом этаже показывается плитка
+      # группы этого типа (conditional в блоке этажа). Заглушка = ничего доп.
+      - type: tile
+        entity: "[[FLOOR_TYPE_FILTER]]"
+        features_position: inline
+        features:
+          - type: select-options
+        grid_options:
+          columns: full
       [[FLOOR_BLOCKS]]
   # Секция «Сервис»: та же ширина 3, блоки columns: 9 — по 4 в ряд, как этажи.
   - type: grid
