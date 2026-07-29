@@ -15,6 +15,7 @@ from scripts._lib.canon import (
     panel_entity,
     parse_addr,
     sensor_illuminance_entity,
+    sensor_illuminance_sibling,
     sensor_motion_entity,
     zone_light_entity,
 )
@@ -49,6 +50,18 @@ def test_entity_naming():
 def test_one_sensor_address_yields_two_entities():
     """Датчик даёт и движение, и освещённость — это две разные сущности HA."""
     assert sensor_motion_entity("1.1.2") != sensor_illuminance_entity("1.1.2")
+
+
+def test_illuminance_sibling_from_motion():
+    """Из entity движения выводим освещённость того же адреса (общий слаг)."""
+    assert sensor_illuminance_sibling("sensor.ms_1_20_3") == "sensor.il_1_20_3"
+    # согласован с прямым построением по адресу
+    assert sensor_illuminance_sibling(sensor_motion_entity("2.1.1")) == sensor_illuminance_entity("2.1.1")
+
+
+def test_illuminance_sibling_rejects_non_motion():
+    with pytest.raises(ValueError):
+        sensor_illuminance_sibling("sensor.il_1_20_3")
 
 
 def test_entity_builders_accept_addr_object():

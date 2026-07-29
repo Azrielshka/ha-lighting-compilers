@@ -18,6 +18,10 @@ This project follows Semantic Versioning.
   «все коридоры этажа» и т.п., по присутствующим типам.
 - **Поэтажный фильтр групп по типу** `input_select.floor_type_filter_<N>` +
   conditional-плитки в блоке этажа на Главной.
+- **Освещённость (`sensor.il_*`) в карточках рекреации и класса.** Рекреация —
+  объединённый `glance` движение+освещённость на датчик (`_blocks/sensor_il_glance.yaml`);
+  класс — освещённость плиткой под движением в той же зоне-ячейке. `il` выводится
+  из `ms` (`canon.sensor_illuminance_sibling`), без правок пайплайна.
 
 ### Changed
 

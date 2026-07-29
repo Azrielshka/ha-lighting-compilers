@@ -57,6 +57,7 @@ from scripts._lib.canon import (
     nav_pick_entity,
     nav_type_all_entity,
     nav_type_entity,
+    sensor_illuminance_sibling,
     space_label,
 )
 from scripts._lib.filters import add_filter_args, apply_filters, filters_from_args
@@ -232,13 +233,22 @@ def build_special(light_block, sensor_block, zone_lights, sensors_by_group) -> L
 
 def build_class_columns(light_block, sensor_block, label_block,
                         zone_lights, sensors_by_group) -> List[dict]:
-    """[[ZONE_COLUMNS]] класса: [свет..., датчик..., подпись...] -> грид разложит в 3 ряда."""
+    """[[ZONE_COLUMNS]] класса: [свет..., датчик..., подпись...] -> грид разложит в 3 ряда.
+
+    Ячейка датчика зоны = стопка [движение, освещённость] одного адреса: il
+    выводим из ms (у датчика общий слаг). Нет датчика — пустая заглушка.
+    """
     lights = [_tile(light_block, "[[ZONE_LIGHT]]", z) for z in zone_lights]
     sensors = []
     for grp in sensors_by_group:
         first = next((s for s in grp if s), None)
-        sensors.append(_tile(sensor_block, "[[SENSOR]]", first) if first
-                       else {"type": "markdown", "content": ""})
+        if first:
+            sensors.append({"type": "vertical-stack", "cards": [
+                _tile(sensor_block, "[[SENSOR]]", first),
+                _tile(sensor_block, "[[SENSOR]]", sensor_illuminance_sibling(first)),
+            ]})
+        else:
+            sensors.append({"type": "markdown", "content": ""})
     labels = [_tile(label_block, "[[LABEL]]", LABEL_PLACEHOLDER) for _ in zone_lights]
     return lights + sensors + labels
 
@@ -248,9 +258,18 @@ def build_recreation_groups(group_block, zone_lights) -> List[dict]:
     return [_tile(group_block, "[[ZONE_LIGHT]]", z) for z in zone_lights]
 
 
-def build_sensors_2col(sensor_block, sensors_flat) -> List[dict]:
-    """[[SENSORS_2COL]] рекреации: плитки датчиков (лягут в грид columns:2)."""
-    return [_tile(sensor_block, "[[SENSOR]]", s) for s in sensors_flat if s]
+def build_sensors_2col(glance_block, sensors_flat) -> List[dict]:
+    """[[SENSORS_2COL]] рекреации: на каждый датчик — объединённый виджет
+    движение+освещённость (лягут в грид columns:2). il выводим из ms."""
+    out = []
+    for ms in sensors_flat:
+        if not ms:
+            continue
+        out.append(_fill(copy.deepcopy(glance_block), {
+            "[[SENSOR_MS]]": ms,
+            "[[SENSOR_IL]]": sensor_illuminance_sibling(ms),
+        }))
+    return out
 
 
 def build_nav_map(rooms: List[tuple]) -> str:
@@ -560,7 +579,7 @@ def build_card(space_type: str, wrapper: str, blocks: Dict[str, dict],
         sensors_flat = [s for grp in sensors_by_group for s in grp if s]
         card = _splice(card, "[[ZONE_GROUPS]]", _dump(groups))
         card = _splice(card, "[[SENSORS_2COL]]", _dump(build_sensors_2col(
-            blocks["sensor_tile"], sensors_flat)))
+            blocks["sensor_il_glance"], sensors_flat)))
 
     elif space_type == "zal":
         card = _splice(card, "[[ZONE_LIGHTS]]", _dump(build_zal_lights(zone_lights)))
@@ -578,8 +597,8 @@ def build_heading(space: str) -> str:
 # Генерация по объекту
 # ============================================================
 
-BLOCK_NAMES = ("light_tile", "sensor_tile", "class_label", "recreation_group",
-               "compact_card")
+BLOCK_NAMES = ("light_tile", "sensor_tile", "sensor_il_glance", "class_label",
+               "recreation_group", "compact_card")
 
 
 def build_views(spaces_parquet: Path, templates_dir: Path, filters,

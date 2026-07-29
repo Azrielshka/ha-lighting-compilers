@@ -130,8 +130,18 @@ def test_class_columns_order_and_placeholder(blocks):
     res = G.build_class_columns(blocks["light_tile"], blocks["sensor_tile"],
                                 blocks["class_label"], _lights(2), _one_sensor_each(2))
     # порядок: свет, свет, датчик, датчик, подпись, подпись
-    assert [c["type"] for c in res] == ["tile", "tile", "tile", "tile", "markdown", "markdown"]
+    assert [c["type"] for c in res] == [
+        "tile", "tile", "vertical-stack", "vertical-stack", "markdown", "markdown"]
     assert res[-1]["content"] == G.LABEL_PLACEHOLDER
+    # ячейка датчика зоны: движение сверху, освещённость снизу (общий адрес)
+    sensor_cell = res[2]
+    assert [c["entity"] for c in sensor_cell["cards"]] == ["sensor.ms_0", "sensor.il_0"]
+
+
+def test_class_columns_no_sensor_is_stub(blocks):
+    res = G.build_class_columns(blocks["light_tile"], blocks["sensor_tile"],
+                                blocks["class_label"], _lights(1), [[]])
+    assert res[1] == {"type": "markdown", "content": ""}
 
 
 def test_recreation_groups_are_mushroom(blocks):
@@ -300,7 +310,12 @@ def test_recreation_uses_mushroom_groups(object_layer, tmp_path):
 
     sensors_grid = next(c for c in rec["cards"] if c.get("type") == "grid")
     assert sensors_grid["columns"] == 2
-    assert all(c["type"] == "tile" for c in sensors_grid["cards"])
+    # каждый датчик — объединённый glance движение+освещённость
+    assert all(c["type"] == "glance" for c in sensors_grid["cards"])
+    first = sensors_grid["cards"][0]
+    ents = [e["entity"] for e in first["entities"]]
+    assert ents[0].startswith("sensor.ms_")
+    assert ents[1] == ents[0].replace("sensor.ms_", "sensor.il_")
 
 
 def test_second_floor_gets_its_own_view(object_layer, tmp_path):

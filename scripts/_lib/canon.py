@@ -168,6 +168,20 @@ def sensor_illuminance_entity(addr: object) -> str:
     return f"{HA_SENSOR_DOMAIN}.{SENSOR_ILLUMINANCE_PREFIX}_{_addr_slug(addr)}"
 
 
+def sensor_illuminance_sibling(motion_entity: str) -> str:
+    """sensor.ms_1_20_3 -> sensor.il_1_20_3.
+
+    У одного физического датчика два entity_id с общим слагом-адресом и разными
+    префиксами (ms/il). В parquet по группам хранится только движение (sensors_ms);
+    освещённость выводим отсюда, не таская вторую колонку через весь пайплайн.
+    """
+    prefix = f"{HA_SENSOR_DOMAIN}.{SENSOR_MOTION_PREFIX}_"
+    if not motion_entity.startswith(prefix):
+        raise ValueError(f"ожидался {prefix}<addr>, получено: {motion_entity!r}")
+    slug = motion_entity[len(prefix):]
+    return f"{HA_SENSOR_DOMAIN}.{SENSOR_ILLUMINANCE_PREFIX}_{slug}"
+
+
 def panel_entity(addr: object) -> str:
     """1.1.1 -> event.kp_1_1_1"""
     return f"{HA_EVENT_DOMAIN}.{PANEL_PREFIX}_{_addr_slug(addr)}"
