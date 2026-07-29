@@ -559,36 +559,37 @@ def test_main_floor_has_switch_not_tech_tile(object_layer, tmp_path):
 
 
 def test_main_type_group_filter(object_layer, tmp_path):
-    """Фильтр групп по типу (п.3): select-плитка на Главной + conditional-плитка
-    группы каждого присутствующего типа этажа, видимая по состоянию фильтра.
+    """Фильтр групп по типу (п.3): ПОЭТАЖНЫЙ select в блоке этажа + conditional-
+    плитка группы каждого присутствующего типа, видимая по СВОЁМУ фильтру.
     """
     from scripts._lib.canon import (
         floor_type_filter_entity, floor_type_light_entity, NAV_TYPE_LABELS,
     )
 
-    main = _main_view(_generate(object_layer, tmp_path))
-
-    # select-плитка фильтра — в секции управления этажами
-    section_entities = [c.get("entity") for c in main["sections"][0]["cards"]]
-    assert floor_type_filter_entity() in section_entities
-
-    blocks = _floor_blocks(main)
+    blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
 
     # этаж 1 фикстуры: korridor, class, zal, special, recreation
     block1 = blocks[0]
+    entities1 = {c.get("entity") for c in block1["cards"] if c.get("type") == "tile"}
+    assert floor_type_filter_entity(1) in entities1   # select-плитка в блоке этажа
+
     conds = [c for c in block1["cards"] if c.get("type") == "conditional"]
     got = {(c["conditions"][0]["state"], c["card"]["entity"]) for c in conds}
     for stype in ("korridor", "class", "zal", "special", "recreation"):
         assert (NAV_TYPE_LABELS[stype], floor_type_light_entity(1, stype)) in got
 
-    # каждое условие висит именно на фильтре групп
+    # каждое условие висит на фильтре СВОЕГО этажа
     for c in conds:
-        assert c["conditions"][0]["entity"] == floor_type_filter_entity()
+        assert c["conditions"][0]["entity"] == floor_type_filter_entity(1)
 
-    # этаж 2 — только hall
-    conds2 = [c for c in blocks[1]["cards"] if c.get("type") == "conditional"]
+    # этаж 2 — свой фильтр, только hall
+    block2 = blocks[1]
+    assert floor_type_filter_entity(2) in {c.get("entity") for c in block2["cards"]
+                                           if c.get("type") == "tile"}
+    conds2 = [c for c in block2["cards"] if c.get("type") == "conditional"]
     got2 = {(c["conditions"][0]["state"], c["card"]["entity"]) for c in conds2}
     assert got2 == {(NAV_TYPE_LABELS["hall"], floor_type_light_entity(2, "hall"))}
+    assert all(c["conditions"][0]["entity"] == floor_type_filter_entity(2) for c in conds2)
 
 
 def test_nav_map_matches_helper_options(object_layer, tmp_path):

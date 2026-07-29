@@ -276,7 +276,7 @@ def _type_conditionals(templates_dir: Path, floor: int, space_types: List[str]) 
     parts: List[str] = []
     for space_type in present:
         card = tpl
-        card = card.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity())
+        card = card.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity(floor))
         card = card.replace("[[TYPE_LABEL]]", NAV_TYPE_LABELS[space_type])
         card = card.replace("[[TYPE_LIGHT]]", floor_type_light_entity(floor, space_type))
         parts.append(card)
@@ -308,7 +308,7 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
         block = _splice(block, "[[TYPE_CONDITIONALS]]",
                         _type_conditionals(templates_dir, floor,
                                            types_by_floor.get(floor, [])))
-        block = block.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity())
+        block = block.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity(floor))
         block = block.replace("[[NAV_SELECT]]", floor_nav_entity(floor))
         block = block.replace("[[DASHBOARD]]", dashboard)
         block = _splice(block, "[[NAV_MAP]]", build_nav_map(rooms_by_floor[floor]))
@@ -322,7 +322,6 @@ def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
     view = view.replace("[[TITLE]]", title)
     view = view.replace("[[OBJECT_LIGHT]]", object_light_entity())
     view = view.replace("[[MODE_SELECT]]", building_mode_select_entity())
-    view = view.replace("[[FLOOR_TYPE_FILTER]]", floor_type_filter_entity())
     view = _splice(view, "[[FLOOR_BLOCKS]]", "\n".join(blocks))
     view = _splice(view, "[[SERVICE_BLOCKS]]",
                    build_service_blocks(templates_dir, dashboard))

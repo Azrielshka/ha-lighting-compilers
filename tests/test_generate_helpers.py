@@ -100,6 +100,29 @@ def test_vacant_delay_created_per_type_without_initial(object_layer):
 # Навигация: опции = помещения этажа
 # ============================================================
 
+def test_floor_type_filter_per_floor_present_types(object_layer):
+    """Фильтр групп по типу — по одному select на этаж, опции = заглушка +
+    только присутствующие на этаже типы (в порядке NAV_TYPE_LABELS).
+    """
+    from scripts._lib.canon import (
+        floor_type_filter_id, FLOOR_TYPE_FILTER_PLACEHOLDER,
+    )
+
+    selects = _package(object_layer)["input_select"]
+
+    # этаж 1: korridor, class, zal, special, recreation (без hall)
+    assert selects[floor_type_filter_id(1)]["options"] == [
+        FLOOR_TYPE_FILTER_PLACEHOLDER,
+        "Коридоры", "Классы", "Залы", "Санузлы и тамбуры", "Рекреации",
+    ]
+    # этаж 2: только hall
+    assert selects[floor_type_filter_id(2)]["options"] == [
+        FLOOR_TYPE_FILTER_PLACEHOLDER, "Холлы",
+    ]
+    # заглушка — initial (ничего доп. не показано)
+    assert selects[floor_type_filter_id(1)]["initial"] == FLOOR_TYPE_FILTER_PLACEHOLDER
+
+
 def test_nav_select_per_floor_with_room_options(object_layer):
     selects = _floor_navs(_package(object_layer))
 

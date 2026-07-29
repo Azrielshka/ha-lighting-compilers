@@ -48,7 +48,7 @@ from scripts._lib.canon import (
     NAV_TYPE_ALL_ID,
     NAV_TYPE_ALL_LABEL,
     NAV_TYPE_ICONS,
-    FLOOR_TYPE_FILTER_ID,
+    floor_type_filter_id,
     floor_type_filter_options,
     NAV_PICK_ID,
     ALLOWED_SPACE_TYPES,
@@ -101,10 +101,15 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     # Помещения по этажам. Порядок опций задаётся ниже — по номеру, возрастание
     # (space_sort_key), а не как в таблице: в списке навигации так искать легче.
     by_floor: Dict[int, List[str]] = {}
+    types_by_floor: Dict[int, set] = {}
     for _, row in filtered.iterrows():
         if pd.isna(row["floor"]):
             continue
-        by_floor.setdefault(int(row["floor"]), []).append(space_label(row["space"]))
+        fl = int(row["floor"])
+        by_floor.setdefault(fl, []).append(space_label(row["space"]))
+        st = row["space_type"]
+        if st is not None and str(st) in NAV_TYPE_LABELS:
+            types_by_floor.setdefault(fl, set()).add(str(st))
 
     floors = sorted(by_floor)
 
@@ -182,14 +187,17 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
         "icon": "mdi:filter-menu",
     }
 
-    # Фильтр групп по типу на Главной: выбрал тип — показывается плитка группы
-    # этого типа на каждом этаже. Заглушка первой = ничего доп. не показано.
-    selects[FLOOR_TYPE_FILTER_ID] = {
-        "name": "Группы по типу",
-        "options": floor_type_filter_options(),
-        "initial": floor_type_filter_options()[0],
-        "icon": "mdi:home-group",
-    }
+    # Фильтр групп по типу — ПО ОДНОМУ на этаж (плитка в блоке этажа под switch).
+    # Опции — только присутствующие на этаже типы + заглушка. Выбрал тип —
+    # conditional-плитка группы этого типа показывается на этом этаже.
+    for floor in floors:
+        opts = floor_type_filter_options(types_by_floor.get(floor, set()))
+        selects[floor_type_filter_id(floor)] = {
+            "name": f"Группы по типу — {floor} этаж",
+            "options": opts,
+            "initial": opts[0],
+            "icon": "mdi:home-group",
+        }
 
     for floor in floors:
         selects[floor_nav_id(floor)] = {

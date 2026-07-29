@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Iterable, Optional, Set, Tuple
 
 from scripts._lib.naming import slugify_room
 
@@ -330,27 +330,35 @@ def floor_type_light_entity(floor: int, space_type: str) -> str:
     return f"light.{slugify_room(floor_type_group_name(floor, space_type))}"
 
 
-# Фильтр групп по типу на Главной (решение владельца 2026-07-28): один select
-# на объект. Выбрал тип — на каждом этаже показывается плитка группы этого типа
+# Фильтр групп по типу на Главной (решение владельца 2026-07-28): ПО ОДНОМУ
+# select на этаж (как nav_floor). Плитка живёт в блоке этажа под switch
+# автоматики; выбрал тип — на этом этаже показывается плитка группы этого типа
 # (через conditional card, т.к. visibility внутри vertical-stack не работает).
 # Заглушка первой опцией = «ничего дополнительно не показано» (виден только
 # постоянный свет этажа).
-FLOOR_TYPE_FILTER_ID: str = "floor_type_filter"
 FLOOR_TYPE_FILTER_PLACEHOLDER: str = "— тип —"
 
 
-def floor_type_filter_entity() -> str:
-    """input_select.floor_type_filter — выбор типа групп на Главной."""
-    return f"input_select.{FLOOR_TYPE_FILTER_ID}"
+def floor_type_filter_id(floor: int) -> str:
+    """floor_type_filter_1 — object_id фильтра групп по типу для этажа."""
+    return f"floor_type_filter_{int(floor)}"
 
 
-def floor_type_filter_options() -> list:
-    """Опции: заглушка + подписи типов (NAV_TYPE_LABELS, тот же порядок).
+def floor_type_filter_entity(floor: int) -> str:
+    """input_select.floor_type_filter_1 — выбор типа групп на этаже."""
+    return f"input_select.{floor_type_filter_id(floor)}"
 
-    ⚠ Строки-подписи обязаны совпасть символ в символ с состоянием, которое
-    проверяет conditional card плитки группы — иначе плитка молча не покажется.
+
+def floor_type_filter_options(space_types: Iterable[str]) -> list:
+    """Опции этажного фильтра: заглушка + подписи ПРИСУТСТВУЮЩИХ типов.
+
+    Порядок типов — как в NAV_TYPE_LABELS (стабильный). Подписи обязаны совпасть
+    символ в символ с состоянием, которое проверяет conditional card плитки
+    группы, — иначе плитка молча не покажется.
     """
-    return [FLOOR_TYPE_FILTER_PLACEHOLDER] + list(NAV_TYPE_LABELS.values())
+    present = set(space_types)
+    labels = [NAV_TYPE_LABELS[t] for t in NAV_TYPE_LABELS if t in present]
+    return [FLOOR_TYPE_FILTER_PLACEHOLDER] + labels
 
 
 # ------------------------------------------------------------
