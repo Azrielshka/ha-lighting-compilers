@@ -44,7 +44,6 @@ from scripts._lib.canon import (
     NAV_TYPE_ICONS,
     NAV_TYPE_LABELS,
     SERVICE_VIEWS,
-    TECHNICAL_SPACE_TYPES,
     ba_gate_entity,
     building_mode_select_entity,
     floor_area_id,
@@ -57,7 +56,6 @@ from scripts._lib.canon import (
     nav_type_all_entity,
     nav_type_entity,
     space_label,
-    tech_light_entity,
 )
 from scripts._lib.filters import add_filter_args, apply_filters, filters_from_args
 
@@ -264,31 +262,25 @@ def build_nav_map(rooms: List[tuple]) -> str:
 
 
 def build_main_view(templates_dir: Path, rooms_by_floor: Dict[int, List[tuple]],
-                    tech_floors: set, dashboard: str, title: str) -> dict:
-    """Главная: блок на этаж — карточка, свет, выбор помещения, переход.
+                    dashboard: str, title: str) -> dict:
+    """Главная: блок на этаж — карточка, свет, автоматика, выбор помещения.
 
     Собирается текстом, а не структурой: в блоке живут Jinja-карта и CSS
     card_mod, которые владелец правит руками — их надо донести дословно.
 
-    `tech_floors` — этажи, на которых generate_floor_groups реально заведёт
-    группу тех.помещений. На остальных плитки не будет: этаж без korridor /
-    special / recreation группы не получает, и плитка показывала бы
-    «сущность недоступна».
+    Плитка тех.помещений убрана (решение владельца 2026-07-28), на её месте —
+    тумблер автоматики этажа от Оркестратора (floor_auto_switch_entity).
     """
     block_tpl = _strip_header_comments(
         _read(templates_dir / "_blocks" / "main_floor_block.yaml"))
-    tech_tpl = _strip_header_comments(
-        _read(templates_dir / "_blocks" / "main_tech_tile.yaml"))
 
     blocks: List[str] = []
     for floor in sorted(rooms_by_floor):
         block = block_tpl
-        block = _splice(block, "[[TECH_TILE]]",
-                        tech_tpl if floor in tech_floors else "")
         block = block.replace("[[FLOOR_AREA_ID]]", floor_area_id(floor))
         block = block.replace("[[FLOOR_VIEW_PATH]]", V.floor_view_path(floor))
         block = block.replace("[[FLOOR_LIGHT]]", floor_light_entity(floor))
-        block = block.replace("[[TECH_LIGHT]]", tech_light_entity(floor))
+        block = block.replace("[[FLOOR_SWITCH]]", floor_auto_switch_entity(floor))
         block = block.replace("[[NAV_SELECT]]", floor_nav_entity(floor))
         block = block.replace("[[DASHBOARD]]", dashboard)
         block = _splice(block, "[[NAV_MAP]]", build_nav_map(rooms_by_floor[floor]))
@@ -578,16 +570,6 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
     spaces_df = pd.read_parquet(spaces_parquet)
     filtered, excluded = apply_filters(spaces_df, filters)
 
-    # Этажи с группой тех.помещений — тем же правилом, что и в
-    # generate_floor_groups: считаем по filtered, а не в цикле сборки карточек.
-    # В цикле помещение может быть пропущено (нет типа, нет обёртки), и этаж
-    # молча остался бы без плитки при живой группе.
-    tech_floors = {
-        int(f)
-        for f in filtered[filtered["space_type"].isin(TECHNICAL_SPACE_TYPES)
-                          & filtered["floor"].notna()]["floor"].unique()
-    }
-
     floor_cards: Dict[int, List[dict]] = {}
     rooms_by_floor: Dict[int, List[tuple]] = {}
     subviews: List[dict] = []
@@ -643,7 +625,7 @@ def build_views(spaces_parquet: Path, templates_dir: Path, filters,
 
     views = floor_views + subviews
     if rooms_by_floor:
-        views.append(build_main_view(templates_dir, rooms_by_floor, tech_floors,
+        views.append(build_main_view(templates_dir, rooms_by_floor,
                                      dashboard, title))
 
     return V.order_views(views), report, skipped, excluded

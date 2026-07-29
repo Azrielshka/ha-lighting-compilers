@@ -56,6 +56,7 @@ from scripts._lib.canon import (
     BACK_BUTTON_ID,
     NAV_PLACEHOLDER,
     space_label,
+    space_sort_key,
     VACANT_DELAY_MAX,
     VACANT_DELAY_MIN,
     VACANT_DELAY_STEP,
@@ -95,7 +96,8 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
         excluded=excluded,
     )
 
-    # Помещения по этажам — в порядке таблицы, как и везде.
+    # Помещения по этажам. Порядок опций задаётся ниже — по номеру, возрастание
+    # (space_sort_key), а не как в таблице: в списке навигации так искать легче.
     by_floor: Dict[int, List[str]] = {}
     for _, row in filtered.iterrows():
         if pd.isna(row["floor"]):
@@ -181,7 +183,7 @@ def build_payload(spaces_df: pd.DataFrame, filters: Filters) -> Dict:
     for floor in floors:
         selects[floor_nav_id(floor)] = {
             "name": f"Помещения {floor} этажа",
-            "options": [NAV_PLACEHOLDER] + by_floor[floor],
+            "options": [NAV_PLACEHOLDER] + sorted(by_floor[floor], key=space_sort_key),
             "initial": NAV_PLACEHOLDER,
             "icon": "mdi:door",
         }

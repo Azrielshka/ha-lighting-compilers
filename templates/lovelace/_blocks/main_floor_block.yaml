@@ -6,8 +6,8 @@
 #   [[FLOOR_AREA_ID]]    — ves_<N>_etazh, Area этажа (её создаёт generate_areas)
 #   [[FLOOR_VIEW_PATH]]  — zm-floor-<N>, куда ведёт карточка этажа
 #   [[FLOOR_LIGHT]]      — light.ves_<N>_i_etazh, «Весь N-й этаж»
-#   [[TECH_TILE]]        — плитка тех.помещений (_blocks/main_tech_tile.yaml);
-#                          только на этажах, где эта группа реально создаётся
+#   [[FLOOR_SWITCH]]     — switch.orkestrator_..._avtomatika_etazh_<N>: тумблер
+#                          автоматики этажа (Оркестратор). Кликабельный.
 #   [[NAV_SELECT]]       — input_select.nav_floor_<N> (его создаёт generate_helpers)
 #   [[NAV_MAP]]          — карта «имя помещения → room_slug», строки Jinja-словаря
 #   [[DASHBOARD]]        — url_path дашборда
@@ -47,7 +47,14 @@
           features_position: bottom
           features:
             - type: toggle
-        [[TECH_TILE]]
+        # Автоматика этажа (Оркестратор): кликабельный тумблер Авто/Ручной.
+        # Заменил плитку тех.помещений (убрана — решение владельца 2026-07-28).
+        - type: tile
+          entity: "[[FLOOR_SWITCH]]"
+          vertical: false
+          features_position: bottom
+          features:
+            - type: toggle
     - type: tile
       entity: "[[NAV_SELECT]]"
       vertical: false
@@ -91,3 +98,8 @@
             ha-card {
               padding: 0 !important;
             }
+  # grid_options на КОРНЕ блока (как у сервисных): 4 карточки этажа в ряд при
+  # секции column_span: 3. rows: auto — высота по содержимому.
+  grid_options:
+    columns: 9
+    rows: auto

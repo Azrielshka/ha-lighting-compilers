@@ -222,6 +222,19 @@ def space_label(space: str) -> str:
     return str(space).replace("_", " ").strip()
 
 
+def space_sort_key(space: str) -> tuple:
+    """Ключ сортировки помещений ПО НОМЕРУ, по возрастанию.
+
+    «103_Вестибюль» и «103 Вестибюль» → (103, ...) — работает и на сыром
+    имени, и на space_label. Сортировка ЧИСЛЕННАЯ, а не лексикографическая:
+    иначе «99» встало бы после «101». Помещение без ведущего числа уходит
+    в конец (по алфавиту между собой).
+    """
+    s = str(space).strip()
+    m = re.match(r"^(\d+)", s)
+    return (int(m.group(1)) if m else 10**9, s.lower())
+
+
 def area_name(space: str) -> str:
     """Имя Area = название помещения из таблицы: «103_Вестибюль»."""
     return str(space).strip()
@@ -792,6 +805,22 @@ SERVICE_VIEWS: Tuple[Dict[str, str], ...] = (
         "title": "Настройка конфигурации",
         "heading": "🔧 Конфигурация",
         "icon": "mdi:cog",
+        "view_type": "sections",
+    },
+    # Заглушки: кнопка + пустая страница sections. Наполнение и навигацию
+    # внутри владелец вставляет на ПНР (решение владельца 2026-07-28).
+    {
+        "path": "problemy",
+        "title": "Проблемы",
+        "heading": "🛠 Проблемы",
+        "icon": "mdi:alert-circle-outline",
+        "view_type": "sections",
+    },
+    {
+        "path": "monitoring",
+        "title": "Мониторинг ресурсов",
+        "heading": "📊 Мониторинг",
+        "icon": "mdi:chart-line",
         "view_type": "sections",
     },
 )

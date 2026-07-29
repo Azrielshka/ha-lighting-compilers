@@ -105,10 +105,33 @@ def test_nav_select_per_floor_with_room_options(object_layer):
 
     assert set(selects) == {"nav_floor_1", "nav_floor_2"}
     assert selects["nav_floor_2"]["options"] == [NAV_PLACEHOLDER, "208 Входной тамбур"]
-    # порядок помещений — как в таблице, следом за заглушкой
+    # порядок помещений — по номеру возрастанием, следом за заглушкой
     assert selects["nav_floor_1"]["options"][:4] == [
         NAV_PLACEHOLDER, "101 Тамбур", "102 Тамбур", "103 Вестибюль",
     ]
+
+
+def test_nav_options_sorted_by_number_ascending(tmp_path):
+    """
+    Правило: опции нумерованы по возрастанию (space_sort_key), а не в порядке
+    таблицы. Проверяем на данных, где табличный и числовой порядок РАЗОШЛИСЬ:
+    таблица даёт 110, 9, 101 — селект обязан выдать 9, 101, 110.
+    """
+    def r(space, group, lamp, sensor):
+        return {"Этаж": 1, "Название помещения": space, "Тип помещения": "Korridor",
+                "Шина DALI": 1, "Группа": group, "Лампа": lamp,
+                "Датчик": sensor, "Панель": "None"}
+
+    rows = [
+        r("110_Санузел", "110_1", "1.1.1", "1.1.1"),
+        r("9_Подвал", "9_1", "1.1.2", "1.1.2"),
+        r("101_Тамбур", "101_1", "1.1.3", "1.1.3"),
+    ]
+    out = tmp_path / "normalized"
+    N.normalize(make_book(tmp_path / "t.xlsx", rows), out)
+    opts = _payload(out)["input_select"]["nav_floor_1"]["options"]
+
+    assert opts == [NAV_PLACEHOLDER, "9 Подвал", "101 Тамбур", "110 Санузел"]
 
 
 def test_nav_starts_with_nothing_selected(object_layer):

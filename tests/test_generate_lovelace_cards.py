@@ -505,47 +505,37 @@ def _real_floor_lights(object_layer) -> set:
     return {f"light.{slugify_room(g['name'])}" for g in doc[FLOOR.ROOT_KEY]["light"]}
 
 
-def test_main_floor_lights_are_groups_that_really_exist(object_layer, tmp_path):
-    """Каждая плитка света на Главной — группа, которую HA реально создаст.
-
-    Ловит то, что уже пролезло: плитка тех.помещений ставилась на каждый этаж,
-    а группу generate_floor_groups заводит только там, где есть korridor /
-    special / recreation. На этаже без них (в фикстуре второй — один hall)
-    плитка висела в пустоте: «сущность недоступна» без единой подсказки почему.
+def test_main_floor_light_is_a_group_that_really_exists(object_layer, tmp_path):
+    """Плитка света на Главной — группа этажа, которую HA реально создаст.
 
     Проверяем по факту, а не по канону: канон подтвердит имя даже несуществующей
-    группы — на этом и погорели.
+    группы — на этом уже горели с плиткой тех.помещений.
     """
     real = _real_floor_lights(object_layer)
     blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
 
     for block in blocks:
-        for tile in block["cards"][1]["cards"]:
-            assert tile["entity"] in real, (
-                f"плитка ссылается на {tile['entity']}, "
-                f"а создаются только {sorted(real)}"
-            )
+        # первая плитка horizontal-stack — свет этажа
+        light_tile = block["cards"][1]["cards"][0]
+        assert light_tile["entity"] in real, (
+            f"плитка света ссылается на {light_tile['entity']}, "
+            f"а создаются только {sorted(real)}"
+        )
 
 
-def test_main_shows_tech_tile_exactly_where_the_group_exists(object_layer, tmp_path):
-    """Не только «не лишняя», но и «не потеряна»: этаж с тех.группой её показывает.
-
-    Без этой половины проверку можно пройти, выкинув плитку отовсюду.
+def test_main_floor_has_switch_not_tech_tile(object_layer, tmp_path):
+    """Правка 2026-07-28: тех.плитка убрана, на её месте — тумблер автоматики
+    этажа (Оркестратор). В horizontal-stack ровно две плитки: свет + switch.
     """
-    from scripts._lib.canon import floor_light_entity, tech_light_entity
+    from scripts._lib.canon import floor_light_entity, floor_auto_switch_entity
 
-    real = _real_floor_lights(object_layer)
     blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
 
     for floor, block in zip((1, 2), blocks):
         entities = [t["entity"] for t in block["cards"][1]["cards"]]
-        expected = [floor_light_entity(floor)]
-        if tech_light_entity(floor) in real:
-            expected.append(tech_light_entity(floor))
-        assert entities == expected
-
-    # фикстура должна покрывать оба случая, иначе тест ничего не стережёт
-    assert tech_light_entity(1) in real and tech_light_entity(2) not in real
+        assert entities == [floor_light_entity(floor), floor_auto_switch_entity(floor)]
+        # тех.группа сюда больше не попадает ни на одном этаже
+        assert not any("tekh_pom" in e for e in entities)
 
 
 def test_nav_map_matches_helper_options(object_layer, tmp_path):
@@ -717,12 +707,19 @@ def test_service_blocks_have_nothing_that_can_wrap(object_layer, tmp_path):
         )
 
 
-def test_service_page_title_stays_full():
-    """Заголовок страницы укорачивать не надо: во вкладке места сколько угодно.
+def test_service_views_are_well_formed():
+    """Каждая запись SERVICE_VIEWS полна и пригодна к высеву.
 
-    Короткий — только heading на Главной, и лишь потому, что там узкая колонка.
+    path — ASCII (из него entity/URL страницы), view_type — известный,
+    title и heading непустые. Короткий heading живёт на Главной, полный title —
+    во вкладке страницы; заглушки (Проблемы, Мониторинг) добавлены сюда же.
     """
     from scripts._lib.canon import SERVICE_VIEWS
 
+    paths = [spec["path"] for spec in SERVICE_VIEWS]
+    assert len(paths) == len(set(paths)), "пути сервисных страниц не уникальны"
+
     for spec in SERVICE_VIEWS:
-        assert spec["title"].startswith("Настройка ")
+        assert spec["path"].isascii() and " " not in spec["path"]
+        assert spec["view_type"] in ("panel", "sections")
+        assert spec["title"].strip() and spec["heading"].strip()
