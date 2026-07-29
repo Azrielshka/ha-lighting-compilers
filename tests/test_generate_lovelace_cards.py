@@ -453,6 +453,17 @@ def _floor_blocks(main: dict) -> list:
     return [c for c in main["sections"][0]["cards"] if c.get("type") == "vertical-stack"]
 
 
+def _nav_tile(block: dict) -> dict:
+    """Плитка выбора помещения — по entity, а не по индексу (структура блока меняется)."""
+    return next(c for c in block["cards"]
+               if str(c.get("entity", "")).startswith("input_select.nav_floor"))
+
+
+def _nav_markdown(block: dict) -> dict:
+    """Карточка-переход (markdown с картой имя→слаг)."""
+    return next(c for c in block["cards"] if c.get("type") == "markdown")
+
+
 def test_main_view_is_generated_and_first(object_layer, tmp_path):
     """Главная — наша и обязана быть первой: дашборд открывается на первом view."""
     from scripts._lib import ha_views as V
@@ -511,31 +522,40 @@ def test_main_floor_light_is_a_group_that_really_exists(object_layer, tmp_path):
     Проверяем по факту, а не по канону: канон подтвердит имя даже несуществующей
     группы — на этом уже горели с плиткой тех.помещений.
     """
+    from scripts._lib.canon import floor_light_entity
+
     real = _real_floor_lights(object_layer)
     blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
 
-    for block in blocks:
-        # первая плитка horizontal-stack — свет этажа
-        light_tile = block["cards"][1]["cards"][0]
-        assert light_tile["entity"] in real, (
-            f"плитка света ссылается на {light_tile['entity']}, "
+    for floor, block in zip((1, 2), blocks):
+        light = next(c for c in block["cards"]
+                     if c.get("entity") == floor_light_entity(floor))
+        assert light["entity"] in real, (
+            f"плитка света ссылается на {light['entity']}, "
             f"а создаются только {sorted(real)}"
         )
 
 
 def test_main_floor_has_switch_not_tech_tile(object_layer, tmp_path):
     """Правка 2026-07-28: тех.плитка убрана, на её месте — тумблер автоматики
-    этажа (Оркестратор). В horizontal-stack ровно две плитки: свет + switch.
+    этажа (Оркестратор). Свет и switch — РАЗНЫМИ плитками (разные строки),
+    features_position: inline. Тех.группы в блоке нет.
     """
     from scripts._lib.canon import floor_light_entity, floor_auto_switch_entity
 
     blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
 
     for floor, block in zip((1, 2), blocks):
-        entities = [t["entity"] for t in block["cards"][1]["cards"]]
-        assert entities == [floor_light_entity(floor), floor_auto_switch_entity(floor)]
-        # тех.группа сюда больше не попадает ни на одном этаже
-        assert not any("tekh_pom" in e for e in entities)
+        tiles = {c.get("entity"): c for c in block["cards"] if c.get("type") == "tile"}
+        assert floor_light_entity(floor) in tiles
+        assert floor_auto_switch_entity(floor) in tiles
+        # разными плитками, не в общем horizontal-stack
+        assert all(c.get("type") != "horizontal-stack" for c in block["cards"])
+        # inline-раскладка фич у света и switch
+        assert tiles[floor_light_entity(floor)]["features_position"] == "inline"
+        assert tiles[floor_auto_switch_entity(floor)]["features_position"] == "inline"
+        # тех.группа сюда больше не попадает
+        assert not any("tekh_pom" in str(e) for e in tiles)
 
 
 def test_nav_map_matches_helper_options(object_layer, tmp_path):
@@ -556,9 +576,9 @@ def test_nav_map_matches_helper_options(object_layer, tmp_path):
 
     for floor, block in zip((1, 2), blocks):
         options = helpers["input_select"][f"nav_floor_{floor}"]["options"]
-        content = block["cards"][3]["content"]
+        content = _nav_markdown(block)["content"]
 
-        assert block["cards"][2]["entity"] == f"input_select.nav_floor_{floor}"
+        assert _nav_tile(block)["entity"] == f"input_select.nav_floor_{floor}"
 
         for option in options:
             if option == NAV_PLACEHOLDER:
@@ -579,7 +599,7 @@ def test_nav_map_slugs_point_at_existing_subviews(object_layer, tmp_path):
     blocks = _floor_blocks(_main_view(views))
 
     for block in blocks:
-        for slug in re.findall(r"': '([a-z0-9_]+)'", block["cards"][3]["content"]):
+        for slug in re.findall(r"': '([a-z0-9_]+)'", _nav_markdown(block)["content"]):
             assert f"zm-space-{slug}" in views, slug
 
 
@@ -597,7 +617,7 @@ def test_main_nav_button_keeps_card_mod(object_layer, tmp_path):
     до неё не дойдёт, и кнопка останется голой ссылкой.
     """
     blocks = _floor_blocks(_main_view(_generate(object_layer, tmp_path)))
-    style = blocks[0]["cards"][3]["card_mod"]["style"]
+    style = _nav_markdown(blocks[0])["card_mod"]["style"]
 
     assert "ha-markdown$" in style
     assert "display: block" in style["ha-markdown$"]

@@ -39,22 +39,22 @@
         - humidity
       features_position: bottom
       vertical: false
-    - type: horizontal-stack
-      cards:
-        - type: tile
-          entity: "[[FLOOR_LIGHT]]"
-          vertical: false
-          features_position: bottom
-          features:
-            - type: toggle
-        # Автоматика этажа (Оркестратор): кликабельный тумблер Авто/Ручной.
-        # Заменил плитку тех.помещений (убрана — решение владельца 2026-07-28).
-        - type: tile
-          entity: "[[FLOOR_SWITCH]]"
-          vertical: false
-          features_position: bottom
-          features:
-            - type: toggle
+    # Свет этажа и автоматика этажа — РАЗНЫМИ строками (решение владельца
+    # 2026-07-28): каждая плитка прямой ребёнок блока, не в horizontal-stack.
+    - type: tile
+      entity: "[[FLOOR_LIGHT]]"
+      vertical: false
+      features_position: inline
+      features:
+        - type: toggle
+    # Автоматика этажа (Оркестратор): кликабельный тумблер Авто/Ручной.
+    # Заменил плитку тех.помещений (убрана — решение владельца 2026-07-28).
+    - type: tile
+      entity: "[[FLOOR_SWITCH]]"
+      vertical: false
+      features_position: inline
+      features:
+        - type: toggle
     - type: tile
       entity: "[[NAV_SELECT]]"
       vertical: false
