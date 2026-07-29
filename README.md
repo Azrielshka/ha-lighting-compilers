@@ -79,10 +79,12 @@ ha-lighting-compilers/
 | общая группа помещения | `light.<room_slug>_obshchii` | `generate_general_groups` |
 | группа этажа | `light.ves_<N>_i_etazh` | `generate_floor_groups` |
 | группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `generate_floor_groups` |
+| группа этажа по типу | `light.<этаж>_<тип>` (все коридоры этажа и т.п.) | `generate_floor_groups` |
 | группа всего объекта | `light.ves_obekt` — вложенно, из групп этажей | `generate_floor_groups` |
 | Area этажа | `ves_<N>_etazh` | `generate_areas` |
 | помощники | `input_number.vacant_delay_<тип>` (по типу помещения), `input_button.but_back`, `input_select.nav_floor_<N>`, пресеты зала | `generate_helpers` |
 | фильтр навигации | `input_boolean.nav_type_all` + шесть `nav_type_<тип>`; временно ещё `input_select.nav_type_pick` | `generate_helpers` |
+| фильтр групп по типу | `input_select.floor_type_filter_<N>` (по одному на этаж) | `generate_helpers` |
 | конфиг зон датчиков | `zone_manager.json` (из листа «Группы соседей») | `generate_zone_manager` |
 
 ⚠ **`unique_id` — это не `entity_id`.** У YAML-платформы `light: - platform:

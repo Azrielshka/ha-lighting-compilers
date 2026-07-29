@@ -12,9 +12,11 @@
 
 # 1. Источник данных
 
-Читается **только лист «Проектная БД»**. Имя листа передаётся явно, а не берётся
-по порядку. Остальные листы книги (`ПНР`, `ИНФ контроллеры`, `Глоссарий`,
-`Группы соседей`) пайплайном не читаются.
+Читаются **два листа**: основной — «Проектная БД» (устройства, группы,
+помещения), и «Группы соседей» — связи датчиков для `zone_manager.json`
+(нормализуется в `neighbors.parquet`, см. §7 и «Разметку для Оркестратора»).
+Имена листов передаются явно, а не берутся по порядку. Остальные листы книги
+(`ПНР`, `ИНФ контроллеры`, `Глоссарий`) пайплайном не читаются.
 
 ## Колонки
 
@@ -132,6 +134,7 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Общая группа помещения | `light.<room_slug>_obshchii` | `light.103_vestibiul_obshchii` | `generate_general_groups` |
 | Группа этажа | `light.ves_<N>_i_etazh` | `light.ves_1_i_etazh` | `generate_floor_groups` |
 | Группа тех.помещений | `light.tekh_pom_<N>_i_etazh` | `light.tekh_pom_1_i_etazh` | `generate_floor_groups` |
+| Группа этажа по типу | `light.<этаж>_<тип>` | `light.koridory_1_i_etazh` | `generate_floor_groups` |
 | Группа всего объекта | `light.ves_obekt` | | `generate_floor_groups` |
 | Area этажа | `ves_<N>_etazh` | `ves_1_etazh` | `generate_areas` |
 | Задержка гашения | `input_number.vacant_delay_<тип>` | по одной на тип помещения, без `initial` | `generate_helpers` |
@@ -140,6 +143,7 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 | Фильтр: показать всё | `input_boolean.nav_type_all` | | `generate_helpers` |
 | Фильтр: тип помещения | `input_boolean.nav_type_<тип>` | `input_boolean.nav_type_korridor` | `generate_helpers` |
 | Фильтр списком ⏳ | `input_select.nav_type_pick` | | `generate_helpers` |
+| Фильтр групп по типу | `input_select.floor_type_filter_<N>` | по одному на этаж, опции — присутствующие типы | `generate_helpers` |
 | Навигация по этажу | `input_select.nav_floor_<N>` | `input_select.nav_floor_1` | `generate_helpers` |
 | Пресеты зала | `input_boolean.<preset>` | `input_boolean.rezhim_tetra` | `generate_helpers` |
 | Конфиг зон датчиков | `zone_manager.json` | зоны, соседи, группы света | `generate_zone_manager` |
@@ -166,6 +170,14 @@ df = book.parse(sheet_name=SHEET_NAME, dtype=object, keep_default_na=False, na_v
 
 Группа объекта собрана **вложенно**: её `entities` — это группы этажей, а не
 общие группы помещений. Решение владельца 2026-07-20, допущения приняты явно.
+
+⚠ **Параллельные ветки на уровне этажа** — из тех же общих групп помещений
+собираются ещё две, не входящие в вертикаль выше:
+- `light.tekh_pom_<N>_i_etazh` — тех.помещения этажа (korridor/special/recreation);
+- `light.<этаж>_<тип>` — группа этажа ПО ТИПУ (все коридоры этажа, все классы
+  этажа и т.д.), по одной на присутствующий тип. Для фильтра управления этажами
+  на Главной (`floor_type_filter_<N>` + conditional-плитки). Обе создаёт
+  `generate_floor_groups`; в группу объекта НЕ входят (были бы двойным учётом).
 
 ⚠ **Техгруппы (`light.tekh_pom_<N>_i_etazh`) в объект НЕ входят.** Они
 подмножество этажных: одно и то же техпомещение состоит и там, и там. Возьми
@@ -551,11 +563,22 @@ panels_by_group  = [["event.kp_1_2_1"], ["event.kp_1_2_2"]]
 `scripts` (list[str] — `script.<unit_id>_<role>`),
 `blueprint_on`, `blueprint_off`, `warnings`.
 
+## `neighbors.parquet`
+
+Зоны датчиков из листа **«Группы соседей»** — источник для `zone_manager.json`.
+Строка = один основной датчик (зона).
+
+`sensor` (основной датчик `sensor.ms_*`), `space` (помещение, из devices),
+`light_group` (list[str] — группа света зоны), `neighbors` (list[str]),
+`neighbor_groups` (list[str]), `far_neighbors` (list[str]). Три списка
+позиционно выровнены; где соседа нет — заглушка (`sensor.ms_zaglushka` /
+`light.l_zaglushka`). Подробнее — `plan-zone-manager.md`.
+
 ## `normalized_meta.json`
 
 `schema_version = 3`, `generated_at`, `source_file`, `sheet_name`, `stats`,
-`columns`, `notes`. В `stats`, помимо устройств и помещений: `units`,
-`scripts`, `automations`.
+`columns`, `notes`, `neighbor_warnings`. В `stats`, помимо устройств и помещений:
+`units`, `scripts`, `automations`, `neighbor_zones`.
 
 ---
 

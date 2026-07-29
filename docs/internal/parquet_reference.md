@@ -10,19 +10,20 @@
 - Посмотреть глазами: `python scripts/show_normalized.py`
 
 Все примеры ниже — настоящие, из `data/object_example.xlsx`
-(6 помещений, 12 групп, 91 устройство).
+(8 помещений, 16 групп, 111 устройств).
 
 ---
 
-# Зачем четыре файла, а не один
+# Зачем несколько файлов, а не один
 
 ```
-Excel (лист «Проектная БД»)
-      ↓  normalize_excel.py
-devices.parquet   строка = одно устройство            (91)
-groups.parquet    строка = группа света / зона        (12)
-spaces.parquet    строка = помещение                  (6)
-units.parquet     строка = единица обслуживания       (3)
+Excel (лист «Проектная БД»)          Excel (лист «Группы соседей»)
+      ↓  normalize_excel.py                ↓
+devices.parquet   строка = одно устройство            (111)
+groups.parquet    строка = группа света / зона        (16)
+spaces.parquet    строка = помещение                  (8)
+units.parquet     строка = единица обслуживания       (5)
+neighbors.parquet строка = зона датчика               (13)
 ```
 
 Один и тот же факт нужен генераторам в разной нарезке:
@@ -36,6 +37,7 @@ units.parquet     строка = единица обслуживания       (
 | `generate_scripts` | `units` | клоны скриптов по единицам |
 | `generate_automations` | `units` | автоматизации по единицам |
 | `generate_lovelace_cards` | `spaces` | нужны зоны и датчики на карточку |
+| `generate_zone_manager` | `neighbors` | зоны датчиков → `zone_manager.json` |
 
 `devices` — нижний слой, из которого собраны остальные. Он же нужен, когда
 надо ответить на вопрос «из какой строки Excel это взялось».
@@ -87,8 +89,8 @@ units.parquet     строка = единица обслуживания       (
 «устройства по проекту нет» — и в `devices` она не порождает ничего. Отсутствие
 устройства не является устройством.
 
-Поэтому 91 строка, а не 100+: 75 ламп + 11 датчиков + 5 панелей. Ячейки с
-`None` (2 датчика, 4 панели) не в счёте.
+Поэтому 111 строк: 91 лампа + 15 датчиков + 5 панелей. Ячейки с `None` в счёт
+не идут.
 
 ---
 
@@ -242,6 +244,29 @@ blueprint_on  zm_special_on.yaml
 
 ---
 
+# neighbors.parquet
+
+**Строка = зона датчика** (один основной датчик). Собирается из **отдельного**
+листа таблицы — «Группы соседей», а не «Проектная БД». Источник для
+`zone_manager.json`, который читают blueprint'ы датчиков.
+
+| Колонка | Тип | Что это |
+|---|---|---|
+| `sensor` | string | Основной датчик зоны: `sensor.ms_X_Y_Z` |
+| `space` | string | Помещение основного датчика (имя, как в `spaces.space`) |
+| `light_group` | list\<string\> | Группа света зоны (список из одного) |
+| `neighbors` | list\<string\> | Соседние датчики |
+| `neighbor_groups` | list\<string\> | Группы света соседей |
+| `far_neighbors` | list\<string\> | Дальние соседние датчики |
+
+Три списка (`neighbors` / `neighbor_groups` / `far_neighbors`) **позиционно
+выровнены**. Где соседа/дальнего нет — заглушка `sensor.ms_zaglushka` /
+`light.l_zaglushka` (не пустой список: blueprint ждёт непустой). Соседство
+пересекает границы помещений; связи заданы вручную в листе. Полное описание —
+`plan-zone-manager.md`.
+
+---
+
 # Схема прибита гвоздями
 
 `normalize` пишет parquet **строго по объявленной схеме**, а не выводит её из
@@ -290,10 +315,10 @@ layer.spaces
 layer.devices
 ```
 
-⚠ `load_normalized` отдаёт **три** датасета из четырёх: `units` в
-`NormalizedLayer` не входит. Нужны единицы обслуживания — только
-`load_dataset(path, "units")`, как это делают `generate_scripts` и
-`generate_automations`.
+⚠ `load_normalized` отдаёт **три** датасета из пяти: `units` и `neighbors` в
+`NormalizedLayer` не входят. Нужны они — точечный `load_dataset(path, "units")` /
+`load_dataset(path, "neighbors")`, как это делают `generate_scripts`,
+`generate_automations` и `generate_zone_manager`.
 
 Оба проверяют, что файл соответствует объявленной схеме, и внятно ругаются на
 parquet, собранный старой версией `normalize_excel.py`
@@ -344,17 +369,18 @@ pd.read_parquet('data/normalized/groups.parquet')
   "source_file": ".../object_example.xlsx",
   "sheet_name": "Проектная БД",
   "stats": {
-    "excel_rows": 75,
-    "devices": 91,
-    "lamps": 75,
-    "sensors": 11,
+    "excel_rows": 91,
+    "devices": 111,
+    "lamps": 91,
+    "sensors": 15,
     "panels": 5,
-    "groups": 12,
-    "spaces": 6,
+    "groups": 16,
+    "spaces": 8,
     "spaces_without_valid_type": 0,
-    "units": 3,
-    "scripts": 8,
-    "automations": 6
+    "units": 5,
+    "scripts": 14,
+    "automations": 10,
+    "neighbor_zones": 13
   }
 }
 ```

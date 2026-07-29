@@ -52,7 +52,7 @@ ls -la data/normalized
 #                               "Проектная БД"») — это ожидаемо
 
 # ------------------------------------------------------------
-# 2) ПАЙПЛАЙН — 9 ШАГОВ
+# 2) ПАЙПЛАЙН — 10 ШАГОВ
 # ------------------------------------------------------------
 #
 # Каждый шаг запускается отдельно и работает с тем, что уже лежит в
@@ -63,7 +63,7 @@ ls -la data/normalized
 python scripts/validate_excel.py --excel data/object_example.xlsx
 python scripts/validate_excel.py --strict          # предупреждения = ошибки
 
-# 2. Нормализация: Excel -> devices/groups/spaces/units.parquet
+# 2. Нормализация: Excel -> devices/groups/spaces/units/neighbors.parquet
 #    Без --excel берётся DEFAULT_EXCEL_PATH = data/object_example.xlsx
 python scripts/normalize_excel.py --excel data/object_example.xlsx
 python scripts/normalize_excel.py
@@ -191,7 +191,7 @@ git push
 # ------------------------------------------------------------
 #
 # 1. Лаунчер запускает те же скрипты через <project_root>/.venv/Scripts/python.exe.
-#    Build All = последовательный запуск шагов 1-9; карточки и деплой в него
+#    Build All = последовательный запуск шагов 1-10; карточки и деплой в него
 #    НЕ входят.
 #
 # 2. Build All офлайновый: в Home Assistant не пишет ничего.
